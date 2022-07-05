@@ -10,7 +10,7 @@ editor_options:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = F, cache = TRUE, warning = F)
-knitr::opts_knit$set(root.dir = "\\\\babylon/visitors/tjsipin/Summer_REU/MacDonald-REU-Summer-22")
+knitr::opts_knit$set(root.dir = "H:/MacDonald-REU-Summer-22")
 ```
 
 ## The Data Set
@@ -93,8 +93,9 @@ We import the data set and split the data into two sets: one for years 2001-2013
 #   select(-c("StableLights"))
 
 
-# setwd("\\\\babylon/visitors/tjsipin/Summer_REU/MacDonald-REU-Summer-22")
+# setwd("H:/MacDonald-REU-Summer-22")
 load("data/gap_inp_early_2")
+getwd()
 ```
 
 ## Set up XGBoost
@@ -109,6 +110,19 @@ set.seed(321)
 
 early_data <- gap.inp.early.2$ximp
 
+quantile(early_data$Cutaneous.Leishmaniasis,probs = c(0.33, 0.67, 1))
+
+early_data$CL_bins <- cut(early_data$Cutaneous.Leishmaniasis,
+    breaks = c(0.0000001, 0.1350639, 0.5798863, 100), # -1 instead of 0
+    # since noninclusive
+    labels = c("low", "moderate", "high"))
+
+early_data <- early_data %>%
+  group_by(CL_bins) %>%
+  sample_n(size = 10523) %>% 
+  ungroup() %>%
+  dplyr::select(-c('CL_bins'))
+
 # split data into training and testing
 data_split <- initial_split(early_data %>% select(-c('Country',
                                                      'Mucosal.Leishmaniasis',
@@ -118,7 +132,7 @@ data_split <- initial_split(early_data %>% select(-c('Country',
                                                      'Yellow.Fever',
                                                      'Malaria')),
                             strata = Cutaneous.Leishmaniasis,
-                            prop = 0.9)
+                            prop = 0.85)
 data_train <- training(data_split)
 data_test <- testing(data_split)
 
@@ -212,7 +226,7 @@ lrn <- makeLearner("regr.xgboost", predict.type = "response")
 lrn$par.vals <- list(objective = 'reg:squarederror',
                      eval_metric = 'error',
                      nrounds = 200L,
-                     eta = 0.1)
+                     eta = 0.7)
 
 # Set parameter space
 params <- makeParamSet(makeDiscreteParam('booster',
@@ -224,14 +238,14 @@ params <- makeParamSet(makeDiscreteParam('booster',
                                         lower = 0L,
                                         upper = 1L),
                        makeNumericParam('subsample',
-                                        lower = 0.9,
+                                        lower = 0.6,
                                         upper = 1),
                        makeNumericParam('colsample_bytree',
                                         lower = 0.3,
                                         upper = 0.6),
                        makeNumericParam('gamma',
-                                        lower = 10,
-                                        upper = 30))
+                                        lower = 0,
+                                        upper = 100))
 
 
 # Set resampling strategy
@@ -286,23 +300,26 @@ xgpred <- predict(xgmodel, testtask)
 ## Visualize performance
 
 ```{r}
-x = 1:length(y_test)
+MLmetrics::MSE(xgpred$data$response, xgpred$data$truth)
 
 ggplot() + 
-  geom_line(aes(x = xgpred$data$id,
-                y = xgpred$data$truth),
-            color = 'red') + 
-  geom_line(aes(x = xgpred$data$id,
-                y = xgpred$data$response),
-            color = 'blue') + 
+  geom_bar(aes(x = xgpred$data$id[1:length(xgpred$data$id)],
+                y = xgpred$data$truth[1:length(xgpred$data$id)]),
+           stat = 'identity',
+           color = 'red') + 
+  geom_bar(aes(x = xgpred$data$id[1:length(xgpred$data$id)],
+                y = xgpred$data$response[1:length(xgpred$data$id)]),
+           stat = 'identity',
+           color = 'blue',
+           alpha = 0.2) + 
   labs(color = "Truth vs. Response")
 
 ggplot() + 
-  geom_line(aes(x = sort(xgpred$data$id),
-                y = sort(xgpred$data$truth)),
+  geom_line(aes(x = sort(xgpred$data$id[4300:length(xgpred$data$id)]),
+                y = sort(xgpred$data$truth)[4300:length(xgpred$data$id)]),
             color = 'red') + 
-  geom_line(aes(x = sort(xgpred$data$id),
-                y = sort(xgpred$data$response)),
+  geom_line(aes(x = sort(xgpred$data$id)[4300:length(xgpred$data$id)],
+                y = sort(xgpred$data$response)[4300:length(xgpred$data$id)]),
             color = 'blue') + 
   labs(color = "Truth vs. Response")
 ```
@@ -332,7 +349,7 @@ sum_CL
 set.seed(123)
 cat_df <- early_data
 cat_df$Cutaneous.Leishmaniasis <- cut(cat_df$Cutaneous.Leishmaniasis,
-                                      breaks = c(-1, 0.09154, 0.86616, 10^3), # -1 instead of 0
+                                      breaks = c(0, 0.1330573, 0.5889837, 100), # -1 instead of 0
                                                                                # since noninclusive
                                       labels = c("low", "moderate", "high"))
 
@@ -417,7 +434,7 @@ dtest <- xgb.DMatrix(data = x_test, label = y_test)
 params <- list(booster = 'gbtree',
                objective = 'multi:softmax',
                eta = 0.3, 
-               gamma = 0,
+               gamma = 10,
                max_depth = 6,
                min_child_weight = 1,
                subsample = 1,

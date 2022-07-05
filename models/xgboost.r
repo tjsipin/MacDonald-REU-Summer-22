@@ -27,82 +27,75 @@ require(xgboost)
 require(data.table)
 require(Matrix)
 library(caret)
-library(data.table)
 library(mlr)
+# split data into training and testing
 
 
-aad <- read.csv("Annual_Amazon_Data.csv")
-view(aad)
+early_data <- new_df %>%
+  filter(Year < 2014) %>%
+  dplyr::select(-c(29:69)) %>%
+  dplyr::select(-c("AvgRad", "Zika", "Chikungunya")) %>%
+  dplyr::select(c('Population', 
+           'LST_Day', 
+           'LST_Night',
+           'OptTemp_Obs',
+           'Dengue_Alb_OptTemp',
+           'Dengue_Aeg_OptTemp',
+           'Chik_Alb_OptTemp',
+           'Zika_OptTemp',
+           'Malaria_OptTemp',
+           'NDVI',
+           'EVI', 
+           'Precip', 
+           'StableLights',
+           'Cutaneous.Leishmaniasis',
+           'SWOccurrence')) %>%
+  filter(Cutaneous.Leishmaniasis > 0)
 
-cutaneous <- aad$Cutaneous.Leishmaniasis
-mucosal <- aad$Mucosal.Leishmaniasis
-visceral <- aad$Visceral.Leishmaniasis
-new_data <- subset(aad, !is.na(cutaneous))
-#View(new_data)
-library(tidyverse)
-library(dplyr)
-#names(new_data)
-
-## splitting the data into a before 2014 set and an after 2014 set
-
-early_data <- new_data %>%
-  filter(Year < 2014)%>%
-  select(-c(29:69))
-later_data <- new_data %>%
-  filter(Year > 2013) %>%
-  select(-c(29:69))
-
-#names(early_data)
-
-## removing unnecessary variables
+early_data$CL_bins <- cut(early_data$Cutaneous.Leishmaniasis,
+    breaks = c(0.0000001, 0.09203, 0.87690, 10^3), # -1 instead of 0
+    # since noninclusive
+    labels = c("low", "moderate", "high"))
 
 early_data <- early_data %>%
-  select(-c("AvgRad"))
-later_data <- later_data %>%
-  select(-c("StableLights")) %>%
-  mutate(later_data$OptTemp_Obs <- as.numeric(later_data$OptTemp_Obs)) %>%
-  mutate(later_data$Year <- as.numeric(later_data$Year)) %>%
-  mutate(later_data$Population <- as.numeric(later_data$Population))
+  group_by(CL_bins) %>%
+  sample_n(size = 5930) %>% 
+  ungroup() %>%
+  dplyr::select(-c('CL_bins'))
 
+set.seed(321)
+data_split <- initial_split(early_data,
+                            strata = Cutaneous.Leishmaniasis)
+data_train <- training(data_split) 
 
-later_data_small <- later_data %>%
-  select(c("Cutaneous.Leishmaniasis", "LST_Day", "OptTemp_Obs", "NDVI", "EVI", "Precip", "AvgRad", "SWOccurrence")) %>%
-  na.omit(later_data_small)
-later_data_t <- later_data_small %>%
-  mutate(Cutaneous.Leishmaniasis = (Cutaneous.Leishmaniasis))
+data_test <- testing(data_split)
 
-# splitting data into training and test data
-set.seed(2)
-library(caTools)
-split <- sample.split(later_data_t, SplitRatio = 0.7)
-split
-train <- subset(later_data_t, split = "TRUE")
-test <- subset(later_data_t, split = "FALSE")
-train
-test
+data_train <- data.table(data_train)
+data_test <- data.table(data_test)
 
 # one-hot encode categorical variables
 sparse_matrix <- sparse.model.matrix(
-  Cutaneous.Leishmaniasis ~ . - 1, data = train
-) # use for data = ?
+  Cutaneous.Leishmaniasis ~ . - 1, data = data_train
+  ) # use for data = ?
 
 
 # split training into predictors and labels
-x_train <- as.matrix(train %>%
-                       select(-c("Cutaneous.Leishmaniasis")))
+x_train <- as.matrix(data_train %>%
+  dplyr::select(-c("Cutaneous.Leishmaniasis")))
 
-x_train[,1:7] = as.numeric(x_train[,1:7])
+x_train[,1:13] = as.numeric(x_train[,1:13])
 
-y_train <- as.matrix(train %>%
-                       select(Cutaneous.Leishmaniasis))
+y_train <- as.matrix(data_train %>%
+  dplyr::select(Cutaneous.Leishmaniasis))
 
-x_test <- as.matrix(test %>%
-                      select(-c("Cutaneous.Leishmaniasis")))
 
-x_test[,1:7] = as.numeric(x_test[,1:7])
+x_test <- as.matrix(data_test %>%
+                       dplyr::select(-c("Cutaneous.Leishmaniasis")))
 
-y_test <- as.matrix(test %>%
-                      select(Cutaneous.Leishmaniasis))
+x_test[,1:13] = as.numeric(x_test[,1:13])
+
+y_test <- as.matrix(data_test %>%
+                       dplyr::select(Cutaneous.Leishmaniasis))
 
 dtrain <- xgb.DMatrix(data = x_train, label = y_train)
 dtest <- xgb.DMatrix(data = x_test, label = y_test)
@@ -113,13 +106,13 @@ dtest <- xgb.DMatrix(data = x_test, label = y_test)
 params <- list(booster = "gbtree", 
                objective = "reg:squarederror",
                eta = 0.3,
-               gamma = 20,
+               gamma = 100,
                max.depth = 1, 
                min_child_weight = 2,
                subsample = 1,
                colsample_bytree = 1,
                lambda = 0
-)
+               )
 
 xgbcv <- xgb.cv(params = params,
                 data = x_train, 
@@ -132,8 +125,8 @@ xgbcv <- xgb.cv(params = params,
                 early_stopping_rounds = 20,
                 maximize = F,
                 verbose = 2)  # eta = 1: train-rmse:0.000601 @ [41]
-# eta = 0.3: train-rsme:0.001090 @ [132]
-# min_child_weight = 1: 0.530765
+                              # eta = 0.3: train-rsme:0.001090 @ [132]
+                              # min_child_weight = 1: 0.530765
 xgbcv$best_iteration
 
 # first default - model training
@@ -142,12 +135,25 @@ xgb1 <- xgb.train (params = params,
                    nrounds = xgbcv$best_iteration, 
                    watchlist = list(val=dtest,train=dtrain), 
                    print.every.n = 10, 
-                   early.stop.round = 10, 
+                   early_stopping_rounds = 10, 
                    maximize = F , 
                    eval_metric = "error")
 
 # model prediction
 xgbpred <- predict(xgb1, dtest)
+
+
+ggplot() + 
+  geom_line(aes(x = xgpred$data$id,
+                y = xgpred$data$truth),
+            color = 'red',
+            size = 1) + 
+  geom_line(aes(x = xgpred$data$id,
+                y = xgpred$data$response),
+            color = 'blue',
+            size = 1,
+            alpha = 0.7) + 
+  labs(color = "Truth vs. Response")
 
 # var imp plot
 mat <- xgb.importance(feature_names = colnames(x_train),
@@ -156,43 +162,45 @@ xgb.plot.importance(importance_matrix = mat[1:ncol(x_train)])
 
 # Accuracy check
 
-mse = mean((y_test - pred)^2)
-mae = caret::MAE(y_test, pred)
-rmse = caret::RMSE(y_test, pred)
+mse = mean((y_test - xgbpred)^2)
+mae = caret::MAE(y_test, xgbpred)
+rmse = caret::RMSE(y_test, xgbpred)
 
 cat("MSE: ", mse, "MAE: ", mae, "RMSE: ", rmse)
 
 
 # Create tasks
-traintask <- makeRegrTask(data = train, target = "Cutaneous.Leishmaniasis")
-testtask <- makeRegrTask(data = test, target = "Cutaneous.Leishmaniasis")
+traintask <- makeRegrTask(data = data_train, target = "Cutaneous.Leishmaniasis")
+testtask <- makeRegrTask(data = data_test, target = "Cutaneous.Leishmaniasis")
 
 # Create learner
 lrn <- makeLearner("regr.xgboost", predict.type = "response")
 lrn$par.vals <- list(objective = 'reg:squarederror',
                      eval_metric = 'error',
-                     nrounds = 200L,
-                     eta = 0.3)
+                     nrounds = 200L
+                     )
 
 # Set parameter space
-set.seed(2)
 params <- makeParamSet(makeDiscreteParam('booster',
                                          values = c('gbtree', 'gblinear')),
                        makeIntegerParam('max_depth',
                                         lower = 1L,
-                                        upper = 100L),
+                                        upper = 10L),
                        makeNumericParam('min_child_weight',
-                                        lower = 0L,
-                                        upper = 30),
+                                        lower = 70L,
+                                        upper = 100L),
                        makeNumericParam('subsample',
-                                        lower = 0,
-                                        upper = 2),
+                                        lower = 0.5,
+                                        upper = 1),
                        makeNumericParam('colsample_bytree',
-                                        lower = 0,
-                                        upper = 2),
-                       makeIntegerParam('gamma',
+                                        lower = 0.7,
+                                        upper = 0.9),
+                       makeNumericParam('gamma',
                                         lower = 1L,
-                                        upper = 100L))
+                                        upper = 10L),
+                       makeNumericParam('eta',
+                                        lower = 0.01,
+                                        upper = 0.2))
 
 
 # Set resampling strategy
@@ -218,6 +226,8 @@ mytune <- tuneParams(learner = lrn,
                      show.info = T)
 
 mytune$y
+mytune$x
+mytune$opt.path$env$path
 
 # Set hyperparameters
 lrn_tune <- setHyperPars(lrn, par.vals = mytune$x)
@@ -239,9 +249,27 @@ performance_plot
 ggplot() + 
   geom_line(aes(x = xgpred$data$id,
                 y = xgpred$data$truth),
-            color = 'red') + 
+            color = 'red',
+            size = 0.5) + 
   geom_line(aes(x = xgpred$data$id,
                 y = xgpred$data$response),
-            color = 'blue') + 
+            color = 'blue',
+            size = 0.5,
+            alpha = 0.7) + 
+  labs(color = "Truth vs. Response")
+
+ggplot() + 
+  geom_line(aes(x = xgpred$data$id,
+                y = xgpred$data$truth - xgpred$data$response),
+            color = 'darkgreen') +  
+  labs(color = "Truth vs. Response")
+
+ggplot() +
+  geom_line(aes(x = sort(xgpred$data$id),
+                y = sort(xgpred$data$truth)),
+            color = 'red') +
+  geom_line(aes(x = sort(xgpred$data$id),
+                y = sort(xgpred$data$response)),
+            color = 'blue') +
   labs(color = "Truth vs. Response")
 
