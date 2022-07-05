@@ -10,6 +10,7 @@ editor_options:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = F, cache = TRUE, warning = F)
+knitr::opts_knit$set(root.dir = "\\\\babylon/visitors/tjsipin/Summer_REU/MacDonald-REU-Summer-22")
 ```
 
 ## The Data Set
@@ -74,22 +75,26 @@ library(mlr)
 
 We import the data set and split the data into two sets: one for years 2001-2013 and one for all other years 2014-2019. The recorded data for each subset seemed to have different methods of collection. For example, the earlier years called the human settlement light emission measurements `StableLights`, while the later years called it `AvgRad`. Additionally, `Zika` and `Chikungunya` are all NA for the earlier years, so we remove those for the earlier years since XGBoost does not work with NA values.
 
-```{r pressure, include = F}
-data = read.csv('data/Amazon_Data_Annual_for_TJ_5_22.csv')
+```{r pressure, include = T}
+# data = read.csv('data/Amazon_Data_Annual_for_TJ_5_22.csv')
+# 
+# new_df <- subset(data, !is.na(data$Cutaneous.Leishmaniasis))
+# 
+# # split missing data
+# 
+# early_data <- new_df %>%
+#   filter(Year < 2014) %>%
+#   select(-c(29:69)) %>%
+#   select(-c("AvgRad", "Zika", "Chikungunya"))
+# 
+# later_data <- new_df %>%
+#   filter(Year >= 2014) %>%
+#   select(-c(29:69)) %>%
+#   select(-c("StableLights"))
 
-new_df <- subset(data, !is.na(data$Cutaneous.Leishmaniasis))
 
-# split missing data
-
-early_data <- new_df %>%
-  filter(Year < 2014) %>%
-  select(-c(29:69)) %>%
-  select(-c("AvgRad", "Zika", "Chikungunya"))
-
-later_data <- new_df %>%
-  filter(Year >= 2014) %>%
-  select(-c(29:69)) %>%
-  select(-c("StableLights"))
+# setwd("\\\\babylon/visitors/tjsipin/Summer_REU/MacDonald-REU-Summer-22")
+load("data/gap_inp_early_2")
 ```
 
 ## Set up XGBoost
@@ -100,10 +105,12 @@ We remove `Code`, `Country`, `Name`, and `Year` as these shouldn't be taken into
 # set seed for reproducibility
 set.seed(321)
 
+# set gap.inp.early.2$ximp as early_data
+
+early_data <- gap.inp.early.2$ximp
+
 # split data into training and testing
-data_split <- initial_split(early_data %>% select(-c('Code', 
-                                                     'Country', 
-                                                     'Name', 
+data_split <- initial_split(early_data %>% select(-c('Country',
                                                      'Mucosal.Leishmaniasis',
                                                      'Visceral.Leishmaniasis',
                                                      'Year',
@@ -205,7 +212,7 @@ lrn <- makeLearner("regr.xgboost", predict.type = "response")
 lrn$par.vals <- list(objective = 'reg:squarederror',
                      eval_metric = 'error',
                      nrounds = 200L,
-                     eta = 0.9)
+                     eta = 0.1)
 
 # Set parameter space
 params <- makeParamSet(makeDiscreteParam('booster',
@@ -217,14 +224,14 @@ params <- makeParamSet(makeDiscreteParam('booster',
                                         lower = 0L,
                                         upper = 1L),
                        makeNumericParam('subsample',
-                                        lower = 0,
+                                        lower = 0.9,
                                         upper = 1),
                        makeNumericParam('colsample_bytree',
-                                        lower = 0,
-                                        upper = 1),
-                       makeIntegerParam('gamma',
-                                        lower = 0,
-                                        upper = 1))
+                                        lower = 0.3,
+                                        upper = 0.6),
+                       makeNumericParam('gamma',
+                                        lower = 10,
+                                        upper = 30))
 
 
 # Set resampling strategy
@@ -263,6 +270,7 @@ mytune <- tuneParams(learner = lrn,
 ```
 ```{r}
 mytune$x
+mytune$opt.path$env$path
 ```
 
 ```{r, results = 'hide'}
@@ -312,7 +320,7 @@ Our model doesn't seem to work well for high levels of estimated incidence, so w
 Each quartile was obtained by taking the five-number summary of a subset of the original data set with removed observations that have NA for cutaneous leishmaniasis. 
 
 ```{r}
-sum_CL <- summary(new_df$Cutaneous.Leishmaniasis[new_df$Cutaneous.Leishmaniasis > 0]) # very important step to get right, otherwise it might nullify model adequacy (most criticism may come from this step - make sure to justify)
+sum_CL <- summary(early_data$Cutaneous.Leishmaniasis[early_data$Cutaneous.Leishmaniasis > 0]) # very important step to get right, otherwise it might nullify model adequacy (most criticism may come from this step - make sure to justify)
 
 # approach: put aside clasific until figured out
 sum_CL
@@ -324,7 +332,7 @@ sum_CL
 set.seed(123)
 cat_df <- early_data
 cat_df$Cutaneous.Leishmaniasis <- cut(cat_df$Cutaneous.Leishmaniasis,
-                                      breaks = c(-1, 0.09203, 0.87690, 10^3), # -1 instead of 0
+                                      breaks = c(-1, 0.09154, 0.86616, 10^3), # -1 instead of 0
                                                                                # since noninclusive
                                       labels = c("low", "moderate", "high"))
 
@@ -481,8 +489,7 @@ lrn <- makeLearner('classif.xgboost',
                    predict.type = 'response')
 lrn$par.vals <- list(objective = 'multi:softmax',
                      eval_metric = 'merror',
-                     nrounds = 100L,
-                     eta = 0.1)
+                     nrounds = 100L)
 
 # set parameter space
 params <- makeParamSet(
@@ -500,6 +507,12 @@ params <- makeParamSet(
   makeNumericParam('colsample_bytree',
                    lower = 0.5, 
                    upper = 1),
+  makeNumericParam('eta',
+                   lower = 0.01,
+                   upper = 0.3),
+  makeIntegerParam('gamma',
+                   lower = 0,
+                   upper = 20)
   
 )
 
@@ -510,6 +523,8 @@ rdesc <- makeResampleDesc("CV",
 
 # search strategy
 ctrl <- makeTuneControlRandom(maxit = 10L)
+
+
 ```
 
 ```{r}
@@ -528,5 +543,34 @@ mytune <- tuneParams(learner = lrn,
                      par.set = params,
                      control = ctrl,
                      show.info = T)
+```
+
+```{r}
+# xgbcv <- xgb.cv(params = mytune$x,
+#                 data = dtrain,
+#                 nrounds = 200,
+#                 nfold = 5,
+#                 showsd = T,
+#                 stratified = T,
+#                 print_every_n = 10,
+#                 early_stopping_rounds = 20,
+#                 maximize = F,
+#                 verbose = 2,
+#                 eval_metric = 'merror')
+
+# set hyperparameters
+lrn_tune <- setHyperPars(lrn, par.vals = mytune$x)
+
+# train model
+xgmodel <- train(learner = lrn_tune, task = traintask)
+
+# predict model
+xgpred <- predict(xgmodel, testtask)
+```
+
+```{r}
+confusionMatrix(xgpred$data$response, xgpred$data$truth)
+mytune$opt.path$env$path
+
 ```
 
