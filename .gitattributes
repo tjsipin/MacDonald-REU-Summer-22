@@ -10,3 +10,12 @@
 /svmfit_poly filter=lfs diff=lfs merge=lfs -text
 *.out filter=lfs diff=lfs merge=lfs -text
 *.2 filter=lfs diff=lfs merge=lfs -text
+*.gitignore filter=lfs diff=lfs merge=lfs -text
+*.Rproj filter=lfs diff=lfs merge=lfs -text
+*.csv filter=lfs diff=lfs merge=lfs -text
+/models/svm_Linear filter=lfs diff=lfs merge=lfs -text
+/models/svm_Linear_Grid filter=lfs diff=lfs merge=lfs -text
+/models/svm_Linear_Grid_imp filter=lfs diff=lfs merge=lfs -text
+/models/svm_Radial filter=lfs diff=lfs merge=lfs -text
+/models/svm_Radial_Grid filter=lfs diff=lfs merge=lfs -text
+/models/svmfit_poly filter=lfs diff=lfs merge=lfs -text
