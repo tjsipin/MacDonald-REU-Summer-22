@@ -6,12 +6,25 @@ output: html_document
 ---
 
 ```{r}
+<<<<<<< HEAD
 aad <- read.csv("data/aad.csv")
 library(dplyr)
 ## splitting the data into a before 2014 set and an after 2014 set
 
 early_data <- aad %>%
   filter(Year < 2014)%>%
+=======
+library(dplyr)
+```
+
+
+```{r}
+aad <- read.csv("data/aad.csv")
+## splitting the data into a before 2014 set and an after 2014 set
+
+early_data <- aad %>%
+  filter(Year < 2014) %>%
+>>>>>>> 861ede919f28a726cd4a5e3305f6be6b3979a3e3
   dplyr::select(c(1:28,30,36,40,45))
 later_data <- aad %>%
   filter(Year > 2013) %>%
