@@ -35,11 +35,9 @@ later_data$enn_mn_forest[is.na(later_data$enn_mn_forest)] = 0
 later_data$te_forest[is.na(later_data$te_forest)] = 0
 later_data$area_mn_forest[is.na(later_data$area_mn_forest)] = 0
 later_data$pland_forest[is.na(later_data$pland_forest)] = 0
-```
 
+lapply(early_data, as.numeric)
 
-
-```{r}
-
+early_data_cutaneous <- subset(early_data, !is.na(early_data$Cutaneous.Leishmaniasis))
 ```
 
