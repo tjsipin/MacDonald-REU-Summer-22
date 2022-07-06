@@ -11,7 +11,8 @@ aad <- read.csv("Annual_Amazon_Data.csv")
 
 early_data <- aad %>%
   filter(Year < 2014)%>%
-  dplyr::select(c(1:28,30,36,40,45))
+  dplyr::select(c(1:28,30,36,40,45)) %>%
+  aad[is.na(aad$)]
 later_data <- aad %>%
   filter(Year > 2013) %>%
   dplyr::select(c(1:28,30,36,40,45))
