@@ -21,7 +21,7 @@ library(ROCR)
 Importing File into R:
 ```{r}
 aad <- read.csv("data/Amazon_Data_Annual_for_TJ_5_22.csv")
-#view(aad)
+# view(aad)
 
 cutaneous <- aad$Cutaneous.Leishmaniasis
 mucosal <- aad$Mucosal.Leishmaniasis
