@@ -1,0 +1,159 @@
+---
+title: "Deep Neural Network Regression"
+author: "Lyndsey Umsted"
+date: '2022-06-24'
+output: 
+  html_document:
+    toc: true
+    number_sections: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+suppressMessages(library(readr))
+suppressMessages(library(keras))
+suppressMessages(library(DT))
+```
+
+<style type = "text/css">
+h1 {
+    color: #1a2451;
+}
+h2 {
+    color: #ffbd4a;
+}
+h3 {
+    color: #1a2451;
+}
+</style>
+
+
+## Introduction
+Introducing a densely connected deep neural network with two hidden layers and an output layer
+
+## Data
+```{r}
+aad <- read.csv("Annual_Amazon_Data.csv")
+view(aad)
+
+cutaneous <- aad$Cutaneous.Leishmaniasis
+mucosal <- aad$Mucosal.Leishmaniasis
+visceral <- aad$Visceral.Leishmaniasis
+new_data <- subset(aad, !is.na(cutaneous))
+#View(new_data)
+library(tidyverse)
+library(dplyr)
+#names(new_data)
+
+## splitting the data into a before 2014 set and an after 2014 set
+
+early_data <- new_data %>%
+  filter(Year < 2014)%>%
+  dplyr::select(-c(29:69))
+later_data <- new_data %>%
+  filter(Year > 2013) %>%
+  dplyr::select(-c(29:69))
+
+#names(early_data)
+
+## removing unnecessary variables
+
+early_data <- early_data %>%
+  dplyr::select(-c("AvgRad"))
+later_data <- later_data %>%
+  dplyr::select(-c("StableLights")) %>%
+  mutate(later_data$OptTemp_Obs <- as.numeric(later_data$OptTemp_Obs)) %>%
+  mutate(later_data$Year <- as.numeric(later_data$Year)) %>%
+  mutate(later_data$Population <- as.numeric(later_data$Population))
+
+```
+
+
+```{r, fig.width = 10, fig.height = 10}
+later_data_small <- later_data %>%
+  dplyr::select(c("Year", "Population", "Cutaneous.Leishmaniasis", "Dengue_Alb_OptTemp", "Dengue_Aeg_OptTemp", "Chik_Alb_OptTemp", "Chik_Aeg_OptTemp", "Zika_OptTemp", "Malaria_OptTemp", "LST_Day", "LST_Night", "OptTemp_Obs", "NDVI", "EVI", "Precip", "AvgRad", "SWOccurrence")) %>%
+  na.omit(later_data_small) 
+later_data_t <- later_data_small %>%
+  filter(Cutaneous.Leishmaniasis > 0)%>%
+  mutate(Cutaneous.Leishmaniasis = (Cutaneous.Leishmaniasis)^(-0.025))
+# pairs(later_data_small, labels = c("Year", "Population", "Cutaneous.Leishmaniasis","LST_Day", "LST_Night", "OptTemp_Obs", "NDVI", "EVI", "Precip", "AvgRad", "SWOccurrence"))
+# library(ggplot2)
+# library(GGally)
+# ggpairs(data.frame(Year = later_data_small[,1], Population = later_data_small[,2], Cutaneous.Leishmaniasis = later_data_small[,3], LST_Day = later_data_small[,4], LST_Night = later_data_small[,5], OptTemp_Obs = later_data_small[,6], NDVI = later_data_small[,7], EVI = later_data_small[,8], Precip = later_data_small[,9], StableLights = later_data_small[,10], SWOccurrence = later_data_small[,11]), lower = list(continuous = wrap('points'), alpha = 0.3, size  = 0.2))
+```
+
+
+
+```{r, fig.width = 10, fig.height = 10}
+plot(later_data_t)
+```
+
+```{r}
+# splitting data into training and test data
+set.seed(2)
+library(caTools)
+split <- sample.split(later_data_t, SplitRatio = 0.7)
+split
+train <- subset(later_data_t, split = "TRUE")
+test <- subset(later_data_t, split = "FALSE")
+train
+test
+```
+
+```{r}
+# create the model
+model <- lm(later_data_t$Cutaneous.Leishmaniasis ~ .,data = train)
+summary(model)
+
+```
+
+```{r}
+library(MASS)
+boxcox(model, plotit = T, lambda = seq(0,2,len = 100))
+```
+
+
+```{r}
+plot(model)
+```
+
+```{r}
+#prediction
+pred <- predict(model, test)
+pred
+```
+
+```{r}
+#install.packages("ggpubr")
+library(ggpubr)
+ggdensity(pred-later_data_t$Cutaneous.Leishmaniasis) + stat_overlay_normal_density(color = "red", linetype = "dashed")
+```
+
+```{r}
+# comparing predicted vs actual values
+par(mfrow = c(1,2), mgp = c(2,1,0), mar = c(3,3,3,1) + 0.1)
+plot(test$Cutaneous.Leishmaniasis, type ="l", lty = 1.8, col = "red")
+lines(pred, type ="l", col = "blue")
+plot(pred, type ="l", lty = 1.8, col = "blue")
+```
+
+
+```{r}
+# Finding Accuracy
+rmse <- sqrt(mean(pred-later_data_t$Cutaneous.Leishmaniasis)^2)
+rmse
+```
+
+```{r}
+par(mfrow = c(1,3), mgp = c(2,1,0), mar = c(3,3,3,1) + 0.1)
+plot(fitted(model), residuals(model), xlab = "fitted values", ylab = "residuals")
+abline(h = 0)
+title("Residuals vs Fitted")
+qqnorm(residuals(model), ylab = "residuals", main = "QQ Plot of Residuals")
+qqline(residuals(model))
+plot(model, 4)
+```
+
