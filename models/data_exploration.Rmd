@@ -1,0 +1,35 @@
+---
+title: "Data Exploration"
+author: "Lyndsey Umsted"
+date: '2022-07-11'
+output: html_document
+---
+
+```{r}
+aad <- read.csv("data/aad.csv")
+removed_na <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+missing_to_zero <- aad
+missing_to_zero$Cutaneous.Leishmaniasis[is.na(missing_to_zero$Cutaneous.Leishmaniasis)] <- 0
+View(aad)
+```
+
+```{r}
+boxplot(removed_na$enn_mn_riverlakeocean)
+```
+
+
+```{r}
+hist(removed_na$area_mn_forest)
+```
+
+```{r}
+library(dplyr)
+removed_na$Year[removed_na$Year == 2000]
+
+```
+
+
+
+
+
+
