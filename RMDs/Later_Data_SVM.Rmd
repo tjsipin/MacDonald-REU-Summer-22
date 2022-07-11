@@ -7,6 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "H:/MacDonald-REU-Summer-22")
 ```
 
 ```{r}
@@ -29,6 +30,8 @@ visceral <- aad$Visceral.Leishmaniasis
 new_data <- subset(aad, !is.na(cutaneous))
 #View(new_data)
 #names(new_data)
+getwd()
+load('data/gap_inp_early_2')
 ```
 
 
@@ -79,9 +82,31 @@ later_data_t <- later_data_small %>%
 
 ```{r}
 library(dplyr)
-summary(later_data_small$Cutaneous.Leishmaniasis[later_data_small$Cutaneous.Leishmaniasis > 0])
-cat_df <- subset(later_data_small, later_data_small$Cutaneous.Leishmaniasis > 0)
-cat_df$Cutaneous.Leishmaniasis <- cut(later_data_small$Cutaneous.Leishmaniasis[later_data_small$Cutaneous.Leishmaniasis > 0], breaks = c(0, 0.090114445 , 0.876904527, 100), labels = c("low", "moderate", "high")) # 25%, 75%, 100%
+
+imputed <- gap.inp.early.2$ximp
+
+summary(imputed$Cutaneous.Leishmaniasis[imputed$Cutaneous.Leishmaniasis > 0])
+cat_df <- subset(imputed, imputed$Cutaneous.Leishmaniasis > 0)
+cat_df$Cutaneous.Leishmaniasis <- cut(imputed$Cutaneous.Leishmaniasis[imputed$Cutaneous.Leishmaniasis > 0],
+                                      breaks = c(0, 0.1350639, 0.5798863, 100), 
+                                      labels = c("low", "moderate", "high")) # 33%, 67%, 100%
+
+cat_df <- cat_df %>%
+  select(c("Cutaneous.Leishmaniasis", 
+           "Dengue_Alb_OptTemp", 
+           "Dengue_Aeg_OptTemp", 
+           "Chik_Alb_OptTemp", 
+           "Chik_Aeg_OptTemp", 
+           "Zika_OptTemp", 
+           "Malaria_OptTemp", 
+           "LST_Day", 
+           "LST_Night", 
+           "OptTemp_Obs", 
+           "NDVI", 
+           "EVI", 
+           "Precip", 
+           "StableLights", 
+           "SWOccurrence"))
 
 # cat_df$label <- NA
 # cat_df$label[cat_df$Cutaneous.Leishmaniasis == "low"] <- 0
@@ -110,7 +135,7 @@ data_split <- initial_split(cat_df, strata = "Cutaneous.Leishmaniasis", prop = 0
 
 training <- training(data_split) %>%
   group_by(Cutaneous.Leishmaniasis) %>%
-  sample_n(size = 2402)
+  sample_n(size = 8418)
 testing <- testing(data_split) 
 
 x_train <- as.matrix(training[,-1])
@@ -135,33 +160,33 @@ training[["Cutaneous.Leishmaniasis"]] = factor(training[["Cutaneous.Leishmaniasi
 
 traincontrol() method:
 ```{r, eval = FALSE}
-# 
-# set.seed(2022)
-# trctrl <- trainControl(method = "cv", number = 2, classProbs = TRUE)
-# 
-# trctrl_1 <- trainControl(method = 'cv', number = 1)
-# 
-# # grid search to fine tune
-# grid <- expand.grid(C = c(0,0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2,5))
-# 
-# # train SVM
-# svm_Radial <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmRadial",
-#                     trControl=trctrl,
-#                     preProcess = c("center", "scale"),
-#                     tuneLength = 10)
-# 
-# svm_Linear <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmLinear",
-#                     trControl=trctrl,
-#                     preProcess = c("center", "scale"),
-#                     tuneLength = 10)
-# svm_Poly <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmPoly",
-#                     trControl=trctrl_1,
-#                     preProcess = c("center", "scale"),
-#                     tuneLength = 10)
-# system("say Just finished!")
-# alarm()
-# save(svm_Linear, file = 'models/svm_Linear')
-# save(svm_Radial, file = 'models/svm_Radial')
+
+set.seed(2022)
+trctrl <- trainControl(method = "cv", number = 2, classProbs = TRUE)
+
+trctrl_1 <- trainControl(method = 'cv', number = 1)
+
+# grid search to fine tune
+grid <- expand.grid(C = c(0,0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2,5))
+
+# train SVM
+svm_Radial <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmRadial",
+                    trControl=trctrl,
+                    preProcess = c("center", "scale"),
+                    tuneLength = 10)
+
+svm_Linear <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmLinear",
+                    trControl=trctrl,
+                    preProcess = c("center", "scale"),
+                    tuneLength = 10)
+svm_Poly <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmPoly",
+                    trControl=trctrl_1,
+                    preProcess = c("center", "scale"),
+                    tuneLength = 10)
+system("say Just finished!")
+alarm()
+save(svm_Linear, file = 'models/svm_Linear_2')
+save(svm_Radial, file = 'models/svm_Radial_2')
 ```
 
 ```{r}
@@ -172,7 +197,7 @@ traincontrol() method:
 
 ```{r}
 # set.seed(1)
-# tune.out = tune(svm, Cutaneous.Leishmaniasis ~ ., 
+# tune.out = tune(svm, Cutaneous.Leishmaniasis ~ .,
 #                 data = training, kernel = 'radial',
 #                 ranges = list(cost = c(0.1, 1, 10, 100, 1000),
 #                               gamma = c(0.5, 1, 2, 3, 4)))
@@ -202,14 +227,25 @@ plot(tune.out)
 
 ```{r}
 # Do not run anymore!!! Long runtime
-# tune.out.2 = tune(svm, Cutaneous.Leishmaniasis ~ ., 
+# tune.out.2 = tune(svm, Cutaneous.Leishmaniasis ~ .,
 #                 data = training, kernel = 'radial',
 #                 ranges = list(cost = c(1, 2, 4, 7, 10, 11, 12, 14, 16),
-#                               sigma = c(0.01, 0.02, 0.04, 0.06, 
+#                               sigma = c(0.01, 0.02, 0.04, 0.06,
 #                                         0.08, 0.1, 0.2, 0.3),
 #                               gamma = c(0.01, 0.25, 0.5, 0.75)))
 
 # save(tune.out.2, file = 'models/tune.out.2')
+
+# Do not run anymore!!! Long runtime
+tune.out.3 = tune(svm, Cutaneous.Leishmaniasis ~ .,
+                data = training, kernel = 'radial',
+                ranges = list(cost = c(1, 2, 4, 7, 10, 11, 12, 14, 16),
+                              sigma = c(0.01, 0.02, 0.04, 0.06,
+                                        0.08, 0.1, 0.2, 0.3),
+                              gamma = c(0.01, 0.25, 0.5, 0.75)))
+
+save(tune.out.3, file = 'models/tune.out.3')
+
 
 ```
 
@@ -229,24 +265,33 @@ confusionMatrix(table(test_pred_radial, testing$Cutaneous.Leishmaniasis))
 
 We are going to put some values of C using expand.grid() into “grid” dataframe. Next step is to use this dataframe for testing our classifier at specific C values. It needs to be put in train() method with tuneGrid parameter.
 ```{r}
-# grid <- expand.grid(C = c(10, 11, 12, 13, 14, 15, 16, 17),
-#                     sigma = c(0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1))
-# grid_Linear <- expand.grid(C = c(10, 11, 12, 13, 14, 15, 16, 17))
-# svm_Linear_Grid <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmLinear",
-#                          trControl=trctrl,
-#                          preProcess = c("center", "scale"),
-#                          tuneGrid = grid_Linear,
-#                          tuneLength = 10)
-# svm_Radial_Grid <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmRadial",
-#                          trControl=trctrl,
-#                          preProcess = c("center", "scale"),
-#                          tuneGrid = grid,
-#                          tuneLength = 10)
-# save(svm_Linear_Grid, file = 'models/svm_Linear_Grid')
-# save(svm_Radial_Grid, file = 'models/svm_Radial_Grid')
-# 
-# plot(svm_Linear_Grid)
-# plot(svm_Radial_Grid)
+grid <- expand.grid(C = c(10, 11, 12, 13, 14, 15, 16, 17),
+                    sigma = c(0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1))
+grid_Linear <- expand.grid(C = c(10, 11, 12, 13, 14, 15, 16, 17))
+grid_Poly <- expand.grid(C = c(0.5, 1, 5, 10, 15, 20),
+                         scale = c(0.001, 0.01, 0.1, 1, 10, 100),
+                         degree = c(1, 2, 3))
+svm_Linear_Grid <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmLinear",
+                         trControl=trctrl,
+                         preProcess = c("center", "scale"),
+                         tuneGrid = grid_Linear,
+                         tuneLength = 10)
+svm_Radial_Grid <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmRadial",
+                         trControl=trctrl,
+                         preProcess = c("center", "scale"),
+                         tuneGrid = grid,
+                         tuneLength = 10)
+svm_Poly_Grid   <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmPoly",
+                         trControl=trctrl,
+                         preProcess = c("center", "scale"),
+                         tuneGrid = grid_Poly,
+                         tuneLength = 10)
+
+save(svm_Linear_Grid, file = 'models/svm_Linear_Grid_2')
+save(svm_Radial_Grid, file = 'models/svm_Radial_Grid_2')
+
+plot(svm_Linear_Grid)
+plot(svm_Radial_Grid)
 ```
 
 Let’s try to make predictions using this model for our test set.
