@@ -24,3 +24,6 @@
 /models/data/gap_inp_early_2 filter=lfs diff=lfs merge=lfs -text
 *.ipynb filter=lfs diff=lfs merge=lfs -text
 /models/python/early_imp_nn filter=lfs diff=lfs merge=lfs -text
+*.txt filter=lfs diff=lfs merge=lfs -text
+/models/data/gap_inp filter=lfs diff=lfs merge=lfs -text
+/models/svm_Linear_2 filter=lfs diff=lfs merge=lfs -text
