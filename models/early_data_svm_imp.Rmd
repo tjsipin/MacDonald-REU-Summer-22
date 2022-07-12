@@ -171,8 +171,8 @@ svm_Linear <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmLi
 #                     tuneLength = 10)
 # system("say Just finished!")
 # alarm()
-save(svm_Linear, file = 'svm_models/early_svm_Linear')
-save(svm_Radial, file = 'svm_models/early_svm_Radial')
+# save(svm_Linear, file = 'svm_models/early_svm_Linear')
+# save(svm_Radial, file = 'svm_models/early_svm_Radial')
 ```
 
 ```{r, eval=FALSE}
@@ -182,18 +182,18 @@ save(svm_Radial, file = 'svm_models/early_svm_Radial')
 ```
 
 ```{r}
-set.seed(1)
-tune.out = tune(svm, Cutaneous.Leishmaniasis ~ .,
-                data = training, kernel = 'radial',
-                ranges = list(cost = c(0.1, 1, 10, 100, 1000),
-                              gamma = c(0.5, 1, 2, 3, 4)))
-save(tune.out, file = 'svm_models/early_tune_out')
+# set.seed(1)
+# tune.out = tune(svm, Cutaneous.Leishmaniasis ~ .,
+#                 data = training, kernel = 'radial',
+#                 ranges = list(cost = c(0.1, 0.5, 1, 8, 16),
+#                               gamma = c(0.5, 1, 2, 3, 4)))
+# save(tune.out, file = 'svm_models/early_tune_out')
 ```
 
 ```{r, echo=F}
 load(file = 'svm_models/early_svm_Linear')
 load(file = 'svm_models/early_svm_Radial')
-load(file = 'svm_models/early_tune_out')
+# load(file = 'svm_models/early_tune_out')
 
 
 # 
@@ -212,15 +212,15 @@ load(file = 'svm_models/early_tune_out')
 ```
 
 ```{r}
-# Do not run anymore!!! Long runtime
-tune.out.2 = tune(svm, Cutaneous.Leishmaniasis ~ .,
-                  data = training, kernel = 'radial',
-                  ranges = list(cost = c(1, 2, 4, 7, 10, 11, 12, 14, 16),
-                                sigma = c(0.01, 0.02, 0.04, 0.06,
-                                         0.08, 0.1, 0.2, 0.3),
-                                gamma = c(0.01, 0.25, 0.5, 0.75)))
-
-save(tune.out.2, file = 'svm_models/early_tune_out_2')
+# # Do not run anymore!!! Long runtime
+# tune.out.2 = tune(svm, Cutaneous.Leishmaniasis ~ .,
+#                   data = training, kernel = 'radial',
+#                   ranges = list(cost = c(1, 2, 4, 7, 10, 11, 12, 14, 16),
+#                                 sigma = c(0.01, 0.02, 0.04, 0.06,
+#                                          0.08, 0.1, 0.2, 0.3),
+#                                 gamma = c(0.01, 0.25, 0.5, 0.75)))
+# 
+# save(tune.out.2, file = 'svm_models/early_tune_out_2')
 
 ```
 
@@ -244,20 +244,31 @@ We are going to put some values of C using expand.grid() into “grid” datafra
 grid <- expand.grid(C = c(10, 11, 12, 13, 14, 15, 16, 17),
                     sigma = c(0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1))
 grid_Linear <- expand.grid(C = c(10, 11, 12, 13, 14, 15, 16, 17))
-svm_Linear_Grid <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmLinear",
-                         trControl=trctrl,
-                         preProcess = c("center", "scale"),
-                         tuneGrid = grid_Linear,
-                         tuneLength = 10)
+
+new_grid_Radial <- expand.grid(C = c(0.1, 1, 10, 100),
+                               sigma = c(0.0001, 0.001, 0.01, 0.1, 1))
+ctrl_3 <- trainControl(method = "CV", number = 3)
+# svm_Linear_Grid <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmLinear",
+#                          trControl=trctrl,
+#                          preProcess = c("center", "scale"),
+#                          tuneGrid = grid_Linear,
+#                          tuneLength = 10)
 svm_Radial_Grid <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmRadial",
-                         trControl=trctrl,
-                         preProcess = c("center", "scale"),
-                         tuneGrid = grid,
-                         tuneLength = 10)
+                         trControl=ctrl_3,
+                         tuneGrid = new_grid_Radial)
 
+svm_Radial <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmRadial",
+                    trControl=trctrl,
+                    preProcess = c("center", "scale"),
+                    tuneLength = 10)
+svm_Radial_Grid
+# 
+# 
+# save(svm_Linear_Grid, file = 'svm_models/early_svm_Linear_Grid_imp_2')
+# save(svm_Radial_Grid, file = 'svm_models/early_svm_Radial_Grid_imp_3')
 
-save(svm_Linear_Grid, file = 'svm_models/early_svm_Linear_Grid_imp_2')
-save(svm_Radial_Grid, file = 'svm_models/early_svm_Radial_Grid_imp_2')
+load(file = 'svm_models/early_svm_Linear_Grid_imp_2')
+load(file = 'svm_models/early_svm_Radial_Grid_imp_2')
 ```
 
 Let’s try to make predictions using this model for our test set.
@@ -273,9 +284,9 @@ Confusion Matrix:
 ```{r}
 confusionMatrix(table(test_pred_grid_linear, testing$Cutaneous.Leishmaniasis))
 confusionMatrix(table(test_pred_grid_radial, testing$Cutaneous.Leishmaniasis))
-confusionMatrix(table(true = testing$Cutaneous.Leishmaniasis,
-      pred = predict(tune.out.2$best.model, newdata = testing %>%
-                       dplyr::select(-c('Cutaneous.Leishmaniasis')))))
+# confusionMatrix(table(true = testing$Cutaneous.Leishmaniasis,
+#       pred = predict(tune.out.2$best.model, newdata = testing %>%
+#                        dplyr::select(-c('Cutaneous.Leishmaniasis')))))
 ```
 
 
@@ -284,11 +295,11 @@ confusionMatrix(table(true = testing$Cutaneous.Leishmaniasis,
 ```{r}
 load(file = 'svm_models/early_svm_Linear')
 load(file = 'svm_models/early_svm_Radial')
-load(file = 'svm_models/early_svmfit_poly')
-load(file = 'svm_models/early_tune_out')
-load(file = 'svm_models/early_tune_out_2')
-load(file = 'svm_models/early_svm_Linear_Grid')
-load(file = 'svm_models/early_svm_Radial_Grid')
+# load(file = 'svm_models/early_svmfit_poly')
+# load(file = 'svm_models/early_tune_out')
+# load(file = 'svm_models/early_tune_out_2')
+load(file = 'svm_models/early_svm_Linear_Grid_imp_2')
+load(file = 'svm_models/early_svm_Radial_Grid_imp_2')
 
 
 summary(svm_Linear)
@@ -299,14 +310,14 @@ summary(svm_Radial)
 confusionMatrix(table(true = testing$Cutaneous.Leishmaniasis,
                       pred = predict(svm_Radial, newdata = testing %>%
                                        dplyr::select(-c('Cutaneous.Leishmaniasis')))))
-summary(tune.out)
-confusionMatrix(table(true = testing$Cutaneous.Leishmaniasis,
-                      pred = predict(tune.out$best.model, newdata = testing %>%
-                                       dplyr::select(-c('Cutaneous.Leishmaniasis')))))
-summary(tune.out.2)
-confusionMatrix(table(true = testing$Cutaneous.Leishmaniasis,
-                      pred = predict(tune.out.2$best.model, newdata = testing %>%
-                                       dplyr::select(-c('Cutaneous.Leishmaniasis')))))
+# summary(tune.out)
+# confusionMatrix(table(true = testing$Cutaneous.Leishmaniasis,
+#                       pred = predict(tune.out$best.model, newdata = testing %>%
+#                                        dplyr::select(-c('Cutaneous.Leishmaniasis')))))
+# summary(tune.out.2)
+# confusionMatrix(table(true = testing$Cutaneous.Leishmaniasis,
+#                       pred = predict(tune.out.2$best.model, newdata = testing %>%
+#                                        dplyr::select(-c('Cutaneous.Leishmaniasis')))))
 summary(svm_Linear_Grid)
 confusionMatrix(table(true = testing$Cutaneous.Leishmaniasis,
                       pred = predict(svm_Linear_Grid, newdata = testing %>%
