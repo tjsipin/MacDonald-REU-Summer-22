@@ -1,6 +1,6 @@
 ---
 title: "Support Vector Machine Learning on Later Data"
-author: "Lyndsey Umsted"
+author: "Lyndsey Umsted and TJ Sipin"
 date: '2022-07-01'
 output: html_document
 ---
