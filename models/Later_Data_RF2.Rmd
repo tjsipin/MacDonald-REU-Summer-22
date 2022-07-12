@@ -15,7 +15,7 @@ library(randomForest)
 ```
 Importing File into R:
 ```{r}
-aad <- read.csv("Annual_Amazon_Data.csv")
+aad <- read.csv("data/aad.csv")
 #view(aad)
 
 cutaneous <- aad$Cutaneous.Leishmaniasis

@@ -14,65 +14,60 @@ library(rsample)
 library(recipes)
 library(yardstick)
 library(corrr)
+#install.packages("tensorflow")
 ```
 
-## Data
 ```{r}
-aad <- read.csv("Annual_Amazon_Data.csv")
-#view(aad)
+load(file = "data/gap_inp")
+imp <- gap.inp$ximp
+```
 
-cutaneous <- aad$Cutaneous.Leishmaniasis
-mucosal <- aad$Mucosal.Leishmaniasis
-visceral <- aad$Visceral.Leishmaniasis
-new_data <- subset(aad, !is.na(cutaneous))
-#View(new_data)
-library(tidyverse)
-library(dplyr)
-#names(new_data)
 
+```{r}
+install.packages("caret")
+```
+
+```{r}
+library(caret)
+```
+
+
+
+Extracting Later Data and Tidying it:
+```{r}
 ## splitting the data into a before 2014 set and an after 2014 set
-
-early_data <- new_data %>%
+library(dplyr)
+early_data <- imp %>%
   filter(Year < 2014)%>%
-  dplyr::select(-c(29:69))
-later_data <- new_data %>%
+  select(-c(28:67))
+later_data <- imp %>%
   filter(Year > 2013) %>%
-  dplyr::select(-c(29:69))
+  select(-c(28:67))
 
 #names(early_data)
 
 ## removing unnecessary variables
 
 early_data <- early_data %>%
-  dplyr::select(-c("AvgRad"))
+  select(-c("AvgRad"))
 later_data <- later_data %>%
-  dplyr::select(-c("StableLights")) %>%
-  mutate(later_data$OptTemp_Obs <- as.numeric(later_data$OptTemp_Obs)) %>%
-  mutate(later_data$Year <- as.numeric(later_data$Year)) %>%
-  mutate(later_data$Population <- as.numeric(later_data$Population))
+  select(-c("StableLights"))
 
-```
+# later_data$OptTemp_Obs <- as.numeric(later_data$OptTemp_Obs)
+# later_data$Year <- as.numeric(later_data$Year)
+# later_data$Population <- as.numeric(later_data$Population)
 
-
-```{r, fig.width = 10, fig.height = 10}
 later_data_small <- later_data %>%
-  dplyr::select(c("Cutaneous.Leishmaniasis", "Dengue_Alb_OptTemp", "Dengue_Aeg_OptTemp", "Chik_Alb_OptTemp", "Chik_Aeg_OptTemp", "Zika_OptTemp", "Malaria_OptTemp", "LST_Day", "LST_Night", "OptTemp_Obs", "NDVI", "EVI", "Precip", "AvgRad", "SWOccurrence")) %>%
-  na.omit(later_data_small) 
+  select(c("Population", "Cutaneous.Leishmaniasis", "Dengue_Alb_OptTemp", "Dengue_Aeg_OptTemp", "Chik_Alb_OptTemp", "Chik_Aeg_OptTemp", "Zika_OptTemp", "Malaria_OptTemp", "LST_Day", "LST_Night", "OptTemp_Obs", "NDVI", "EVI", "Precip", "AvgRad", "SWOccurrence")) 
 later_data_t <- later_data_small %>%
-  filter(Cutaneous.Leishmaniasis > 0)%>%
   mutate(Cutaneous.Leishmaniasis = (Cutaneous.Leishmaniasis))
-# pairs(later_data_small, labels = c("Year", "Population", "Cutaneous.Leishmaniasis","LST_Day", "LST_Night", "OptTemp_Obs", "NDVI", "EVI", "Precip", "AvgRad", "SWOccurrence"))
-# library(ggplot2)
-# library(GGally)
-# ggpairs(data.frame(Year = later_data_small[,1], Population = later_data_small[,2], Cutaneous.Leishmaniasis = later_data_small[,3], LST_Day = later_data_small[,4], LST_Night = later_data_small[,5], OptTemp_Obs = later_data_small[,6], NDVI = later_data_small[,7], EVI = later_data_small[,8], Precip = later_data_small[,9], StableLights = later_data_small[,10], SWOccurrence = later_data_small[,11]), lower = list(continuous = wrap('points'), alpha = 0.3, size  = 0.2))
 ```
-
 
 ```{r}
 library(dplyr)
 summary(later_data_small$Cutaneous.Leishmaniasis[later_data_small$Cutaneous.Leishmaniasis > 0])
 cat_df <- subset(later_data_small, later_data_small$Cutaneous.Leishmaniasis > 0)
-cat_df$Cutaneous.Leishmaniasis <- cut(later_data_small$Cutaneous.Leishmaniasis[later_data_small$Cutaneous.Leishmaniasis > 0], breaks = c(0, 0.090114445 , 0.876904527, 10^3), labels = c("low", "moderate", "high")) # 25% 75% 100%
+cat_df$Cutaneous.Leishmaniasis <- cut(later_data_small$Cutaneous.Leishmaniasis[later_data_small$Cutaneous.Leishmaniasis > 0], breaks = c(0, 0.1364497 , 0.4960133, 10^3), labels = c("low", "moderate", "high")) # 33%, 67%, 100%
 
 # cat_df$label <- NA
 # cat_df$label[cat_df$Cutaneous.Leishmaniasis == "low"] <- 0
@@ -81,14 +76,12 @@ cat_df$Cutaneous.Leishmaniasis <- cut(later_data_small$Cutaneous.Leishmaniasis[l
 
 # cat_df$Year <- as.numeric(cat_df$Year)
 # cat_df$Population <- as.numeric(cat_df$Population)
-cat_df$OptTemp_Obs <- as.numeric(cat_df$OptTemp_Obs)
-cat_df$Cutaneous.Leishmaniasis <- as.numeric(cat_df$Cutaneous.Leishmaniasis)
-cat_df$Dengue_Aeg_OptTemp <- as.numeric(cat_df$Dengue_Aeg_OptTemp)
-cat_df$Dengue_Alb_OptTemp <- as.numeric(cat_df$Dengue_Alb_OptTemp)
-cat_df$Chik_Alb_OptTemp <- as.numeric(cat_df$Chik_Alb_OptTemp)
-cat_df$Chik_Aeg_OptTemp <- as.numeric(cat_df$Chik_Aeg_OptTemp)
-cat_df$Zika_OptTemp <- as.numeric(cat_df$Zika_OptTemp)
-cat_df$Malaria_OptTemp <- as.numeric(cat_df$Malaria_OptTemp)
+# cat_df$OptTemp_Obs <- as.numeric(cat_df$OptTemp_Obs)
+```
+
+```{r}
+skimr::skim(cat_df)
+round(prop.table(table(cat_df$Cutaneous.Leishmaniasis)), 2)
 ```
 
 split the data into train and test sets
@@ -100,7 +93,7 @@ data_split <- initial_split(cat_df, strata = "Cutaneous.Leishmaniasis", prop = 0
 
 training <- training(data_split) %>%
   group_by(Cutaneous.Leishmaniasis) %>%
-  sample_n(size = 2402)
+  sample_n(size = 1921)
 testing <- testing(data_split) 
 
 x_train <- as.matrix(training[,-1])
@@ -119,7 +112,7 @@ library(keras)
 # defining the model
 model <- keras_model_sequential() 
 model %>% 
-  layer_dense(units = 256, activation = 'relu', input_shape = c(14)) %>% 
+  layer_dense(units = 256, activation = 'relu', input_shape = c(15)) %>% 
   layer_dropout(rate = 0.01) %>% 
   layer_dense(units = 128, activation = 'relu') %>%
   layer_dropout(rate = 0.01) %>%
@@ -154,7 +147,8 @@ model %>% evaluate(x_test, y_test)
 
 Generate the predictions on the new data
 ```{r}
-pred <- model %>% predict(x_test) %>% argmax()
+library(caret)
+pred <- model %>% predict(x_test) %>% k_argmax()
 pred <- format(round(pred, 2), nsamll = 4)
 confusionMatrix(y_test, pred)
 ```
