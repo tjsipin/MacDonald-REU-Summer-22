@@ -255,6 +255,7 @@ ctrl_3 <- trainControl(method = "CV", number = 3)
 #                          tuneLength = 10)
 svm_Radial_Grid <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmRadial",
                          trControl=ctrl_3,
+                         preProcess = c("center", "scale"),
                          tuneGrid = new_grid_Radial)
 
 svm_Radial <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmRadial",
