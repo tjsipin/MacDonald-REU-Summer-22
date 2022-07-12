@@ -1,0 +1,39 @@
+---
+title: "exploration"
+author: "Lyndsey Umsted"
+date: '2022-07-12'
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+```{r}
+getwd()
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+load(file = "data/gap_inp")
+imp <- gap.inp$ximp
+```
+
+
+```{r}
+hist(aad$Cutaneous.Leishmaniasis[aad$Cutaneous.Leishmaniasis > 4 & aad$Cutaneous.Leishmaniasis < 100], breaks = 200, freq = FALSE)
+lines(density(aad$Cutaneous.Leishmaniasis[aad$Cutaneous.Leishmaniasis > 4 & aad$Cutaneous.Leishmaniasis < 100], bw = 'nrd0', kernel = "rectangular"), col = "Red")
+```
+
+
+```{r}
+kde <- density(imp$Cutaneous.Leishmaniasis[imp$Cutaneous.Leishmaniasis > 4], bw = 'nrd0', kernel = "rectangular")
+kde
+```
+
+```{r}
+dkde <- dkde(imp$Cutaneous.Leishmaniasis[imp$Cutaneous.Leishmaniasis > 4], bw = 'nrd0', kernel = "rectangular")
+```
+
+
+
+
+
+
