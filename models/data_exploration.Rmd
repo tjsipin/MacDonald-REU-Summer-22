@@ -11,6 +11,7 @@ aad <- read.csv("data/aad.csv")
 # missing_to_zero <- aad
 # missing_to_zero$Cutaneous.Leishmaniasis[is.na(missing_to_zero$Cutaneous.Leishmaniasis)] <- 0
 # View(aad)
+library(dplyr)
 
 early_data <- aad %>%
   filter(Year < 2014)%>%
@@ -98,11 +99,11 @@ mean_Dengue
 
 Malaria:
 ```{r}
-without_na_Dengue <- subset(early_data, !is.na(early_data$Dengue))
-mean_Dengue <- without_na_Dengue %>%
+without_na_Malaria <- subset(early_data, !is.na(early_data$Malaria))
+mean_Malaria <- without_na_Malaria %>%
   group_by(Year) %>%
-  summarise_at(vars(Dengue), list(name = mean))
-mean_Dengue
+  summarise_at(vars(Malaria), list(name = mean))
+mean_Malaria
 ```
 
 Mucosal.Leishmaniasis
@@ -313,192 +314,192 @@ mean_enn_mn_forest
 Population:
 ```{r}
 without_na_pop <- subset(later_data, !is.na(later_data$Population))
-mean_population <- without_na_pop %>%
+mean_population2 <- without_na_pop %>%
   group_by(Year) %>%
   summarise_at(vars(Population), list(name = mean))
-mean_population
+mean_population2
 ```
 
 Chikungunya: (ALL NAs)
 ```{r}
 without_na_chik <- subset(later_data, !is.na(later_data$Chikungunya))
-mean_chik <- without_na_chik %>%
+mean_chik2 <- without_na_chik %>%
   group_by(Year) %>%
   summarise_at(vars(Chikungunya), list(name = mean))
-mean_chik
+mean_chik2
 ```
 
 Cutaneous.Leishmaniasis
 ```{r}
 without_na_Cutaneous <- subset(later_data, !is.na(later_data$Cutaneous))
-mean_Cutaneous <- without_na_Cutaneous %>%
+mean_Cutaneous2 <- without_na_Cutaneous %>%
   group_by(Year) %>%
   summarise_at(vars(Cutaneous.Leishmaniasis), list(name = mean))
-mean_Cutaneous
+mean_Cutaneous2
 ```
 
 Dengue:
 ```{r}
 without_na_Dengue <- subset(later_data, !is.na(later_data$Dengue))
-mean_Dengue <- without_na_Dengue %>%
+mean_Dengue2 <- without_na_Dengue %>%
   group_by(Year) %>%
   summarise_at(vars(Dengue), list(name = mean))
-mean_Dengue
+mean_Dengue2
 ```
 
 Malaria:
 ```{r}
-without_na_Dengue <- subset(later_data, !is.na(later_data$Dengue))
-mean_Dengue <- without_na_Dengue %>%
+without_na_Malaria <- subset(later_data, !is.na(later_data$Malaria))
+mean_Malaria2 <- without_na_Malaria %>%
   group_by(Year) %>%
-  summarise_at(vars(Dengue), list(name = mean))
-mean_Dengue
+  summarise_at(vars(Malaria), list(name = mean))
+mean_Malaria2
 ```
 
 Mucosal.Leishmaniasis
 
 ```{r}
 without_na_Mucosal.Leishmaniasis <- subset(later_data, !is.na(later_data$Mucosal.Leishmaniasis))
-mean_Mucosal.Leishmaniasis <- without_na_Mucosal.Leishmaniasis %>%
+mean_Mucosal.Leishmaniasis2 <- without_na_Mucosal.Leishmaniasis %>%
   group_by(Year) %>%
   summarise_at(vars(Mucosal.Leishmaniasis), list(name = mean))
-mean_Mucosal.Leishmaniasis
+mean_Mucosal.Leishmaniasis2
 ```
 
 Visceral.Leishmaniasis:
 ```{r}
 without_na_Visceral.Leishmaniasis <- subset(later_data, !is.na(later_data$Visceral.Leishmaniasis))
-mean_Visceral.Leishmaniasis <- without_na_Visceral.Leishmaniasis %>%
+mean_Visceral.Leishmaniasis2 <- without_na_Visceral.Leishmaniasis %>%
   group_by(Year) %>%
   summarise_at(vars(Visceral.Leishmaniasis), list(name = mean))
-mean_Visceral.Leishmaniasis
+mean_Visceral.Leishmaniasis2
 ```
 
 
 Yellow.Fever
 ```{r}
 without_na_Yellow.Fever <- subset(later_data, !is.na(later_data$Yellow.Fever))
-mean_Yellow.Fever <- without_na_Yellow.Fever %>%
+mean_Yellow.Fever2 <- without_na_Yellow.Fever %>%
   group_by(Year) %>%
   summarise_at(vars(Yellow.Fever), list(name = mean))
-mean_Yellow.Fever
+mean_Yellow.Fever2
 ```
 
 Zika:
 ```{r}
 without_na_Zika <- subset(later_data, !is.na(later_data$Zika))
-mean_Zika <- without_na_Zika %>%
+mean_Zika2 <- without_na_Zika %>%
   group_by(Year) %>%
   summarise_at(vars(Zika), list(name = mean))
-mean_Zika
+mean_Zika2
 ```
 
 LST_Day:
 ```{r}
 without_na_LST_Day <- subset(later_data, !is.na(later_data$LST_Day))
-mean_LST_Day <- without_na_LST_Day %>%
+mean_LST_Day2 <- without_na_LST_Day %>%
   group_by(Year) %>%
   summarise_at(vars(LST_Day), list(name = mean))
-mean_LST_Day
+mean_LST_Day2
 ```
 
 LST_Night:
 ```{r}
 without_na_LST_Night <- subset(later_data, !is.na(later_data$LST_Night))
-mean_LST_Night <- without_na_LST_Night %>%
+mean_LST_Night2 <- without_na_LST_Night %>%
   group_by(Year) %>%
   summarise_at(vars(LST_Night), list(name = mean))
-mean_LST_Night
+mean_LST_Night2
 ```
 
 OptTemp_Obs:
 ```{r}
 without_na_OptTemp_Obs <- subset(later_data, !is.na(later_data$OptTemp_Obs))
-mean_OptTemp_Obs <- without_na_OptTemp_Obs %>%
+mean_OptTemp_Obs2 <- without_na_OptTemp_Obs %>%
   group_by(Year) %>%
   summarise_at(vars(OptTemp_Obs), list(name = mean))
-mean_OptTemp_Obs
+mean_OptTemp_Obs2
 ```
 
 Dengue_Alb_OptTemp:
 ```{r}
 without_na_Dengue_Alb_OptTemp <- subset(later_data, !is.na(later_data$Dengue_Alb_OptTemp))
-mean_Dengue_Alb_OptTemp <- without_na_Dengue_Alb_OptTemp %>%
+mean_Dengue_Alb_OptTemp2 <- without_na_Dengue_Alb_OptTemp %>%
   group_by(Year) %>%
   summarise_at(vars(Dengue_Alb_OptTemp), list(name = mean))
-mean_Dengue_Alb_OptTemp
+mean_Dengue_Alb_OptTemp2
 ```
 
 Dengue_Aeg_OptTemp:
 ```{r}
 without_na_Dengue_Aeg_OptTemp <- subset(later_data, !is.na(later_data$Dengue_Aeg_OptTemp))
-mean_Dengue_Aeg_OptTemp <- without_na_Dengue_Aeg_OptTemp %>%
+mean_Dengue_Aeg_OptTemp2 <- without_na_Dengue_Aeg_OptTemp %>%
   group_by(Year) %>%
   summarise_at(vars(Dengue_Aeg_OptTemp), list(name = mean))
-mean_Dengue_Aeg_OptTemp
+mean_Dengue_Aeg_OptTemp2
 ```
 
 Chik_Alb_OptTemp:
 ```{r}
 without_na_Chik_Alb_OptTemp <- subset(later_data, !is.na(later_data$Chik_Alb_OptTemp))
-mean_Chik_Alb_OptTemp <- without_na_Chik_Alb_OptTemp %>%
+mean_Chik_Alb_OptTemp2 <- without_na_Chik_Alb_OptTemp %>%
   group_by(Year) %>%
   summarise_at(vars(Chik_Alb_OptTemp), list(name = mean))
-mean_Chik_Alb_OptTemp
+mean_Chik_Alb_OptTemp2
 ```
 
 Chik_Aeg_OptTemp:
 ```{r}
 without_na_Chik_Aeg_OptTemp <- subset(later_data, !is.na(later_data$Chik_Aeg_OptTemp))
-mean_Chik_Aeg_OptTemp <- without_na_Chik_Aeg_OptTemp %>%
+mean_Chik_Aeg_OptTemp2 <- without_na_Chik_Aeg_OptTemp %>%
   group_by(Year) %>%
   summarise_at(vars(Chik_Aeg_OptTemp), list(name = mean))
-mean_Chik_Aeg_OptTemp
+mean_Chik_Aeg_OptTemp2
 ```
 
 Zika_OptTemp:
 ```{r}
 without_na_Zika_OptTemp <- subset(later_data, !is.na(later_data$Zika_OptTemp))
-mean_Zika_OptTemp <- without_na_Zika_OptTemp %>%
+mean_Zika_OptTemp2 <- without_na_Zika_OptTemp %>%
   group_by(Year) %>%
   summarise_at(vars(Zika_OptTemp), list(name = mean))
-mean_Zika_OptTemp
+mean_Zika_OptTemp2
 ```
 
 Malaria_OptTemp:
 ```{r}
 without_na_Malaria_OptTemp <- subset(later_data, !is.na(later_data$Malaria_OptTemp))
-mean_Malaria_OptTemp <- without_na_Malaria_OptTemp %>%
+mean_Malaria_OptTemp2 <- without_na_Malaria_OptTemp %>%
   group_by(Year) %>%
   summarise_at(vars(Malaria_OptTemp), list(name = mean))
-mean_Malaria_OptTemp
+mean_Malaria_OptTemp2
 ```
 
 NDVI:
 ```{r}
 without_na_NDVI <- subset(later_data, !is.na(later_data$NDVI))
-mean_NDVI <- without_na_NDVI %>%
+mean_NDVI2 <- without_na_NDVI %>%
   group_by(Year) %>%
   summarise_at(vars(NDVI), list(name = mean))
-mean_NDVI
+mean_NDVI2
 ```
 
 EVI:
 ```{r}
 without_na_EVI <- subset(later_data, !is.na(later_data$EVI))
-mean_EVI <- without_na_EVI %>%
+mean_EVI2 <- without_na_EVI %>%
   group_by(Year) %>%
   summarise_at(vars(EVI), list(name = mean))
-mean_EVI
+mean_EVI2
 ```
 
 Precip:
 ```{r}
 without_na_Precip <- subset(later_data, !is.na(later_data$Precip))
-mean_Precip <- without_na_Precip %>%
+mean_Precip2 <- without_na_Precip %>%
   group_by(Year) %>%
   summarise_at(vars(Precip), list(name = mean))
-mean_Precip
+mean_Precip2
 ```
 
 AvgRad:
@@ -510,51 +511,96 @@ mean_AvgRad <- without_na_AvgRad %>%
 mean_AvgRad
 ```
 
+
 SWOccurrence
 ```{r}
-without_na_SWOccurrence <- subset(later_data, !is.na(later_data$SWOccurrence))
-mean_SWOccurrence <- without_na_SWOccurrence %>%
+without_na_SWOccurrence <- subset(early_data, !is.na(early_data$SWOccurrence))
+mean_SWOccurrence2 <- without_na_SWOccurrence %>%
   group_by(Year) %>%
   summarise_at(vars(SWOccurrence), list(name = mean))
-mean_SWOccurrence
+mean_SWOccurrence2
 ```
 
 pland_forest:
 ```{r}
 without_na_pland_forest <- subset(later_data, !is.na(later_data$pland_forest))
-mean_pland_forest <- without_na_pland_forest %>%
+mean_pland_forest2 <- without_na_pland_forest %>%
   group_by(Year) %>%
   summarise_at(vars(pland_forest), list(name = mean))
-mean_pland_forest
+mean_pland_forest2
 ```
 
 area_mn_forest:
 ```{r}
 without_na_area_mn_forest <- subset(later_data, !is.na(later_data$area_mn_forest))
-mean_area_mn_forest <- without_na_area_mn_forest %>%
+mean_area_mn_forest2 <- without_na_area_mn_forest %>%
   group_by(Year) %>%
   summarise_at(vars(area_mn_forest), list(name = mean))
-mean_area_mn_forest
+mean_area_mn_forest2
 ```
 
 te_forest:
 ```{r}
 without_na_te_forest <- subset(later_data, !is.na(later_data$te_forest))
-mean_te_forest <- without_na_te_forest %>%
+mean_te_forest2 <- without_na_te_forest %>%
   group_by(Year) %>%
   summarise_at(vars(te_forest), list(name = mean))
-mean_te_forest
+mean_te_forest2
 ```
 
 enn_mn_forest:
 ```{r}
 without_na_enn_mn_forest <- subset(later_data, !is.na(later_data$enn_mn_forest))
-mean_enn_mn_forest <- without_na_enn_mn_forest %>%
+mean_enn_mn_forest2 <- without_na_enn_mn_forest %>%
   group_by(Year) %>%
   summarise_at(vars(enn_mn_forest), list(name = mean))
-mean_enn_mn_forest
+mean_enn_mn_forest2
 ```
 
+```{r}
+library(tidyverse)
+
+df_list <- list(mean_population, mean_chik, mean_Cutaneous, mean_Dengue, mean_Malaria, mean_Mucosal.Leishmaniasis, mean_Visceral.Leishmaniasis, mean_Yellow.Fever, mean_Zika, mean_LST_Day, mean_LST_Night, mean_OptTemp_Obs, mean_Dengue_Alb_OptTemp, mean_Dengue_Aeg_OptTemp, mean_Chik_Alb_OptTemp, mean_Chik_Aeg_OptTemp, mean_Zika_OptTemp, mean_Malaria_OptTemp, mean_NDVI, mean_EVI, mean_Precip, mean_StableLights, mean_SWOccurrence, mean_pland_forest, mean_area_mn_forest, mean_te_forest, mean_enn_mn_forest)
+
+df_list %>% Reduce(full_join, by="Year")
+```
+
+```{r}
+mean_population$Population <- mean_population$name
+mean_chik$Chikungunya <- mean_chik$name
+mean_Cutaneous$Cutaneous.Lesihmaniasis <- mean_Cutaneous$name
+mean_Dengue$Dengue <- mean_Dengue$name
+mean_Malaria$Malaria <- mean_Malaria$name
+mean_Mucosal.Leishmaniasis$Mucosal.Leishmaniasis <- mean_Mucosal.Leishmaniasis$name
+mean_Visceral.Leishmaniasis$Visceral.Leishmaniasis <- mean_Visceral.Leishmaniasis$name
+mean_Yellow.Fever$Yellow.Fever <- mean_Yellow.Fever$name
+mean_Zika$Zika <- mean_Zika$name
+mean_LST_Day$LST_Day <- mean_LST_Day$name
+mean_LST_Night$LST_Night <- mean_LST_Night$name
+mean_OptTemp_Obs$OptTemp_Obs <- mean_OptTemp_Obs$name
+mean_Dengue_Alb_OptTemp$Dengue_Alb_OptTemp  <- mean_Dengue_Alb_OptTemp$name
+mean_Dengue_Aeg_OptTemp$Dengue_Aeg_OptTemp <- mean_Dengue_Aeg_OptTemp$name
+mean_Chik_Alb_OptTemp$Chik_Alb_OptTemp <- mean_Chik_Alb_OptTemp$name
+mean_Chik_Aeg_OptTemp$Chik_Aeg_OptTemp <- mean_Chik_Aeg_OptTemp$name
+mean_Zika_OptTemp$Zika_OptTemp <- mean_Zika_OptTemp$name
+mean_Malaria_OptTemp$Malaria_OptTemp <- mean_Malaria_OptTemp$name
+mean_NDVI$NDVI <- mean_NDVI$name
+mean_EVI$EVI <- mean_EVI$name
+mean_Precip$Precip <- mean_Precip$name
+mean_StableLights$StableLights <- mean_StableLights$name
+mean_SWOccurrence$SWOccurrence <- mean_SWOccurrence$name
+mean_pland_forest$pland_forest <- mean_pland_forest$name
+mean_area_mn_forest$area_mn_forest <- mean_area_mn_forest$name
+mean_te_forest$te_forest <- mean_te_forest$name
+mean_enn_mn_forest$enn_mn_forest <- mean_enn_mn_forest$name
+```
+
+
+```{r}
+library(plyr)
+new_df <- cbind(mean_population, mean_chik)
+new_df
+```
 
 
 
