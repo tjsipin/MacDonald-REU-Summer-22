@@ -1,0 +1,82 @@
+---
+title: "Linear Regression on Percentage Change"
+author: "Lyndsey Umsted"
+date: '2022-07-13'
+output: html_document
+---
+
+```{r}
+library(dplyr)
+getwd()
+HFI <- read.csv("data/HFI.csv")
+HFI <- subset(HFI, HFI$c_leish_incidence > 0)
+small_data <- HFI %>%
+  select(c("year", "c_leish_incidence"))
+
+```
+
+```{r}
+library(MASS)
+y <- small_data$c_leish_incidence
+x1 <- small_data$crop_perc_change
+x2 <- small_data$pasture_perc_change
+x3<- small_data$forest_perc_change
+x4 <- small_data$urban_perc_change
+x5 <- small_data$year
+x6 <- HFI$human_footprint
+x7 <- HFI$forest
+x8 <- HFI$urban
+x9 <- HFI$mammal_richness
+x10 <- HFI$annual_pre
+x11 <- HFI$annual_tmp
+x12 <- HFI$annual_wet
+
+fit <- glm.nb(y ~ x1, data = small_data)
+
+plot(x5, x10)
+
+summary(fit)
+
+plot(fit)
+
+library(ggplot2)
+
+ggplot(small_data, x = x5) +
+  geom_bar(data = small_data, aes(y), col = "red")
+```
+
+
+BoxCox:
+```{r}
+library(MASS)
+boxcox(fit, plotit = T, lambda = seq(0,.1,len = 100))
+```
+
+```{r}
+y2 <- y^0.03
+
+fit2 <- lm(y2 ~ x1+x2+x3+x4, data = small_data)
+
+summary(fit2)
+
+plot(fit2)
+```
+
+
+```{r}
+y3 <- log(y)
+
+plot(x8, y3)
+
+fit3 <- lm(y3 ~ x1+x2+x3+x4)
+
+summary(fit3)
+
+plot(fit3)
+```
+
+
+
+
+
+

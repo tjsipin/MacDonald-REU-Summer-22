@@ -5,61 +5,18 @@ date: '2022-07-01'
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
 ```{r}
-load(file = "data/gap_inp")
-imp <- gap.inp$ximp
+HFI <- read.csv("data/HFI.csv")
 ```
 
 
-```{r}
-install.packages("caret")
-```
-
-```{r}
-library(caret)
-```
-
-
-
-Extracting Later Data and Tidying it:
-```{r}
-## splitting the data into a before 2014 set and an after 2014 set
-library(dplyr)
-early_data <- imp %>%
-  filter(Year < 2014)%>%
-  select(-c(28:67))
-later_data <- imp %>%
-  filter(Year > 2013) %>%
-  select(-c(28:67))
-
-#names(early_data)
-
-## removing unnecessary variables
-
-early_data <- early_data %>%
-  select(-c("AvgRad"))
-later_data <- later_data %>%
-  select(-c("StableLights"))
-
-# later_data$OptTemp_Obs <- as.numeric(later_data$OptTemp_Obs)
-# later_data$Year <- as.numeric(later_data$Year)
-# later_data$Population <- as.numeric(later_data$Population)
-
-later_data_small <- later_data %>%
-  select(c("Population", "Cutaneous.Leishmaniasis", "Dengue_Alb_OptTemp", "Dengue_Aeg_OptTemp", "Chik_Alb_OptTemp", "Chik_Aeg_OptTemp", "Zika_OptTemp", "Malaria_OptTemp", "LST_Day", "LST_Night", "OptTemp_Obs", "NDVI", "EVI", "Precip", "AvgRad", "SWOccurrence")) 
-later_data_t <- later_data_small %>%
-  mutate(Cutaneous.Leishmaniasis = (Cutaneous.Leishmaniasis))
-```
 
 ```{r}
 library(dplyr)
-summary(later_data_small$Cutaneous.Leishmaniasis[later_data_small$Cutaneous.Leishmaniasis > 0])
-cat_df <- subset(later_data_small, later_data_small$Cutaneous.Leishmaniasis > 0)
-cat_df$Cutaneous.Leishmaniasis <- cut(later_data_small$Cutaneous.Leishmaniasis[later_data_small$Cutaneous.Leishmaniasis > 0], breaks = c(0, 0.1364497 , 0.4960133, 10^3), labels = c("low", "moderate", "high")) # 33%, 67%, 100%
+summary(HFI$c_leish_incidence[HFI$c_leish_incidence > 0])
+cat_df <- subset(HFI, HFI$c_leish_incidence > 0)
+cat_df$c_leish_incidence <- cut(HFI$c_leish_incidence[HFI$c_leish_incidence > 0], breaks = c(0, 0.08837867, 0.34495257, 10^3), labels = c("low", "moderate", "high")) # 33%, 67%, 100%
+
 
 # cat_df$label <- NA
 # cat_df$label[cat_df$Cutaneous.Leishmaniasis == "low"] <- 0
@@ -73,7 +30,7 @@ cat_df$Cutaneous.Leishmaniasis <- cut(later_data_small$Cutaneous.Leishmaniasis[l
 
 ```{r}
 skimr::skim(cat_df)
-round(prop.table(table(cat_df$Cutaneous.Leishmaniasis)), 2)
+round(prop.table(table(cat_df$c_leish_incidence)), 2)
 ```
 
 ```{r}
@@ -84,18 +41,18 @@ Partitioning Data into Training and Test Sets
 ```{r}
 set.seed(1)
 library(rsample)
-data_split <- initial_split(cat_df, strata = "Cutaneous.Leishmaniasis", prop = 0.8)
+data_split <- initial_split(cat_df, strata = "c_leish_incidence", prop = 0.8)
 
 training <- training(data_split) %>%
-  group_by(Cutaneous.Leishmaniasis) %>%
-  sample_n(size = 5864)
+  group_by(c_leish_incidence) %>%
+  sample_n(size = 3044)
 testing <- testing(data_split) 
 
 x_train <- as.matrix(training[,-2])
 x_test <- as.matrix(testing[,-2])
 
-y_train <- as.vector(as.numeric(training$Cutaneous.Leishmaniasis) - 1)
-y_test <- as.vector(as.numeric(testing$Cutaneous.Leishmaniasis) - 1)
+y_train <- as.vector(as.numeric(training$c_leish_incidence) - 1)
+y_test <- as.vector(as.numeric(testing$c_leish_incidence) - 1)
  
 # training <- subset(training, select = -Cutaneous.Leishmaniasis)
 # testing <- subset(testing, select = -Cutaneous.Leishmaniasis)
@@ -108,17 +65,18 @@ summary(cat_df)
 
 Factorize our target variable
 ```{r}
-training[["Cutaneous.Leishmaniasis"]] = factor(training[["Cutaneous.Leishmaniasis"]])
+training[["c_leish_incidence"]] = factor(training[["c_leish_incidence"]])
 ```
 
 traincontrol() method:
 ```{r}
+library(caret)
 trctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 1)
-svm_Linear <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmLinear",
+svm_Linear <- train(c_leish_incidence ~., data = training, method = "svmLinear",
 trControl=trctrl,
 preProcess = c("center", "scale"),
 tuneLength = 10)
-svm_Radial <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmRadial",
+svm_Radial <- train(c_leish_incidence ~., data = training, method = "svmRadial",
 trControl=trctrl,
 preProcess = c("center", "scale"),
 tuneLength = 10)
@@ -138,14 +96,14 @@ test_pred_Radial
 
 Predicting Accuracy with Confusion Matrix
 ```{r}
-confusionMatrix(table(test_pred_Radial, testing$Cutaneous.Leishmaniasis))
+confusionMatrix(table(test_pred_Radial, testing$c_leish_incidence))
 ```
 
 We are going to put some values of C using expand.grid() into “grid” dataframe. Next step is to use this dataframe for testing our classifier at specific C values. It needs to be put in train() method with tuneGrid parameter.
 ```{r}
 grid <- expand.grid(C = c(0, 2, 5, 10, 15, 20), sigma = c(0,0.05, 0.1, 0.25,0.5))
 
-svm_Linear_Grid <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmLinear",
+svm_Linear_Grid <- train(c_leish_incidence ~., data = training, method = "svmLinear",
 trControl=trctrl,
 preProcess = c("center", "scale"),
 tuneGrid = grid,
@@ -153,7 +111,7 @@ tuneLength = 10)
 svm_Linear_Grid
 plot(svm_Linear_Grid)
 
-svm_Radial_Grid <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmRadial",
+svm_Radial_Grid <- train(c_leish_incidence ~., data = training, method = "svmRadial",
 trControl=trctrl,
 preProcess = c("center", "scale"),
 tuneGrid = grid,
@@ -172,7 +130,7 @@ test_pred_Radial_grid
 
 Confusion Matrix:
 ```{r}
-confusionMatrix(table(test_pred_Radial_grid, testing$Cutaneous.Leishmaniasis))
+confusionMatrix(table(test_pred_Radial_grid, testing$c_leish_incidence))
 ```
 
 
