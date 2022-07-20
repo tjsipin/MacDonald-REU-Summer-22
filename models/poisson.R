@@ -8,24 +8,24 @@ require(msm)
 library(lattice)
 library(MASS)
 library(lmtest)
-
+library(rsample)
 
 options(scipen = 999)
+
+data = read.csv('models/data/aad.csv')
+
+# data = na.omit(data['Cutaneous.Leishmaniasis'])
+
+new_df <- subset(data, !is.na(data$Cutaneous.Leishmaniasis))
 
 
 early_data <- new_df %>%
   filter(Year < 2014) %>%
-  select(-c(29:69)) %>%
-  select(-c("AvgRad", "Zika", "Chikungunya")) %>%
-  select(c('Population', 
+  dplyr::select(-c(29:69)) %>%
+  dplyr::select(-c("AvgRad", "Zika", "Chikungunya")) %>%
+  dplyr::select(c('Population', 
            'LST_Day', 
            'LST_Night',
-           'OptTemp_Obs',
-           'Dengue_Alb_OptTemp',
-           'Dengue_Aeg_OptTemp',
-           'Chik_Alb_OptTemp',
-           'Zika_OptTemp',
-           'Malaria_OptTemp',
            'NDVI',
            'EVI', 
            'Precip', 
@@ -34,10 +34,21 @@ early_data <- new_df %>%
            'SWOccurrence'))
 
 poisson_early_data <- early_data %>%
-  mutate(Cutaneous.Leishmaniasis = round(1000*Cutaneous.Leishmaniasis)) %>%
-  filter(Cutaneous.Leishmaniasis > 0)
+  mutate(Cutaneous.Leishmaniasis = round(1000*Cutaneous.Leishmaniasis)) 
+# %>%
+  # filter(Cutaneous.Leishmaniasis > 0)
 
-summary(m1 <- glm(Cutaneous.Leishmaniasis ~ . , data = poisson_early_data, family = 'poisson'))
+# training - testing split
+data_split <- initial_split(poisson_early_data,
+                            strata = Cutaneous.Leishmaniasis,
+                            prop = 0.9)
+data_train <- training(data_split)
+data_test <- testing(data_split)
+
+
+
+
+summary(m1 <- glm(Cutaneous.Leishmaniasis ~ . , data = data_train, family = 'poisson'))
 
 # overdispersion ??
 e2 <- resid(m1, type = 'pearson')
@@ -46,4 +57,18 @@ p <- length(coef(m1))
 sum(e2^2) / (n - p) # overdispersion
 
 # neg bin
-m2 <- glm.nb(Cutaneous.Leishmaniasis ~ .^2 - 1 , data = poisson_early_data)
+m2 <- glm.nb(Cutaneous.Leishmaniasis ~ ., 
+             data = data_train,
+             link = 'logit')
+
+m3 <- zeroinfl(Cutaneous.Leishmaniasis ~ .,
+               data = data_train,
+               dist = "negbin")
+
+m4 <- hurdle(Cutaneous.Leishmaniasis ~ .,
+             data = data_train,
+             dist = "negbin")
+
+predictions = predict(m1, data = data_test)
+
+testRMSE = sqrt(mean((predictions - data_test$Cutaneous.Leishmaniasis)^2))

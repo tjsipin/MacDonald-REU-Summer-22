@@ -272,6 +272,11 @@ load(file = 'svm_models/early_svm_Linear_Grid_imp_2')
 load(file = 'svm_models/early_svm_Radial_Grid_imp_2')
 ```
 
+```{r}
+svm_Radial_Grid$finalModel
+```
+
+
 Let’s try to make predictions using this model for our test set.
 ```{r}
 test_pred_grid_linear <- predict(svm_Linear_Grid, newdata = testing)
