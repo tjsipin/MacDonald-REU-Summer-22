@@ -17,12 +17,12 @@ small_data <- HFI %>%
 
 ```{r}
 library(MASS)
-y <- small_data$c_leish_incidence
-x1 <- small_data$crop_perc_change
-x2 <- small_data$pasture_perc_change
-x3<- small_data$forest_perc_change
-x4 <- small_data$urban_perc_change
-x5 <- small_data$year
+y <- HFI$c_leish_incidence
+x1 <- HFI$crop_perc_change
+x2 <- HFI$pasture_perc_change
+x3<- HFI$forest_perc_change
+x4 <- HFI$urban_perc_change
+x5 <- HFI$year
 x6 <- HFI$human_footprint
 x7 <- HFI$forest
 x8 <- HFI$urban

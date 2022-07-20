@@ -10,36 +10,25 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-#install.packages("randomForest")
+install.packages("randomForest")
 library(randomForest)
 ```
-```{r}
-load(file = "models/data/gap_inp")
-imp <- gap.inp$ximp
-```
-
 
 ```{r}
-install.packages("caret")
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
 ```
-
-```{r}
-library(caret)
-```
-
 
 
 Extracting Later Data and Tidying it:
 ```{r}
 ## splitting the data into a before 2014 set and an after 2014 set
 library(dplyr)
-early_data <- imp %>%
-  filter(Year < 2014)%>%
-  select(-c(28:67))
-later_data <- imp %>%
-  filter(Year > 2013) %>%
-  select(-c(28:67))
-
+early_data <- aad %>%
+  filter(Year < 2014)
+later_data <- aad %>%
+  filter(Year > 2013)
 #names(early_data)
 
 ## removing unnecessary variables
@@ -54,16 +43,19 @@ later_data <- later_data %>%
 # later_data$Population <- as.numeric(later_data$Population)
 
 later_data_small <- later_data %>%
-  select(c("Population", "Cutaneous.Leishmaniasis", "Dengue_Alb_OptTemp", "Dengue_Aeg_OptTemp", "Chik_Alb_OptTemp", "Chik_Aeg_OptTemp", "Zika_OptTemp", "Malaria_OptTemp", "LST_Day", "LST_Night", "OptTemp_Obs", "NDVI", "EVI", "Precip", "AvgRad", "SWOccurrence")) 
-later_data_t <- later_data_small %>%
-  mutate(Cutaneous.Leishmaniasis = (Cutaneous.Leishmaniasis))
+  select(c("Population", "Cutaneous.Leishmaniasis", "LST_Day", "OptTemp_Obs", "NDVI", "EVI", "Precip", "AvgRad", "SWOccurrence", "pland_forest", "te_forest", "enn_mn_forest"))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$LST_Day))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$SWOccurrence))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$pland_forest))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$te_forest))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$enn_mn_forest))
 ```
 
 ```{r}
 library(dplyr)
-summary(later_data_small$Cutaneous.Leishmaniasis[later_data_small$Cutaneous.Leishmaniasis > 0])
-cat_df <- subset(later_data_small, later_data_small$Cutaneous.Leishmaniasis > 0)
-cat_df$Cutaneous.Leishmaniasis <- cut(later_data_small$Cutaneous.Leishmaniasis[later_data_small$Cutaneous.Leishmaniasis > 0], breaks = c(0, 0.1364497 , 0.4960133, 10^3), labels = c("low", "moderate", "high")) # 33%, 67%, 100%
+summary(later_data_small$Cutaneous.Leishmaniasis)
+cat_df <- later_data_small
+cat_df$Cutaneous.Leishmaniasis <- cut(later_data_small$Cutaneous.Leishmaniasis, breaks = c(0, 0.54770, 10^3), labels = c("low","high")) #50th percentile
 
 # cat_df$label <- NA
 # cat_df$label[cat_df$Cutaneous.Leishmaniasis == "low"] <- 0
@@ -83,55 +75,23 @@ round(prop.table(table(cat_df$Cutaneous.Leishmaniasis)), 2)
 split the data into train and test sets
 ```{r}
 library(rsample)
+set.seed(220)
+data_set_size = floor(nrow(cat_df)*0.8)
+index <- sample(1:nrow(cat_df), size = data_set_size)
 
-set.seed(2022)
-data_split <- initial_split(cat_df, strata = "Cutaneous.Leishmaniasis", prop = 0.8)
+training <- cat_df[index,]
+testing <- cat_df[-index,]
 
-training <- training(data_split) %>%
-  group_by(Cutaneous.Leishmaniasis) %>%
-  sample_n(size = 1921)
-testing <- testing(data_split) 
+rf <- randomForest(Cutaneous.Leishmaniasis ~ ., data = training, mtry = 3, ntree = 2001, importance = TRUE)
 
-x_train <- as.matrix(training[,-2])
-x_test <- as.matrix(testing[,-2])
+rf
+plot(rf)
 
-y_train <- (as.numeric(training$Cutaneous.Leishmaniasis) - 1)
-y_test <- (as.numeric(testing$Cutaneous.Leishmaniasis) - 1)
+result <- data.frame(testing$Cutaneous.Leishmaniasis, predict(rf, testing[,1:12], type = "response"))
 
-y_train <- to_categorical(y_train)
-y_test <- to_categorical(y_test)
+result
+
+plot(result)
 ```
-
-
-
-Create Random Forest for Classification:
-```{r}
-cutaneous.rf <- randomForest(cat_df$Cutaneous.Leishmaniasis ~ .,data = cat_df, importance = TRUE, proximity  = TRUE)
-```
-
-
-Print the Classification Mode:
-```{r}
-print(cutaneous.rf)
-```
-
-Plotting graph between error and number of trees
-
-```{r}
-# Output to be present
-# As PNG file 
-png(file = "randomForestClassification.png")
-   
-# Plot the error vs 
-# The number of trees graph
-plot(cutaneous.rf)
-   
-# Saving the file
-dev.off()
-```
-
-
-
-
 
 

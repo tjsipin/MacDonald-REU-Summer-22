@@ -81,7 +81,7 @@ library(ParamHelpers)
 #   select(-c("CD_MUN", "chik_incidence", "denv_incidence", "malaria_incidence", "v_leish_incidence", "yfv_incidence", "zika_incidence", "ae_aegypti_presence", "ae_albopictus_presence", "year", "pasture", "cropland", "annual_wet", "cx_quinquefasciatus_presence", "anopheles_presence"))
 
 small_data <- HFI %>%
-   select(c("c_leish_incidence", "crop_perc_change", "pasture_perc_change", "forest_perc_change", "urban_perc_change"))
+   select(-c("CD_MUN"))
 ```
 
 
@@ -111,8 +111,8 @@ training <- training(data_split) %>%
   sample_n(size =3044)
 testing <- testing(data_split) 
 
-x_train <- as.matrix(training[,-1])
-x_test <- as.matrix(testing[,-1])
+x_train <- as.matrix(training[,-2])
+x_test <- as.matrix(testing[,-2])
 
 y_train <- (as.numeric(training$c_leish_incidence) - 1)
 y_test <- (as.numeric(testing$c_leish_incidence) - 1)

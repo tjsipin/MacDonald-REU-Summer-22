@@ -13,22 +13,20 @@ library(rsample)
 library(recipes)
 library(yardstick)
 library(corrr)
-#install.packages("tensorflow")
-```
-
-```{r}
-load(file = "models/data/gap_inp")
-imp <- gap.inp$ximp
-```
-
-
-```{r}
-install.packages("caret")
-```
-
-```{r}
+# #install.packages("tensorflow")
+# library(tensorflow)
+# install_tensorflow()
+#install.packages("caret")
 library(caret)
+library(neuralnet)
 ```
+
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+```
+
 
 
 
@@ -36,12 +34,10 @@ Extracting Later Data and Tidying it:
 ```{r}
 ## splitting the data into a before 2014 set and an after 2014 set
 library(dplyr)
-early_data <- imp %>%
-  filter(Year < 2014)%>%
-  select(-c(28:67))
-later_data <- imp %>%
-  filter(Year > 2013) %>%
-  select(-c(28:67))
+early_data <- aad %>%
+  filter(Year < 2014)
+later_data <- aad %>%
+  filter(Year > 2013)
 
 #names(early_data)
 
@@ -57,16 +53,20 @@ later_data <- later_data %>%
 # later_data$Population <- as.numeric(later_data$Population)
 
 later_data_small <- later_data %>%
-  select(c("Population", "Cutaneous.Leishmaniasis", "Dengue_Alb_OptTemp", "Dengue_Aeg_OptTemp", "Chik_Alb_OptTemp", "Chik_Aeg_OptTemp", "Zika_OptTemp", "Malaria_OptTemp", "LST_Day", "LST_Night", "OptTemp_Obs", "NDVI", "EVI", "Precip", "AvgRad", "SWOccurrence")) 
-later_data_t <- later_data_small %>%
-  mutate(Cutaneous.Leishmaniasis = (Cutaneous.Leishmaniasis))
+  select(c("Population", "Cutaneous.Leishmaniasis", "LST_Day", "OptTemp_Obs", "NDVI", "EVI", "Precip", "AvgRad", "SWOccurrence", "pland_forest", "te_forest", "enn_mn_forest"))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$LST_Day))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$SWOccurrence))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$pland_forest))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$te_forest))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$enn_mn_forest))
+
 ```
 
 ```{r}
 library(dplyr)
-summary(later_data_small$Cutaneous.Leishmaniasis[later_data_small$Cutaneous.Leishmaniasis > 0])
-cat_df <- subset(later_data_small, later_data_small$Cutaneous.Leishmaniasis > 0)
-cat_df$Cutaneous.Leishmaniasis <- cut(later_data_small$Cutaneous.Leishmaniasis[later_data_small$Cutaneous.Leishmaniasis > 0], breaks = c(0, 0.1364497 , 0.4960133, 10^3), labels = c("low", "moderate", "high")) # 33%, 67%, 100%
+summary(later_data_small$Cutaneous.Leishmaniasis)
+cat_df <- later_data_small
+cat_df$Cutaneous.Leishmaniasis <- cut(later_data_small$Cutaneous.Leishmaniasis, breaks = c(0, 0.54770, 10^3), labels = c("low", "high")) # 50th percentile
 
 # cat_df$label <- NA
 # cat_df$label[cat_df$Cutaneous.Leishmaniasis == "low"] <- 0
@@ -81,56 +81,62 @@ cat_df$Cutaneous.Leishmaniasis <- cut(later_data_small$Cutaneous.Leishmaniasis[l
 ```{r}
 skimr::skim(cat_df)
 round(prop.table(table(cat_df$Cutaneous.Leishmaniasis)), 2)
+str(cat_df)
 ```
+
+
+
 
 split the data into train and test sets
 ```{r}
 library(rsample)
 
 set.seed(2022)
-data_split <- initial_split(cat_df, strata = "Cutaneous.Leishmaniasis", prop = 0.8)
+ind <- sample(2, nrow(cat_df), replace = TRUE, prob = c(0.7,0.3))
 
-training <- training(data_split) %>%
-  group_by(Cutaneous.Leishmaniasis) %>%
-  sample_n(size = 1921)
-testing <- testing(data_split) 
+training <- cat_df[ind==1,]
+testing <- cat_df[ind==2,]
 
-x_train <- as.matrix(training[,-2])
-x_test <- as.matrix(testing[,-2])
-
-y_train <- (as.numeric(training$Cutaneous.Leishmaniasis) - 1)
-y_test <- (as.numeric(testing$Cutaneous.Leishmaniasis) - 1)
-
-y_train <- to_categorical(y_train)
-y_test <- to_categorical(y_test)
+training$Cutaneous.Leishmaniasis <- as.numeric(training$Cutaneous.Leishmaniasis) - 1
+testing$Cutaneous.Leishmaniasis <- as.numeric(testing$Cutaneous.Leishmaniasis) - 1
 ```
 
 Loading Neural Net Library:
 ```{r}
-require(neuralnet)
+library(neuralnet)
 set.seed(123)
 
-nn <- neuralnet(Cutaneous.Leishmaniasis ~ Population  + Dengue_Alb_OptTemp + Dengue_Aeg_OptTemp + Chik_Alb_OptTemp + Chik_Aeg_OptTemp + Zika_OptTemp + Malaria_OptTemp + LST_Day + LST_Night + OptTemp_Obs + NDVI + EVI + Precip + AvgRad + SWOccurrence, data = cat_df, linear.output = FALSE, err.fct = 'ce', likelihood = TRUE)
+nn <- neuralnet(Cutaneous.Leishmaniasis ~ Population + LST_Day + OptTemp_Obs + NDVI + EVI + Precip + AvgRad + SWOccurrence + pland_forest + te_forest + enn_mn_forest, data = training, hidden = c(2,3), linear.output = FALSE, err.fct = 'ce', likelihood = TRUE)
 
-plot(nn, rep = 'best')
+plot(nn)
 ```
 
+Prediction:
+```{r}
+output <- compute(nn, training[,-2])
+head(output$net.result)
+head(training[1,])
+```
 
+Confusion Matrix and Missclassification Error - training data
+```{r}
+output <- compute(nn, training[,-2])
+p1 <- output$net.result
+pred1 <- ifelse(p1 > 0.5, 1, 0)
+tab1 <- table(pred1, training$Cutaneous.Leishmaniasis)
+tab1
+sum(diag(tab1))/sum(tab1)
+```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Confusion Matrix and Missclassification Error - testing data
+```{r}
+output <- compute(nn, testing[,-2])
+p2 <- output$net.result
+pred2 <- ifelse(p2 > 0.5, 1, 0)
+tab2 <- table(pred2, testing$Cutaneous.Leishmaniasis)
+tab2
+sum(diag(tab2))/sum(tab2)
+```
 
 
 
