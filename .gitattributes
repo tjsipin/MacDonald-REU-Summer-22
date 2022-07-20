@@ -34,3 +34,9 @@
 /models/svm_models/early_svm_Radial filter=lfs diff=lfs merge=lfs -text
 /models/svm_models/early_svm_Radial_Grid_imp_2 filter=lfs diff=lfs merge=lfs -text
 /models/svm_models/early_svm_Radial_Grid_imp_3 filter=lfs diff=lfs merge=lfs -text
+/models/stacking/rf_res filter=lfs diff=lfs merge=lfs -text
+/models/stacking/rf_res_early_reg filter=lfs diff=lfs merge=lfs -text
+/models/stacking/svm_res filter=lfs diff=lfs merge=lfs -text
+/models/stacking/svm_res_early_reg filter=lfs diff=lfs merge=lfs -text
+/models/stacking/xgb_res filter=lfs diff=lfs merge=lfs -text
+/models/stacking/xgb_res_early_reg filter=lfs diff=lfs merge=lfs -text
