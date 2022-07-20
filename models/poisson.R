@@ -69,6 +69,6 @@ m4 <- hurdle(Cutaneous.Leishmaniasis ~ .,
              data = data_train,
              dist = "negbin")
 
-predictions = predict(m4, data = data_test)
+predictions = predict(m1, data = data_test)
 
 testRMSE = sqrt(mean((predictions - data_test$Cutaneous.Leishmaniasis)^2))
