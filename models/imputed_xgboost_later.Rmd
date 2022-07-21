@@ -1,0 +1,438 @@
+---
+title: "Classification XGBoost Model on imputed aad data"
+author: "Lyndsey Umsted"
+date: '2022-07-21'
+output: html_document
+---
+
+Installing Packages and Loading Libraries
+```{r}
+# packages
+# install.packages("drat", repos="https://cran.rstudio.com")
+# drat:::addRepo("dmlc")
+# install.packages("xgboost", repos="http://dmlc.ml/drat/", type = "source")
+# install.packages("tidyverse")
+# install.packages("dpylr")
+# install.packages("glmnet")
+# install.packages("ranger")
+# install.packages("lsr")
+# install.packages("corrr")
+# install.packages("tidyr")
+# install.packages("car")
+# install.packages("moments")
+# install.packages("ggpubr")
+# install.packages("BBmisc")
+# install.packages("rsample")
+# install.packages("recipes")
+# install.packages("randomForest")
+# install.packages("parsnip")
+# install.packages("workflows")
+# install.packages("tune")
+# install.packages("dials")
+# install.packages("yardstick")
+# install.packages("xgboost")
+# install.packages("data.table")
+# install.packages("Matrix")
+# install.packages("caret")
+# install.packages("mlr3")
+# install.packages("class")
+```
+
+```{r}
+#libraries
+library(tidyverse)
+library(dplyr)
+library(glmnet)
+library(xgboost)
+library(ranger)
+library(lsr)
+library(corrr)
+library(tidyr)
+library(car)
+library(moments)
+library(ggpubr)
+library(BBmisc)
+library(rsample)
+library(recipes)
+library(randomForest)
+library(parsnip)
+library(workflows)
+library(tune)
+library(dials)
+library(yardstick)
+require(xgboost)
+require(data.table)
+require(Matrix)
+library(caret)
+library(data.table)
+library(mlr3)
+library(class)
+library(ParamHelpers)
+library(keras)
+```
+
+
+
+```{r}
+getwd()
+
+load("../data/imp")
+
+median_data <- data %>%
+  filter(!is.na(Cutaneous.Leishmaniasis)) %>%
+  filter(Cutaneous.Leishmaniasis > 0) %>%
+  dplyr :: select(Cutaneous.Leishmaniasis)
+
+median <- median_data$Cutaneous.Leishmaniasis %>%
+  median()
+
+data <- data %>%
+  filter(Year > 2013) %>%
+  filter(!is.na(Cutaneous.Leishmaniasis)) %>%
+  filter(Cutaneous.Leishmaniasis > 0) %>%
+  dplyr::select(c("Population", "Cutaneous.Leishmaniasis", "LST_Day", "Precip", "AvgRad", "SWOccurrence", "NDVI", "EVI", "pland_forest", "te_forest", "enn_mn_forest"))
+
+data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
+data$te_forest <- ifelse(is.na(data$te_forest), 0, data$te_forest)
+data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
+
+data$Cutaneous.Leishmaniasis <- as.factor(ifelse(data$Cutaneous.Leishmaniasis < median, 0, 1))
+```
+
+
+```{r}
+install.packages("caret")
+```
+
+```{r}
+library(caret)
+```
+
+
+
+
+```{r}
+skimr::skim(cat_df)
+round(prop.table(table(data$Cutaneous.Leishmaniasis)), 2)
+```
+
+split the data into train and test sets
+```{r}
+library(rsample)
+
+set.seed(2022)
+data_split <- initial_split(data, strata = "Cutaneous.Leishmaniasis", prop = 0.7)
+
+training <- training(data_split)
+testing <- testing(data_split) 
+
+x_train <- as.matrix(training[,-2])
+x_test <- as.matrix(testing[,-2])
+
+y_train <- (as.numeric(training$Cutaneous.Leishmaniasis) - 1)
+y_test <- (as.numeric(testing$Cutaneous.Leishmaniasis) - 1)
+
+# y_train <- to_categorical(y_train)
+# y_test <- to_categorical(y_test)
+
+
+dtrain <- xgb.DMatrix(data = x_train, label = y_train)
+dtest <- xgb.DMatrix(data = x_test, label = y_test)
+```
+
+
+Setting up Training Model:
+```{r}
+## Parameters
+params <- list(booster = "gbtree", 
+               nthread = 10,
+               silent = 0,
+               objective = "binary:logistic",
+               eta = 0.3,
+               gamma = 0,
+               max.depth = 6, 
+               min_child_weight = 1,
+               subsample = 1,
+               colsample_bytree = 1,
+               lambda = 0,
+               alpha = 1)
+
+
+xgbcv <- xgb.cv(params = params,
+                data = dtrain, 
+                nrounds = 100,
+                nfold = 5,
+                showsd = T,
+                stratified = T,
+                print_every_n = 10,
+                early_stopping_rounds = 20,
+                maximize = F,
+                verbose = 2) 
+
+
+# eta = 1: train-rmse:0.000601 @ [41]
+# eta = 0.3: train-rsme:0.001090 @ [132]
+# min_child_weight = 1: 0.530765
+xgbcv$best_iteration
+
+# first default - model training
+xgb.model <- xgb.train(params = params, 
+                   data = dtrain, 
+                   nrounds = xgbcv$best_iteration, 
+                   watchlist = list(val=dtest,train=dtrain), 
+                   print.every.n = 10, 
+                   early.stop.round = 10, 
+                   maximize = F , 
+                   eval_metric = "error")
+
+
+
+
+# xgb.model <- xgb.train(data = dtrain, 
+#                        nrounds = 1000,
+#                        num_class = 3)
+```
+
+Prediction
+```{r}
+# testing$predicted <- predict(xgb.model, dtest)
+# # testing$predicted[testing$predicted == 0] <- "low"
+# # testing$predicted[testing$predicted == 1] <- "moderate"
+# # testing$predicted[testing$predicted == 2] <- "high"
+# testing$check <- testing$label == testing$predicted
+# summary(testing$check)
+```
+
+```{r}
+# model prediction
+xgbpred <- predict(xgb.model, dtest)
+xgbpred <- ifelse (xgbpred > 0.5,1,0)
+```
+
+```{r}
+#confusion matrix
+library(caret)
+confusionMatrix(as.factor(xgbpred), as.factor(y_test))
+
+
+# Accuracy check
+
+mse = mean((y_test - xgbpred)^2)
+mae = caret::MAE(y_test, xgbpred)
+rmse = caret::RMSE(y_test, xgbpred)
+
+cat("MSE: ", mse, "MAE: ", mae, "RMSE: ", rmse)
+```
+
+
+```{r}
+# view var imp plot
+mat <- xgb.importance(feature_names = colnames(x_train), model = xgb.model)
+xgb.plot.importance(importance_matrix = mat[1:nrow(mat)])
+```
+
+
+
+```{r}
+# #convert characters to factors
+fact_col <- colnames(training)
+
+training$Cutaneous.Leishmaniasis <- as.factor(training$Cutaneous.Leishmaniasis)
+testing$Cutaneous.Leishmaniasis <- as.factor(testing$Cutaneous.Leishmaniasis)
+
+#install.packages("mlr")
+library(mlr)
+
+# Create tasks
+traintask <- makeClassifTask(data = training, target = "Cutaneous.Leishmaniasis")
+testtask <- makeClassifTask(data = testing, target = "Cutaneous.Leishmaniasis")
+
+#do one hot encoding`<br/>
+# traintask <- createDummyFeatures(obj = traintask, target = character(0L))
+# testtask <- createDummyFeatures(obj = testtask,target = character(0L))
+
+# Create learner
+lrn <- makeLearner("classif.xgboost", predict.type = "response")
+lrn$par.vals <- list(objective = 'binary:logistic',
+                     eval_metric = 'error',
+                     nrounds = 100L,
+                     eta = 0.1)
+```
+
+```{r}
+# Set parameter space
+set.seed(22)
+
+# fact_col <- colnames(training)
+# 
+# for(i in fact_col) set(training,j=i,value = as.double(training[[i]]))
+# for (i in fact_col) set(testing,j=i,value = as.double(testing[[i]]))
+
+params <- makeParamSet(makeDiscreteParam('booster',
+                                         values = c('gbtree','dart')),
+                       makeIntegerParam('max_depth',
+                                        lower = 0,
+                                        upper = 10),
+                       makeNumericParam('min_child_weight',
+                                        lower = 0,
+                                        upper = 10),
+                       makeNumericParam('subsample',
+                                        lower = 0,
+                                        upper = 1),
+                       makeNumericParam('colsample_bytree',
+                                        lower = 0,
+                                        upper = 1),
+                       makeNumericParam('gamma',
+                                        lower = 0,
+                                        upper = 1),
+                       makeNumericParam('eta',
+                                        lower = 0.01,
+                                        upper = 0.3),
+                       makeNumericParam('lambda',
+                                        lower = 0,
+                                        upper = 0),
+                       makeNumericParam('alpha',
+                                        lower = 1,
+                                        upper = 1))
+
+
+# Set resampling strategy
+rdesc <- makeResampleDesc('CV',
+                          stratify = T,
+                          iters = 5L)
+
+# Search Strategy
+ctrl <- makeTuneControlRandom(maxit = 10L)
+
+# Set parallel backend
+library(parallel)
+library(parallelMap)
+library(class)
+parallelStartSocket(cpus = detectCores())
+
+# Parameter tuning
+mytune <- tuneParams(learner = lrn,
+                     task = traintask,
+                     resampling = rdesc,
+                     measures = getDefaultMeasure('classif'),
+                     par.set = params,
+                     control = ctrl,
+                     show.info = T)
+
+mytune$y
+
+mytune$x
+
+# Set hyperparameters
+lrn_tune <- setHyperPars(lrn, par.vals = mytune$x)
+
+# Train model
+xgmodel <- train(learner = lrn_tune, task = traintask)
+
+# Predict model
+xgpred <- predict(xgmodel, testtask)
+
+```
+
+
+```{r}
+#confusion matrix
+confusionMatrix(xgpred$data$response, xgpred$data$truth)
+mytune$opt.path$env$path
+```
+
+```{r}
+## Visualize y original test and y predicted data in plot
+x = 1:length(y_test)
+# performance_plot <- plot(x, y_test, col = "red", type = 'l') +
+#   lines(x, xgpred2$data$response, col = "blue", type = 'l')
+# performance_plot
+
+ggplot() + 
+  geom_line(aes(x = (xgpred$data$id),
+                y = (xgpred$data$truth)),
+            color = 'red', size = 0.6) + 
+  geom_line(aes(x = (xgpred$data$id),
+                y = (xgpred$data$response)),
+            color = 'blue', size = 0.5) + 
+  labs(color = "Truth vs. Response")
+
+ggplot() + 
+  geom_line(aes(x = sort(xgpred$data$id),
+                y = sort(xgpred$data$truth)),
+            color = 'red', size = 0.6) + 
+  geom_line(aes(x = sort(xgpred$data$id),
+                y = sort(xgpred$data$response)),
+            color = 'blue', size = 0.5) + 
+  labs(color = "Truth vs. Response (sorted)")
+```
+
+```{r}
+## Parameters
+params <- list(booster = "gbtree", 
+               nthread = 10,
+               silent = 0,
+               objective = "binary:logistic",
+               eta = 0.157,
+               gamma = 0.974,
+               max.depth = 10, 
+               min_child_weight = 4.54,
+               subsample = 0.791,
+               colsample_bytree = 0.61,
+               lambda = 0,
+               alpha = 1)
+
+
+xgbcv <- xgb.cv(params = params,
+                data = dtrain, 
+                nrounds = 100,
+                nfold = 5,
+                showsd = T,
+                stratified = T,
+                print_every_n = 10,
+                early_stopping_rounds = 20,
+                maximize = F,
+                verbose = 2) 
+
+
+# eta = 1: train-rmse:0.000601 @ [41]
+# eta = 0.3: train-rsme:0.001090 @ [132]
+# min_child_weight = 1: 0.530765
+xgbcv$best_iteration
+
+# first default - model training
+xgb.model <- xgb.train(params = params, 
+                   data = dtrain, 
+                   nrounds = xgbcv$best_iteration, 
+                   watchlist = list(val=dtest,train=dtrain), 
+                   print.every.n = 10, 
+                   early.stop.round = 10, 
+                   maximize = F , 
+                   eval_metric = "error")
+
+
+
+
+# xgb.model <- xgb.train(data = dtrain, 
+#                        nrounds = 1000,
+#                        num_class = 3)
+```
+
+
+```{r}
+cat_df2 <- cat_df %>%
+  mutate(pland_forest = pland_forest + 2)
+
+x <- as.matrix(cat_df2[,-2])
+
+y <- (as.numeric(cat_df2$Cutaneous.Leishmaniasis) - 1)
+
+d <- xgb.DMatrix(data = x)
+
+
+pred <- predict(xgb.model, d)
+
+pred <- ifelse (pred > 0.5,1,0)
+#pred
+sum(pred == 1)
+```
