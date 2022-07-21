@@ -399,6 +399,31 @@ ggplot() +
 ```
 
 
+```{r}
+cat_df2 <- cat_df %>%
+  mutate(pland_forest = pland_forest + 2)
+
+x <- as.matrix(cat_df2[,-2])
+
+y <- (as.numeric(cat_df2$Cutaneous.Leishmaniasis) - 1)
+
+d <- xgb.DMatrix(data = x, label = y)
+
+
+pred <- predict(xgb.model, d)
+
+for (i in pred){
+  if (i < 0.5) {
+    i <- "low"
+  } else {
+    i <- "high"
+  }
+}
+
+pred
+```
+
+
 
 
 

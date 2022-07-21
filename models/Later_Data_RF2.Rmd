@@ -92,6 +92,14 @@ result <- data.frame(testing$Cutaneous.Leishmaniasis, predict(rf, testing[,1:12]
 result
 
 plot(result)
+
+
+cat_df2 <- cat_df %>%
+  mutate(pland_forest = pland_forest + 2)
+ 
+p <- predict(rf, cat_df2[,-2], type = "response")
+
+plot(p)
 ```
 
 
