@@ -13,7 +13,7 @@ median_data <- data %>%
   dplyr::select(Cutaneous.Leishmaniasis) 
 
 median <- median_data$Cutaneous.Leishmaniasis %>% 
-  median()
+  median() # 0.2817695
 
 data <- data %>%
   filter(Year < 2014) %>%

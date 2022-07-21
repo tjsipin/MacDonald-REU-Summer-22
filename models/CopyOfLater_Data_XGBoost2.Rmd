@@ -5,6 +5,8 @@ date: '2022-06-28'
 output: html_document
 ---
 
+`Later_Data_XGBoost2.Rmd` but with NAs of forest not removed, instead set to 0.
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -80,12 +82,12 @@ library(keras)
 ```{r}
 aad <- read.csv("data/aad.csv")
 aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
-aad <- subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
 ```
 
 
 ```{r}
-# install.packages("caret")
+install.packages("caret")
 ```
 
 ```{r}
@@ -117,12 +119,15 @@ later_data <- later_data %>%
 # later_data$Population <- as.numeric(later_data$Population)
 
 later_data_small <- later_data %>%
-  select(c("Population", "Cutaneous.Leishmaniasis", "LST_Day", "Precip", "AvgRad", "SWOccurrence", "NDVI", "EVI", "OptTemp_Obs", "pland_forest", "te_forest", "enn_mn_forest"))
+  select(c("Population", "Cutaneous.Leishmaniasis", "LST_Day", "Precip", "AvgRad", "SWOccurrence", "NDVI", "EVI", "pland_forest", "te_forest", "enn_mn_forest"))
 later_data_small <- subset(later_data_small, !is.na(later_data_small$LST_Day))
 later_data_small <- subset(later_data_small, !is.na(later_data_small$SWOccurrence))
-later_data_small <- subset(later_data_small, !is.na(later_data_small$pland_forest))
-later_data_small <- subset(later_data_small, !is.na(later_data_small$te_forest))
-later_data_small <- subset(later_data_small, !is.na(later_data_small$enn_mn_forest))
+later_data_small$pland_forest <- ifelse(is.na(later_data_small$pland_forest), 
+                                        0, later_data_small$pland_forest)
+later_data_small$te_forest <- ifelse(is.na(later_data_small$te_forest), 
+                                     0, later_data_small$te_forest)
+later_data_small$enn_mn_forest <- ifelse(is.na(later_data_small$enn_mn_forest), 
+                                         0, later_data_small$enn_mn_forest)
 
 ```
 
@@ -130,7 +135,7 @@ later_data_small <- subset(later_data_small, !is.na(later_data_small$enn_mn_fore
 library(dplyr)
 summary(later_data_small$Cutaneous.Leishmaniasis)
 cat_df <- later_data_small
-cat_df$Cutaneous.Leishmaniasis <- cut(later_data_small$Cutaneous.Leishmaniasis, breaks = c(0, 0.3910221, 10^3), labels = c("low", "high")) # 40th percentile
+cat_df$Cutaneous.Leishmaniasis <- cut(later_data_small$Cutaneous.Leishmaniasis, breaks = c(0, 0.2817695, 10^3), labels = c("low", "high")) # median
 
 
 # cat_df$label <- NA
@@ -363,8 +368,6 @@ xgmodel <- train(learner = lrn_tune, task = traintask)
 
 # Predict model
 xgpred <- predict(xgmodel, testtask)
-
-
 ```
 
 
@@ -412,9 +415,17 @@ y <- (as.numeric(cat_df2$Cutaneous.Leishmaniasis) - 1)
 d <- xgb.DMatrix(data = x, label = y)
 
 
-pred <- predict(xgb.model, x)
-xgbpred <- ifelse (xgbpred > 0.5,'low','high')
+pred <- predict(xgb.model, d)
 
+for (i in pred){
+  if (i < 0.5) {
+    i <- "low"
+  } else {
+    i <- "high"
+  }
+}
+
+pred
 ```
 
 
