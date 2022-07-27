@@ -74,3 +74,4 @@
 /models/stacking/model_st_early_CL_classif_60 filter=lfs diff=lfs merge=lfs -text
 /models/stacking/model_st_early_CL_classif_70 filter=lfs diff=lfs merge=lfs -text
 *.png filter=lfs diff=lfs merge=lfs -text
+*.html filter=lfs diff=lfs merge=lfs -text
