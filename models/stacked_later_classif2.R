@@ -3,18 +3,11 @@ library(tidyverse)
 library(tidymodels)
 library(stacks)
 library(dplyr)
+library(pROC)
 
 # load and split imputed data
 getwd()
 load("./data/imp")
-
-median_data <- data %>%
-  filter(!is.na(Cutaneous.Leishmaniasis)) %>%
-  filter(Cutaneous.Leishmaniasis > 0) %>%
-  dplyr :: select(Cutaneous.Leishmaniasis)
-
-median <- median_data$Cutaneous.Leishmaniasis %>%
-  median()
 
 data <- data %>%
   filter(Year > 2013) %>%
@@ -26,7 +19,12 @@ data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
 data$te_forest <- ifelse(is.na(data$te_forest), 0, data$te_forest)
 data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
 
-data$Cutaneous.Leishmaniasis <- as.factor(ifelse(data$Cutaneous.Leishmaniasis < median, 0, 1))
+library(dplyr)
+summary(data$Cutaneous.Leishmaniasis)
+cat_df <- data
+cat_df$Cutaneous.Leishmaniasis <- cut(cat_df$Cutaneous.Leishmaniasis, 
+                                      breaks = c(0, 0.6806611, 10^3), 
+                                      labels = c("low", "high")) # median
 
 
 skimr::skim(cat_df)
@@ -34,7 +32,7 @@ round(prop.table(table(cat_df$Cutaneous.Leishmaniasis)), 2)
 
 set.seed(123) # for reproducibility
 
-split <- initial_split(data)
+split <- initial_split(cat_df)
 
 data_train <- training(split)
 data_test <- testing(split)
@@ -88,95 +86,95 @@ log_reg_res <-
 
 
 # define svm model using parsnip
-svm_spec <- 
-  svm_rbf(
-    cost = tune(),
-    rbf_sigma = tune()
-  ) %>% 
-  set_engine('kernlab') %>% 
-  set_mode('classification')
-  
-
-# add it to a workflow
-svm_wflow <- 
-  data_wflow %>% 
-  add_model(svm_spec)
-
-# tune cost and rbf_sigma and fit to the 10-fold cv
-set.seed(123)
-svm_res <-
-  tune_grid(
-    svm_wflow,
-    resamples = folds,
-    grid = 5,
-    control = ctrl_grid
-  )
-
-save(svm_res, file = 'models/stacking/svm_res_later_classif_2')
-# load(file = 'models/stacking/svm_res_later_classif_2')
+# svm_spec <- 
+#   svm_rbf(
+#     cost = tune(),
+#     rbf_sigma = tune()
+#   ) %>% 
+#   set_engine('kernlab') %>% 
+#   set_mode('classification')
+#   
+# 
+# # add it to a workflow
+# svm_wflow <- 
+#   data_wflow %>% 
+#   add_model(svm_spec)
+# 
+# # tune cost and rbf_sigma and fit to the 10-fold cv
+# set.seed(123)
+# svm_res <-
+#   tune_grid(
+#     svm_wflow,
+#     resamples = folds,
+#     grid = 5,
+#     control = ctrl_grid
+#   )
+# 
+# save(svm_res, file = 'models/stacking/svm_res_later_classif_2')
+load(file = 'models/stacking/svm_res_later_classif_2')
 
 
 
 # define xgboost model using parsnip
 
-set.seed(123)
-xgb_spec <- 
-  boost_tree(
-    mtry = tune(),
-    trees = tune(),
-    min_n = tune(),
-    tree_depth = tune(),
-    learn_rate = tune(),
-    loss_reduction = tune()
-  ) %>% 
-  set_engine('xgboost') %>% 
-  set_mode('classification')
+# set.seed(123)
+# xgb_spec <- 
+#   boost_tree(
+#     mtry = tune(),
+#     trees = tune(),
+#     min_n = tune(),
+#     tree_depth = tune(),
+#     learn_rate = tune(),
+#     loss_reduction = tune()
+#   ) %>% 
+#   set_engine('xgboost') %>% 
+#   set_mode('classification')
+# 
+# # add it to a workflow
+# xgb_wflow <- 
+#   data_wflow %>%
+#   add_model(xgb_spec)
+# 
+# # tune mtry, trees, min_n, tree_depth, etc.
+# xgb_res <-
+#   tune_grid(
+#     xgb_wflow,
+#     resamples = folds,
+#     grid = 5,
+#     control = ctrl_grid
+#   )
+# 
+# save(xgb_res, file = 'models/stacking/xgb_res_later_classif_2')
 
-# add it to a workflow
-xgb_wflow <- 
-  data_wflow %>%
-  add_model(xgb_spec)
-
-# tune mtry, trees, min_n, tree_depth, etc.
-xgb_res <-
-  tune_grid(
-    xgb_wflow,
-    resamples = folds,
-    grid = 5,
-    control = ctrl_grid
-  )
-
-save(xgb_res, file = 'models/stacking/xgb_res_later_classif_2')
-
-# load(file = 'models/stacking/xgb_res_later_classif_2')
+load(file = 'models/stacking/xgb_res_later_classif_2')
 
 # define rf model using parsnip
 
-set.seed(123)
-rf_spec <- 
-  rand_forest(
-    mtry = tune(),
-    trees = tune(),
-    min_n = tune()
-  ) %>% 
-  set_engine('ranger') %>% 
-  set_mode('classification')
-
-# add it to a workflow
-rf_wflow <- 
-  data_wflow %>%
-  add_model(rf_spec)
-
-# tune mtry, trees, min_n
-rf_res <-
-  tune_grid(
-    rf_wflow,
-    resamples = folds,
-    grid = 5,
-    control = ctrl_grid
-  )
-
-save(rf_res, file = 'models/stacking/rf_res_later_classif_2')
+# set.seed(123)
+# rf_spec <- 
+#   rand_forest(
+#     mtry = tune(),
+#     trees = tune(),
+#     min_n = tune()
+#   ) %>% 
+#   set_engine('ranger') %>% 
+#   set_mode('classification')
+# 
+# # add it to a workflow
+# rf_wflow <- 
+#   data_wflow %>%
+#   add_model(rf_spec)
+# 
+# # tune mtry, trees, min_n
+# rf_res <-
+#   tune_grid(
+#     rf_wflow,
+#     resamples = folds,
+#     grid = 5,
+#     control = ctrl_grid
+#   )
+# 
+# save(rf_res, file = 'models/stacking/rf_res_later_classif_2')
 
 load(file = 'models/stacking/rf_res_later_classif_2')
 
@@ -220,14 +218,116 @@ model_st <-
   model_st %>% 
   fit_members()
 
-data_test <- 
+data_test70 <- 
   data_test %>% 
   bind_cols(predict(model_st, .))
 
+# data_test$.pred_class = ifelse (
+#   data_test$.pred_low < 0.525, "high", "low"
+# ) %>% as.factor()
+
 # confusion matrix for stacks
-caret::confusionMatrix(data_test$Cutaneous.Leishmaniasis, 
-                       data_test$.pred_class,
+caret::confusionMatrix(data_test30$Cutaneous.Leishmaniasis, 
+                       data_test30$.pred_class,
                        positive = 'high')
+
+plot(data_test30$Cutaneous.Leishmaniasis, data_test30$.pred_class)
+
+
+## fit a logistic regression to the data...
+glm.fit30=glm(data_test30$.pred_class ~ data_test30$Cutaneous.Leishmaniasis, family=binomial)
+lines(data_test30$Cutaneous.Leishmaniasis, glm.fit$fitted.values)
+
+glm.fit40=glm(data_test40$.pred_class ~ data_test40$Cutaneous.Leishmaniasis, family=binomial)
+lines(data_test30$Cutaneous.Leishmaniasis, glm.fit$fitted.values)
+
+glm.fit50=glm(data_test50$.pred_class ~ data_test50$Cutaneous.Leishmaniasis, family=binomial)
+lines(data_test30$Cutaneous.Leishmaniasis, glm.fit$fitted.values)
+
+glm.fit60=glm(data_test60$.pred_class ~ data_test60$Cutaneous.Leishmaniasis, family=binomial)
+lines(data_test30$Cutaneous.Leishmaniasis, glm.fit$fitted.values)
+
+glm.fit70=glm(data_test70$.pred_class ~ data_test70$Cutaneous.Leishmaniasis, family=binomial)
+lines(data_test30$Cutaneous.Leishmaniasis, glm.fit$fitted.values)
+
+
+roc(data_test30$.pred_class, glm.fit30$fitted.values, plot=TRUE)
+
+## Now let's configure R so that it prints the graph as a square.
+##
+par(pty = "s") ## pty sets the aspect ratio of the plot region. Two options:
+##                "s" - creates a square plotting region
+##                "m" - (the default) creates a maximal plotting region
+roc(data_test30$.pred_class, glm.fit30$fitted.values, plot=TRUE)
+
+
+roc(data_test30$.pred_class, glm.fit30$fitted.values, plot=TRUE, legacy.axes=TRUE)
+
+
+roc(data_test30$.pred_class, glm.fit30$fitted.values, plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage")
+
+## If we want to find out the optimal threshold we can store the 
+## data used to make the ROC graph in a variable...
+roc.info <- roc(data_test30$.pred_class, glm.fit30$fitted.values, legacy.axes=TRUE)
+str(roc.info)
+
+
+## and then extract just the information that we want from that variable.
+roc.df <- data.frame(
+  tpp=roc.info$sensitivities*100, ## tpp = true positive percentage
+  fpp=(1 - roc.info$specificities)*100, ## fpp = false positive precentage
+  thresholds=roc.info$thresholds)
+
+head(roc.df) ## head() will show us the values for the upper right-hand corner
+## of the ROC graph, when the threshold is so low 
+## (negative infinity) that every single sample is called "obese".
+## Thus TPP = 100% and FPP = 100%
+
+tail(roc.df) ## tail() will show us the values for the lower left-hand corner
+## of the ROC graph, when the threshold is so high (infinity) 
+## that every single sample is called "not obese". 
+## Thus, TPP = 0% and FPP = 0%
+
+roc.df[roc.df$tpp > 60 & roc.df$tpp < 80,]
+
+## We can calculate the area under the curve...
+roc(data_test30$.pred_class, glm.fit$fitted.values, plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, print.auc=TRUE)
+
+## ...and the partial area under the curve.
+roc(data_test30$.pred_class, glm.fit$fitted.values, plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, print.auc=TRUE, print.auc.x=45, partial.auc=c(60, 40), auc.polygon = TRUE, auc.polygon.col = "#377eb822")
+
+
+## We can calculate the area under the curve...
+roc(data_test30$.pred_class, glm.fit30$fitted.values, plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, print.auc=TRUE)
+
+roc(data_test40$.pred_class, glm.fit40$fitted.values, plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="green", lwd=4, print.auc=TRUE)
+
+roc(data_test50$.pred_class, glm.fit50$fitted.values, plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="red", lwd=4, print.auc=TRUE)
+
+roc(data_test60$.pred_class, glm.fit60$fitted.values, plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="purple", lwd=4, print.auc=TRUE)
+
+roc(data_test70$.pred_class, glm.fit70$fitted.values, plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="orange", lwd=4, print.auc=TRUE)
+
+## Now let's fit the data with a random forest...
+##
+#######################################
+rf.model <- randomForest(factor(data_test30$.pred_class) ~ data_test30$Cutaneous.Leishmaniasis)
+
+## ROC for random forest
+roc(data_test30$.pred_class, rf.model$votes[,1], plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#4daf4a", lwd=4, print.auc=TRUE)
+
+
+## Now layer logistic regression and random forest ROC graphs..
+##
+#######################################
+roc(data_test30$.pred_class, glm.fit30$fitted.values, plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, print.auc=TRUE, print.auc.y=80)
+
+plot.roc(data_test40$.pred_class, glm.fit40$fitted.values, percent=TRUE, col="green", lwd=4, print.auc=TRUE, add=TRUE, print.auc.y=75)
+plot.roc(data_test50$.pred_class, glm.fit50$fitted.values, percent=TRUE, col="red", lwd=4, print.auc=TRUE, add=TRUE, print.auc.y=70)
+plot.roc(data_test60$.pred_class, glm.fit60$fitted.values, percent=TRUE, col="purple", lwd=4, print.auc=TRUE, add=TRUE, print.auc.y=65)
+plot.roc(data_test70$.pred_class, glm.fit70$fitted.values, percent=TRUE, col="orange", lwd=4, print.auc=TRUE, add=TRUE, print.auc.y=60)
+legend("bottomright", legend=c("30th Percentile", "40th Percentile", "50th Percentile", "60th Percentile", "70th Percentile"), col=c("#377eb8", "green", "red", "purple","orange"), lwd=4)
+
 
 
 # confusion matrix for base models
@@ -239,9 +339,14 @@ member_preds <-
     predict(
       model_st,
       data_test,
-      members = TRUE
+      members = TRUE,
+      type = 'prob'
     )
   )
+
+member_preds$.pred_class = ifelse (
+  member_preds$.pred_low < 0.5, "high", "low"
+) %>% as.factor()
 
 colnames(member_preds) %>% 
   map_dfr(

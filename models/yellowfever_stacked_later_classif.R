@@ -57,7 +57,7 @@ library(dplyr)
 summary(later_data_small$Yellow.Fever)
 cat_df <- later_data_small
 cat_df$Yellow.Fever <- cut(later_data_small$Yellow.Fever, 
-                   breaks = c(0, 0.0621465, 10^3), 
+                   breaks = c(0, 0.15083483, 10^3), 
                    labels = c("low", "high")) # median
 
 
@@ -250,14 +250,112 @@ model_st <-
   model_st %>% 
   fit_members()
 
-data_test <- 
+data_test70 <- 
   data_test %>% 
   bind_cols(predict(model_st, .))
 
 # confusion matrix for stacks
-caret::confusionMatrix(data_test$Yellow.Fever, 
-                       data_test$.pred_class,
+caret::confusionMatrix(data_test40$Yellow.Fever, 
+                       data_test40$.pred_class,
                        positive = 'high')
+
+plot(data_test70$Yellow.Fever, data_test70$.pred_class)
+
+
+## fit a logistic regression to the data...
+glm.fit30=glm(data_test30$.pred_class ~ data_test30$Yellow.Fever, family=binomial)
+lines(data_test30$Yellow.Fever, glm.fit$fitted.values)
+
+glm.fit40=glm(data_test40$.pred_class ~ data_test40$Yellow.Fever, family=binomial)
+lines(data_test30$Yellow.Fever, glm.fit$fitted.values)
+
+glm.fit50=glm(data_test50$.pred_class ~ data_test50$Yellow.Fever, family=binomial)
+lines(data_test30$Yellow.Fever, glm.fit$fitted.values)
+
+glm.fit60=glm(data_test60$.pred_class ~ data_test60$Yellow.Fever, family=binomial)
+lines(data_test30$Yellow.Fever, glm.fit$fitted.values)
+
+glm.fit70=glm(data_test70$.pred_class ~ data_test70$Yellow.Fever, family=binomial)
+lines(data_test30$Yellow.Fever, glm.fit$fitted.values)
+
+
+roc(data_test30$.pred_class, glm.fit30$fitted.values, plot=TRUE)
+
+## Now let's configure R so that it prints the graph as a square.
+##
+par(pty = "s") ## pty sets the aspect ratio of the plot region. Two options:
+##                "s" - creates a square plotting region
+##                "m" - (the default) creates a maximal plotting region
+roc(data_test30$.pred_class, glm.fit30$fitted.values, plot=TRUE)
+
+
+roc(data_test30$.pred_class, glm.fit30$fitted.values, plot=TRUE, legacy.axes=TRUE)
+
+
+roc(data_test30$.pred_class, glm.fit30$fitted.values, plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage")
+
+## If we want to find out the optimal threshold we can store the 
+## data used to make the ROC graph in a variable...
+roc.info <- roc(data_test30$.pred_class, glm.fit30$fitted.values, legacy.axes=TRUE)
+str(roc.info)
+
+
+## and then extract just the information that we want from that variable.
+roc.df <- data.frame(
+  tpp=roc.info$sensitivities*100, ## tpp = true positive percentage
+  fpp=(1 - roc.info$specificities)*100, ## fpp = false positive precentage
+  thresholds=roc.info$thresholds)
+
+head(roc.df) ## head() will show us the values for the upper right-hand corner
+## of the ROC graph, when the threshold is so low 
+## (negative infinity) that every single sample is called "obese".
+## Thus TPP = 100% and FPP = 100%
+
+tail(roc.df) ## tail() will show us the values for the lower left-hand corner
+## of the ROC graph, when the threshold is so high (infinity) 
+## that every single sample is called "not obese". 
+## Thus, TPP = 0% and FPP = 0%
+
+roc.df[roc.df$tpp > 60 & roc.df$tpp < 80,]
+
+## We can calculate the area under the curve...
+roc(data_test30$.pred_class, glm.fit$fitted.values, plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, print.auc=TRUE)
+
+## ...and the partial area under the curve.
+roc(data_test30$.pred_class, glm.fit$fitted.values, plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, print.auc=TRUE, print.auc.x=45, partial.auc=c(60, 40), auc.polygon = TRUE, auc.polygon.col = "#377eb822")
+
+
+## We can calculate the area under the curve...
+roc(data_test30$.pred_class, glm.fit30$fitted.values, plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, print.auc=TRUE)
+
+roc(data_test40$.pred_class, glm.fit40$fitted.values, plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="green", lwd=4, print.auc=TRUE)
+
+roc(data_test50$.pred_class, glm.fit50$fitted.values, plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="red", lwd=4, print.auc=TRUE)
+
+roc(data_test60$.pred_class, glm.fit60$fitted.values, plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="purple", lwd=4, print.auc=TRUE)
+
+roc(data_test70$.pred_class, glm.fit70$fitted.values, plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="orange", lwd=4, print.auc=TRUE)
+
+## Now let's fit the data with a random forest...
+##
+#######################################
+rf.model <- randomForest(factor(data_test30$.pred_class) ~ data_test30$Yellow.Fever)
+
+## ROC for random forest
+roc(data_test30$.pred_class, rf.model$votes[,1], plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#4daf4a", lwd=4, print.auc=TRUE)
+
+
+## Now layer logistic regression and random forest ROC graphs..
+##
+#######################################
+roc(data_test30$.pred_class, glm.fit30$fitted.values, plot=TRUE, legacy.axes=TRUE, percent=TRUE, xlab="False Positive Percentage", ylab="True Postive Percentage", col="#377eb8", lwd=4, print.auc=TRUE, print.auc.y=80)
+
+plot.roc(data_test40$.pred_class, glm.fit40$fitted.values, percent=TRUE, col="green", lwd=4, print.auc=TRUE, add=TRUE, print.auc.y=75)
+plot.roc(data_test50$.pred_class, glm.fit50$fitted.values, percent=TRUE, col="red", lwd=4, print.auc=TRUE, add=TRUE, print.auc.y=70)
+plot.roc(data_test60$.pred_class, glm.fit60$fitted.values, percent=TRUE, col="purple", lwd=4, print.auc=TRUE, add=TRUE, print.auc.y=65)
+plot.roc(data_test70$.pred_class, glm.fit70$fitted.values, percent=TRUE, col="orange", lwd=4, print.auc=TRUE, add=TRUE, print.auc.y=60)
+legend("bottomright", legend=c("30th Percentile", "40th Percentile", "50th Percentile", "60th Percentile", "70th Percentile"), col=c("#377eb8", "green", "red", "purple","orange"), lwd=4)
+
 
 
 # confusion matrix for base models
