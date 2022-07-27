@@ -57,7 +57,7 @@ library(dplyr)
 summary(later_data_small$Cutaneous.Leishmaniasis)
 cat_df <- later_data_small
 cat_df$Cutaneous.Leishmaniasis <- cut(later_data_small$Cutaneous.Leishmaniasis, 
-                                      breaks = c(0, 0.6806611, 10^3), 
+                                      breaks = c(0, 0.11703435, 10^3), 
                                       labels = c("low", "high")) # median
 
 
@@ -268,6 +268,7 @@ caret::confusionMatrix(data_test$Cutaneous.Leishmaniasis,
                        positive = 'high')
 
 plot(data_test30$Cutaneous.Leishmaniasis, data_test30$.pred_class)
+
 
 
 ## fit a logistic regression to the data...
