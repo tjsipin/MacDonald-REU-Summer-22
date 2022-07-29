@@ -7,9 +7,28 @@ library(randomForest)
 
 
 # load and split the early data using imputed data
+
+
+getwd()
 aad <- read.csv("models/data/aad.csv")
-aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
 aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <-subset(aad, aad$Year < 2019)
+
+
+
+aad <-subset(aad, aad$Population < 4000000)
+aad <-subset(aad, aad$Precip < 6000)
+aad <-subset(aad, aad$LST_Day < 37)
+aad <-subset(aad, aad$LST_Day > 17)
+aad <-subset(aad, aad$AvgRad < 50)
+aad <-subset(aad, aad$NDVI > 0.2)
+aad <-subset(aad, aad$EVI > 0.1)
+aad <-subset(aad, aad$pland_forest > 0)
+aad <-subset(aad, aad$te_forest > 0)
+aad <-subset(aad, aad$enn_mn_forest > 0)
+aad <-subset(aad, aad$enn_mn_forest < 3000)
+
 
 
 
@@ -57,7 +76,7 @@ library(dplyr)
 summary(later_data_small$Cutaneous.Leishmaniasis)
 cat_df <- later_data_small
 cat_df$Cutaneous.Leishmaniasis <- cut(later_data_small$Cutaneous.Leishmaniasis, 
-                                      breaks = c(0, 0.11703435, 10^3), 
+                                      breaks = c(0, 0.6806611, 10^3), 
                                       labels = c("low", "high")) # median
 
 
@@ -250,21 +269,21 @@ model_st <-
   model_st %>% 
   fit_members()
 
-# data_test70 <- 
-#   data_test %>% 
-#   bind_cols(predict(model_st, .))
+data_test70 <-
+  data_test %>%
+  bind_cols(predict(model_st, .))
 
-data_test <-
-  data_test30 %>%
-  bind_cols(predict(model_st, ., type = 'prob'))
-
-data_test$.pred_class = ifelse (
-  data_test$.pred_high > 0.25, "high", "low"
-) %>% as.factor()
+# data_test <-
+#   data_test30 %>%
+#   bind_cols(predict(model_st, ., type = 'prob'))
+# 
+# data_test$.pred_class = ifelse (
+#   data_test$.pred_high > 0.25, "high", "low"
+# ) %>% as.factor()
 
 # confusion matrix for stacks
-caret::confusionMatrix(data_test$Cutaneous.Leishmaniasis, 
-                       data_test$.pred_class,
+caret::confusionMatrix(data_test30$Cutaneous.Leishmaniasis, 
+                       data_test30$.pred_class,
                        positive = 'high')
 
 plot(data_test30$Cutaneous.Leishmaniasis, data_test30$.pred_class)
@@ -370,20 +389,19 @@ legend("bottomright", legend=c("30th Percentile", "40th Percentile", "50th Perce
 # confusion matrix for base models
 
 member_preds <- 
-  data_test %>% 
+  data_test30 %>% 
   select(Cutaneous.Leishmaniasis) %>% 
   bind_cols(
     predict(
       model_st,
       data_test,
-      members = TRUE,
-      type = 'prob'
+      members = TRUE
     )
   )
 
-member_preds$.pred_class = ifelse (
-  member_preds$.pred_low < 0.5, "high", "low"
-) %>% as.factor()
+# member_preds$.pred_class = ifelse (
+#   member_preds$.pred_low < 0.5, "high", "low"
+# ) %>% as.factor()
 
 
 colnames(member_preds) %>% 
@@ -405,8 +423,4 @@ colnames(member_preds) %>%
 # 5 accuracy binary         0.797 .pred_class_rf_res_1_5 
 
 
-fit <- lm(as.numeric(member_preds$.pred_class) ~ as.numeric(member_preds$Cutaneous.Leishmaniasis))
-plot(as.numeric(member_preds$Cutaneous.Leishmaniasis), as.numeric(member_preds$.pred_class))
-
-cor.test(x = as.numeric(member_preds$Cutaneous.Leishmaniasis), y = as.numeric(member_preds$.pred_class, 
-                                                                              method  = "spearman"))
+                                                                      method  = "spearman"))

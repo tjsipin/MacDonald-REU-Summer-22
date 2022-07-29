@@ -18,13 +18,16 @@ library(pROC)
 ```
 
 Loading the Annual Amazon Data Set and Tidying it by removing any NA values for Cutaneuous Leishmaniasis along with any case reportings of 0.
+
 ```{r}
+getwd()
 aad <- read.csv("data/aad.csv")
-aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
 aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <-subset(aad, aad$Year < 2019)
 ```
 
-Separating the data into two separate data sets, one for data before 2014 (early_data) and one for data after 2013 (later_data), and then tidying it while removing unnecceassary columns. 
+Separating the data into two separate data sets, one for data before 2014 (early_data) and one for data after 2013 (later_data), and then tidying it while removing unnecessary columns. 
 ```{r}
 library(dplyr)
 early_data <- aad %>%
@@ -46,7 +49,7 @@ later_data_small <- subset(later_data_small, !is.na(later_data_small$LST_Day))
 later_data_small <- subset(later_data_small, !is.na(later_data_small$SWOccurrence))
 ```
 
-Converting all NA values in pland_forest, te_forest, and enn_mn_forest.
+Converting all NA values in pland_forest, te_forest, and enn_mn_forest to 0.
 ```{r}
 later_data_small$pland_forest <- ifelse(is.na(later_data_small$pland_forest), 
                                         0, later_data_small$pland_forest)
@@ -78,6 +81,20 @@ split <- initial_split(cat_df)
 
 data_train <- training(split)
 data_test <- testing(split)
+
+
+data_train <-subset(data_train, data_train$Population < 4000000)
+data_train <-subset(data_train, data_train$Precip < 6000)
+data_train <-subset(data_train, data_train$LST_Day < 37)
+data_train <-subset(data_train, data_train$LST_Day > 17)
+data_train <-subset(data_train, data_train$AvgRad < 50)
+data_train <-subset(data_train, data_train$NDVI > 0.2)
+data_train <-subset(data_train, data_train$EVI > 0.1)
+data_train <-subset(data_train, data_train$pland_forest > 0)
+data_train <-subset(data_train, data_train$te_forest > 0)
+data_train <-subset(data_train, data_train$enn_mn_forest > 0)
+data_train <-subset(data_train, data_train$enn_mn_forest < 3000)
+
 
 # use a 5-fold cross-validation
 folds <- rsample::vfold_cv(data_train, v = 5)
@@ -263,9 +280,7 @@ data_test <-
   bind_cols(predict(model_st, .))
 
 # confusion matrix for stacks
-caret::confusionMatrix(data_test$Cutaneous.Leishmaniasis, 
-                       data_test$.pred_class,
-                       positive = 'high')
+caret::confusionMatrix(data_test$Cutaneous.Leishmaniasis,data_test$.pred_class, positive = 'high')
 ```
 
 Plot of positive predictive and negative predictive values for Cutaneous Leishmaniasis at 30th percentile threshold split.

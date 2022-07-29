@@ -76,16 +76,26 @@ library(keras)
 ```
 
 
+```{r}
+getwd()
+aad <- read.csv("data/aad.csv")
+aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <-subset(aad, aad$Year < 2019)
+```
 
 ```{r}
-aad <- read.csv("data/aad.csv")
-aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
-<<<<<<< HEAD
-aad <- subset(aad, aad$Cutaneous.Leishmaniasis > 0)
-=======
-aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
-summary(aad$Cutaneous.Leishmaniasis)
->>>>>>> 29c5a5c869a84726ef87ca143da6b2d95fd7365d
+aad <-subset(aad, aad$Population < 4000000)
+aad <-subset(aad, aad$Precip < 6000)
+aad <-subset(aad, aad$LST_Day < 37)
+aad <-subset(aad, aad$LST_Day > 17)
+aad <-subset(aad, aad$AvgRad < 50)
+aad <-subset(aad, aad$NDVI > 0.2)
+aad <-subset(aad, aad$EVI > 0.1)
+aad <-subset(aad, aad$pland_forest > 0)
+aad <-subset(aad, aad$te_forest > 0)
+aad <-subset(aad, aad$enn_mn_forest > 0)
+aad <-subset(aad, aad$enn_mn_forest < 3000)
 ```
 
 
@@ -369,17 +379,16 @@ xgmodel <- train(learner = lrn_tune, task = traintask)
 # Predict model
 xgpred <- predict(xgmodel, testtask)
 
-<<<<<<< HEAD
 
-=======
->>>>>>> 29c5a5c869a84726ef87ca143da6b2d95fd7365d
 ```
 
 
 ```{r}
 #confusion matrix
-confusionMatrix(xgpred$data$response, xgpred$data$truth)
+confusionMatrix(xgpred$data$response, xgpred$data$truth, positive = 'high')
 mytune$opt.path$env$path
+
+plot(xgpred$data$response, xgpred$data$truth)
 ```
 
 ```{r}
@@ -471,17 +480,15 @@ y <- (as.numeric(cat_df2$Cutaneous.Leishmaniasis) - 1)
 d <- xgb.DMatrix(data = x)
 
 
-<<<<<<< HEAD
+
 pred <- predict(xgb.model, x)
 xgbpred <- ifelse (xgbpred > 0.5,'low','high')
 
-=======
 pred <- predict(xgb.model, d)
 
 pred <- ifelse (pred > 0.5,1,0)
 #pred
 sum(pred == 0)
->>>>>>> 29c5a5c869a84726ef87ca143da6b2d95fd7365d
 ```
 
 

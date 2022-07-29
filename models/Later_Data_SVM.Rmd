@@ -7,9 +7,25 @@ output: html_document
 
 
 ```{r}
+getwd()
 aad <- read.csv("data/aad.csv")
-aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
 aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <-subset(aad, aad$Year < 2019)
+```
+
+```{r}
+aad <-subset(aad, aad$Population < 4000000)
+aad <-subset(aad, aad$Precip < 6000)
+aad <-subset(aad, aad$LST_Day < 37)
+aad <-subset(aad, aad$LST_Day > 17)
+aad <-subset(aad, aad$AvgRad < 50)
+aad <-subset(aad, aad$NDVI > 0.2)
+aad <-subset(aad, aad$EVI > 0.1)
+aad <-subset(aad, aad$pland_forest > 0)
+aad <-subset(aad, aad$te_forest > 0)
+aad <-subset(aad, aad$enn_mn_forest > 0)
+aad <-subset(aad, aad$enn_mn_forest < 3000)
 ```
 
 
@@ -120,10 +136,10 @@ plot(svm_Radial_Grid)
 # test_pred_grid <- predict(svm_Radial_Grid, newdata = testing)
 # test_pred_grid
 
-test_pred_grid <- predict(svm_Poly_Grid, newdata = testing)
+test_pred_grid <- predict(svm_Radial_Grid, newdata = testing)
 test_pred_grid
 
-confusionMatrix(table(test_pred_grid, testing$Cutaneous.Leishmaniasis))
+confusionMatrix(table(test_pred_grid, testing$Cutaneous.Leishmaniasis), positive = 'high')
 ```
 
 

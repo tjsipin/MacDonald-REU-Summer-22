@@ -396,7 +396,7 @@ Leishmaniasis</h1>
 ## ✖ dplyr::lag()      masks stats::lag()
 ## ✖ yardstick::spec() masks readr::spec()
 ## ✖ recipes::step()   masks stats::step()
-## • Use suppressPackageStartupMessages() to eliminate package startup messages</code></pre>
+## • Use tidymodels_prefer() to resolve common conflicts.</code></pre>
 <pre class="r"><code>library(stacks)
 library(pROC)</code></pre>
 <pre><code>## Type &#39;citation(&quot;pROC&quot;)&#39; for a citation.
@@ -409,12 +409,15 @@ library(pROC)</code></pre>
 <p>Loading the Annual Amazon Data Set and Tidying it by removing any NA
 values for Cutaneuous Leishmaniasis along with any case reportings of
 0.</p>
+<pre class="r"><code>getwd()</code></pre>
+<pre><code>## [1] &quot;C:/Users/18586/Desktop/Summer Disease Internship/MacDonald-REU-Summer-22/models&quot;</code></pre>
 <pre class="r"><code>aad &lt;- read.csv(&quot;data/aad.csv&quot;)
+aad &lt;-subset(aad, aad$Cutaneous.Leishmaniasis &gt; 0)
 aad &lt;- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
-aad &lt;-subset(aad, aad$Cutaneous.Leishmaniasis &gt; 0)</code></pre>
+aad &lt;-subset(aad, aad$Year &lt; 2019)</code></pre>
 <p>Separating the data into two separate data sets, one for data before
 2014 (early_data) and one for data after 2013 (later_data), and then
-tidying it while removing unnecceassary columns.</p>
+tidying it while removing unnecessary columns.</p>
 <pre class="r"><code>library(dplyr)
 early_data &lt;- aad %&gt;%
   filter(Year &lt; 2014)
@@ -433,7 +436,7 @@ te_forest, enn_mn_forest.</p>
 later_data_small &lt;- subset(later_data_small, !is.na(later_data_small$LST_Day))
 later_data_small &lt;- subset(later_data_small, !is.na(later_data_small$SWOccurrence))</code></pre>
 <p>Converting all NA values in pland_forest, te_forest, and
-enn_mn_forest.</p>
+enn_mn_forest to 0.</p>
 <pre class="r"><code>later_data_small$pland_forest &lt;- ifelse(is.na(later_data_small$pland_forest), 
                                         0, later_data_small$pland_forest)
 later_data_small$te_forest &lt;- ifelse(is.na(later_data_small$te_forest), 
@@ -446,7 +449,7 @@ high risk labels.</p>
 <pre class="r"><code>library(dplyr)
 summary(later_data_small$Cutaneous.Leishmaniasis)</code></pre>
 <pre><code>##     Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
-##  0.00054  0.08784  0.27628  0.99371  0.84257 81.89952</code></pre>
+##  0.00054  0.08493  0.26759  0.96817  0.81716 81.89952</code></pre>
 <pre class="r"><code>cat_df &lt;- later_data_small
 cat_df$Cutaneous.Leishmaniasis &lt;- cut(later_data_small$Cutaneous.Leishmaniasis, 
                                       breaks = c(0, 0.11703435, 10^3), 
@@ -463,7 +466,7 @@ skimr::skim(cat_df)</code></pre>
 </tr>
 <tr class="even">
 <td align="left">Number of rows</td>
-<td align="left">13634</td>
+<td align="left">13121</td>
 </tr>
 <tr class="odd">
 <td align="left">Number of columns</td>
@@ -522,7 +525,7 @@ skimr::skim(cat_df)</code></pre>
 <td align="right">1</td>
 <td align="left">FALSE</td>
 <td align="right">2</td>
-<td align="left">hig: 9443, low: 4191</td>
+<td align="left">hig: 8992, low: 4129</td>
 </tr>
 </tbody>
 </table>
@@ -561,12 +564,12 @@ skimr::skim(cat_df)</code></pre>
 <td align="left">Population</td>
 <td align="right">0</td>
 <td align="right">1</td>
-<td align="right">50497.76</td>
-<td align="right">271461.77</td>
-<td align="right">151.00</td>
-<td align="right">6462.00</td>
-<td align="right">13955.00</td>
-<td align="right">30514.50</td>
+<td align="right">51906.02</td>
+<td align="right">276571.94</td>
+<td align="right">161.00</td>
+<td align="right">6692.00</td>
+<td align="right">14359.00</td>
+<td align="right">31389.00</td>
 <td align="right">10275006.00</td>
 <td align="left">▇▁▁▁▁</td>
 </tr>
@@ -574,12 +577,12 @@ skimr::skim(cat_df)</code></pre>
 <td align="left">LST_Day</td>
 <td align="right">0</td>
 <td align="right">1</td>
-<td align="right">28.14</td>
-<td align="right">3.93</td>
+<td align="right">28.30</td>
+<td align="right">3.81</td>
 <td align="right">11.75</td>
-<td align="right">26.10</td>
-<td align="right">28.48</td>
-<td align="right">30.93</td>
+<td align="right">26.31</td>
+<td align="right">28.63</td>
+<td align="right">31.01</td>
 <td align="right">42.91</td>
 <td align="left">▁▂▇▅▁</td>
 </tr>
@@ -587,12 +590,12 @@ skimr::skim(cat_df)</code></pre>
 <td align="left">Precip</td>
 <td align="right">0</td>
 <td align="right">1</td>
-<td align="right">1482.56</td>
-<td align="right">803.25</td>
+<td align="right">1495.39</td>
+<td align="right">797.58</td>
 <td align="right">8.95</td>
-<td align="right">925.96</td>
-<td align="right">1387.41</td>
-<td align="right">1867.08</td>
+<td align="right">949.48</td>
+<td align="right">1399.10</td>
+<td align="right">1875.27</td>
 <td align="right">7701.10</td>
 <td align="left">▇▅▁▁▁</td>
 </tr>
@@ -600,12 +603,12 @@ skimr::skim(cat_df)</code></pre>
 <td align="left">AvgRad</td>
 <td align="right">0</td>
 <td align="right">1</td>
-<td align="right">1.00</td>
-<td align="right">3.82</td>
+<td align="right">1.03</td>
+<td align="right">3.89</td>
 <td align="right">-0.04</td>
 <td align="right">0.10</td>
 <td align="right">0.23</td>
-<td align="right">0.47</td>
+<td align="right">0.49</td>
 <td align="right">102.65</td>
 <td align="left">▇▁▁▁▁</td>
 </tr>
@@ -613,12 +616,12 @@ skimr::skim(cat_df)</code></pre>
 <td align="left">SWOccurrence</td>
 <td align="right">0</td>
 <td align="right">1</td>
-<td align="right">35.94</td>
-<td align="right">22.82</td>
+<td align="right">35.86</td>
+<td align="right">22.89</td>
 <td align="right">0.00</td>
-<td align="right">17.02</td>
-<td align="right">31.23</td>
-<td align="right">52.18</td>
+<td align="right">16.97</td>
+<td align="right">31.00</td>
+<td align="right">52.00</td>
 <td align="right">97.94</td>
 <td align="left">▇▇▅▃▂</td>
 </tr>
@@ -626,11 +629,11 @@ skimr::skim(cat_df)</code></pre>
 <td align="left">NDVI</td>
 <td align="right">0</td>
 <td align="right">1</td>
-<td align="right">0.59</td>
+<td align="right">0.60</td>
 <td align="right">0.11</td>
-<td align="right">0.06</td>
-<td align="right">0.54</td>
-<td align="right">0.61</td>
+<td align="right">0.08</td>
+<td align="right">0.55</td>
+<td align="right">0.62</td>
 <td align="right">0.67</td>
 <td align="right">0.85</td>
 <td align="left">▁▁▂▇▂</td>
@@ -640,10 +643,10 @@ skimr::skim(cat_df)</code></pre>
 <td align="right">0</td>
 <td align="right">1</td>
 <td align="right">0.38</td>
-<td align="right">0.09</td>
-<td align="right">0.03</td>
+<td align="right">0.08</td>
+<td align="right">0.04</td>
 <td align="right">0.34</td>
-<td align="right">0.39</td>
+<td align="right">0.40</td>
 <td align="right">0.44</td>
 <td align="right">0.56</td>
 <td align="left">▁▁▃▇▃</td>
@@ -652,12 +655,12 @@ skimr::skim(cat_df)</code></pre>
 <td align="left">pland_forest</td>
 <td align="right">0</td>
 <td align="right">1</td>
-<td align="right">14.78</td>
-<td align="right">27.56</td>
+<td align="right">15.36</td>
+<td align="right">27.93</td>
 <td align="right">0.00</td>
 <td align="right">0.00</td>
 <td align="right">0.00</td>
-<td align="right">18.26</td>
+<td align="right">19.79</td>
 <td align="right">99.82</td>
 <td align="left">▇▁▁▁▁</td>
 </tr>
@@ -665,12 +668,12 @@ skimr::skim(cat_df)</code></pre>
 <td align="left">te_forest</td>
 <td align="right">0</td>
 <td align="right">1</td>
-<td align="right">2632928.95</td>
-<td align="right">7459420.43</td>
+<td align="right">2735870.23</td>
+<td align="right">7585312.86</td>
 <td align="right">0.00</td>
 <td align="right">0.00</td>
 <td align="right">0.00</td>
-<td align="right">1538167.50</td>
+<td align="right">1856550.00</td>
 <td align="right">125918460.00</td>
 <td align="left">▇▁▁▁▁</td>
 </tr>
@@ -678,12 +681,12 @@ skimr::skim(cat_df)</code></pre>
 <td align="left">enn_mn_forest</td>
 <td align="right">0</td>
 <td align="right">1</td>
-<td align="right">28.55</td>
-<td align="right">99.09</td>
+<td align="right">29.67</td>
+<td align="right">100.84</td>
 <td align="right">0.00</td>
 <td align="right">0.00</td>
 <td align="right">0.00</td>
-<td align="right">58.41</td>
+<td align="right">60.06</td>
 <td align="right">5730.72</td>
 <td align="left">▇▁▁▁▁</td>
 </tr>
@@ -700,6 +703,20 @@ split &lt;- initial_split(cat_df)
 
 data_train &lt;- training(split)
 data_test &lt;- testing(split)
+
+
+data_train &lt;-subset(data_train, data_train$Population &lt; 4000000)
+data_train &lt;-subset(data_train, data_train$Precip &lt; 6000)
+data_train &lt;-subset(data_train, data_train$LST_Day &lt; 37)
+data_train &lt;-subset(data_train, data_train$LST_Day &gt; 17)
+data_train &lt;-subset(data_train, data_train$AvgRad &lt; 50)
+data_train &lt;-subset(data_train, data_train$NDVI &gt; 0.2)
+data_train &lt;-subset(data_train, data_train$EVI &gt; 0.1)
+data_train &lt;-subset(data_train, data_train$pland_forest &gt; 0)
+data_train &lt;-subset(data_train, data_train$te_forest &gt; 0)
+data_train &lt;-subset(data_train, data_train$enn_mn_forest &gt; 0)
+data_train &lt;-subset(data_train, data_train$enn_mn_forest &lt; 3000)
+
 
 # use a 5-fold cross-validation
 folds &lt;- rsample::vfold_cv(data_train, v = 5)</code></pre>
@@ -749,11 +766,7 @@ log_reg_res &lt;-
     metrics = metric,
     control = ctrl_res
   )</code></pre>
-<pre><code>## ! Fold1: preprocessor 1/1, model 1/1: glm.fit: fitted probabilities numerically 0 or 1 occurred</code></pre>
-<pre><code>## ! Fold2: preprocessor 1/1, model 1/1: glm.fit: fitted probabilities numerically 0 or 1 occurred</code></pre>
-<pre><code>## ! Fold3: preprocessor 1/1, model 1/1: glm.fit: fitted probabilities numerically 0 or 1 occurred</code></pre>
 <pre><code>## ! Fold4: preprocessor 1/1, model 1/1: glm.fit: fitted probabilities numerically 0 or 1 occurred</code></pre>
-<pre><code>## ! Fold5: preprocessor 1/1, model 1/1: glm.fit: fitted probabilities numerically 0 or 1 occurred</code></pre>
 <p>Setting up Support Vector Machine base model:</p>
 <pre class="r"><code># define svm model using parsnip
 svm_spec &lt;-
@@ -858,20 +871,20 @@ data_st</code></pre>
 ## #   rf_res: 5 model configurations
 ## # Outcome: Cutaneous.Leishmaniasis (factor)</code></pre>
 <pre class="r"><code>as_tibble(data_st)</code></pre>
-<pre><code>## # A tibble: 10,225 × 31
+<pre><code>## # A tibble: 3,141 × 31
 ##    Cutaneous.L…¹ .pred…² .pred…³ .pred…⁴ .pred…⁵ .pred…⁶ .pred…⁷ .pred…⁸ .pred…⁹
 ##    &lt;fct&gt;           &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;
-##  1 high            0.294   0.249   0.311  0.233   0.282    0.706 0.751     0.689
-##  2 high            0.284   0.161   0.311  0.188   0.169    0.716 0.839     0.689
-##  3 high            0.285   0.212   0.310  0.187   0.229    0.715 0.788     0.690
-##  4 high            0.298   0.278   0.311  0.244   0.282    0.702 0.722     0.689
-##  5 high            0.285   0.127   0.307  0.117   0.170    0.715 0.873     0.693
-##  6 high            0.273   0.106   0.309  0.117   0.0737   0.727 0.894     0.691
-##  7 low             0.328   0.720   0.311  0.761   0.781    0.672 0.280     0.689
-##  8 low             0.415   0.999   0.311  0.999   0.999    0.585 0.00125   0.689
-##  9 high            0.283   0.139   0.310  0.0898  0.161    0.717 0.861     0.690
-## 10 high            0.294   0.222   0.309  0.207   0.229    0.706 0.778     0.691
-## # … with 10,215 more rows, 22 more variables: .pred_high_svm_res_1_2 &lt;dbl&gt;,
+##  1 high            0.138  0.0445   0.138  0.0995  0.0618   0.862   0.956   0.862
+##  2 high            0.141  0.133    0.141  0.120   0.102    0.859   0.867   0.859
+##  3 high            0.134  0.0719   0.135  0.0856  0.0657   0.866   0.928   0.865
+##  4 high            0.142  0.156    0.141  0.125   0.149    0.858   0.844   0.859
+##  5 high            0.130  0.112    0.130  0.118   0.132    0.870   0.888   0.870
+##  6 high            0.135  0.130    0.135  0.115   0.106    0.865   0.870   0.865
+##  7 high            0.144  0.111    0.144  0.120   0.0918   0.856   0.889   0.856
+##  8 high            0.138  0.222    0.138  0.145   0.182    0.862   0.778   0.862
+##  9 high            0.130  0.106    0.130  0.118   0.139    0.870   0.894   0.870
+## 10 high            0.145  0.108    0.144  0.118   0.138    0.855   0.892   0.856
+## # … with 3,131 more rows, 22 more variables: .pred_high_svm_res_1_2 &lt;dbl&gt;,
 ## #   .pred_high_svm_res_1_5 &lt;dbl&gt;, .pred_low_xgb_res_1_1 &lt;dbl&gt;,
 ## #   .pred_low_xgb_res_1_2 &lt;dbl&gt;, .pred_low_xgb_res_1_3 &lt;dbl&gt;,
 ## #   .pred_low_xgb_res_1_4 &lt;dbl&gt;, .pred_low_xgb_res_1_5 &lt;dbl&gt;,
@@ -894,41 +907,39 @@ and Preparing Confusion Matrix</p>
   bind_cols(predict(model_st, .))
 
 # confusion matrix for stacks
-caret::confusionMatrix(data_test$Cutaneous.Leishmaniasis, 
-                       data_test$.pred_class,
-                       positive = &#39;high&#39;)</code></pre>
+caret::confusionMatrix(data_test$Cutaneous.Leishmaniasis,data_test$.pred_class, positive = &#39;high&#39;)</code></pre>
 <pre><code>## Confusion Matrix and Statistics
 ## 
 ##           Reference
 ## Prediction  low high
-##       low   646  381
-##       high  114 2268
+##       low   424  577
+##       high   84 2196
 ##                                           
-##                Accuracy : 0.8548          
-##                  95% CI : (0.8425, 0.8665)
-##     No Information Rate : 0.7771          
-##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
+##                Accuracy : 0.7985          
+##                  95% CI : (0.7844, 0.8121)
+##     No Information Rate : 0.8452          
+##     P-Value [Acc &gt; NIR] : 1               
 ##                                           
-##                   Kappa : 0.6276          
+##                   Kappa : 0.4487          
 ##                                           
-##  Mcnemar&#39;s Test P-Value : &lt; 2.2e-16       
+##  Mcnemar&#39;s Test P-Value : &lt;2e-16          
 ##                                           
-##             Sensitivity : 0.8562          
-##             Specificity : 0.8500          
-##          Pos Pred Value : 0.9521          
-##          Neg Pred Value : 0.6290          
-##              Prevalence : 0.7771          
-##          Detection Rate : 0.6653          
-##    Detection Prevalence : 0.6987          
-##       Balanced Accuracy : 0.8531          
+##             Sensitivity : 0.7919          
+##             Specificity : 0.8346          
+##          Pos Pred Value : 0.9632          
+##          Neg Pred Value : 0.4236          
+##              Prevalence : 0.8452          
+##          Detection Rate : 0.6693          
+##    Detection Prevalence : 0.6949          
+##       Balanced Accuracy : 0.8133          
 ##                                           
 ##        &#39;Positive&#39; Class : high            
 ## </code></pre>
 <p>Plot of positive predictive and negative predictive values for
 Cutaneous Leishmaniasis at 30th percentile threshold split.</p>
 <pre class="r"><code>plot(data_test$Cutaneous.Leishmaniasis, data_test$.pred_class)</code></pre>
-<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABUAAAAPACAMAAADDuCPrAAAA2FBMVEUAAAAAADoAAGYAOjoAOmYAOpAAZrY6AAA6OgA6Ojo6OmY6ZmY6ZpA6ZrY6kJA6kLY6kNtNTU1mAABmOgBmOjpmOmZmZjpmZmZmZpBmkJBmkLZmkNtmtttmtv+QOgCQZjqQZmaQkGaQkLaQtraQttuQtv+Q29uQ2/+2ZgC2Zjq2kDq2kGa2kJC2tpC2tra2ttu225C227a229u22/+2///bkDrbkGbbtmbbtpDbtrbb25Db27bb29vb2//b/7bb///m5ub/tmb/25D/27b/29v//7b//9v///9d+a1VAAAACXBIWXMAAB2HAAAdhwGP5fFlAAAgAElEQVR4nO3dbX/TWJrgYZkGDDSzw0JtuydTQE3DDqnOYnah0sAmtUwScL7/N1rrtkNkJ6n2feKSSvJ1veg4Jk7S+fn8Sw9HR9U5AEWqrn8BgL4SUIBCAgpQSEABCgkoQCEBBSgkoACFBBSgkIACFBJQgEICClBIQAEKCShAIQEFKCSgAIUEFKCQgAIUElCAQgIKUEhAAQoJKEAhAQUoJKAAhQQUoJCAAhQSUIBCAgpQSEABCgkoQCEBBSgkoACFBBSgkIACFBJQgEICClBIQAEKCShAIQEFKCSgAIUEFKCQgAIUElCAQgIKUEhAAQoJKEAhAQUoJKAAhQQUoJCAAhQSUIBCAgpQSEABCgkoQCEBBSgkoACFBBSgkIACFBJQgEICClBIQAEKCShAIQEFKCSgAIUEFKCQgAIUElCAQgIKUEhAAQoJKEAhAQUoJKAAhQQUoJCAAhQSUIBCAgpQSEABCgkoQCEBBSgkoACFBBSgkIACFBJQgEICClBIQAEKCShAIQEFKCSgAIUEFKCQgAIUElCAQgIKUEhAAQoJKEAhAQUoJKAAhQQUoJCAAhQSUIBCAgpQSEABCgkoQCEBBSgkoACFBBSgkIACFBJQgEICClBIQAEKCShAIQEFKCSgAIUEFKCQgAIUElCAQgIKUEhAAQoJKEAhAQUoJKAAhQQUoJCAAhQSUIBCAgpQSEABCgkoQCEBBSgkoACFBBSgkIACFBJQgEICClBIQAEKCShAIQEFKCSgAIUEFOC3zI4/T6fTd8dfrv6TgALc6Ohldenx+7V/FVCAG5w9q1bdfbPy7wIKcL2TcR3Nh5OFB/Uno+fNLxBQgGt9ezoP5uvGE5/mQb3zS+MJAQW41uFaLhdJfdL4XEABrjN7UVXP1547qap7jbPxAgpwnfnm5toG6JXnBBTgOgIKUGi+Cz96s/acXXiATeyv1vJ8cVj0fuNzAQW41ul4XtAPjSfO5v1c2SgVUIDrHcbU+cmrae3tYiZ9cxaTgALc5ON47VLO0Y8r/y6gADeZHTQTOtpbW5FJQAF+w+xoejCZTPam76+uZyegAIUEFKCQgAIUElCAQgIK7Izqqtw36NW18Nf8v6WAPy3cJNekfgX0v7i9GwLa9a8FbcvW8hoCunMEFMIWAnr+9fjX5ji6/Tf8HVVd/8EHQUAhbCOga+No299wq6qu/+CDIKAQBJQ8AYUgoOQJKAQBJU9AIQgoeQIKQUDJE1AIAkqegEIQUPIEFEIyoN+eXnvtpyuRdouAQhBQ8gQUQnYX/uyZgCKgENLHQGcv1m5jfGUcJb9hu6qu/+CDIKAQ8ieR6oI+/61EZb9hq6qu/+CDIKAQCs7Cry1fd2Ucpb9hm6qu/+CDIKAQSqYxnfzmTryADp+AQigJ6Hwn/jc2QQV0+AQUQtFE+tPJ5H/enKiCb9iequs/+CAIKARXIpEnoBAElDwBhSCg5AkoBAElT0AhCCh5AgpBQMkTUAgCSp6AQhBQ8m4IKOyerSdq299wq6qu2zMIAgpLW0/Utr/hVlVdt2cQbgjof4cdI6DkCSgEASVPQCEIKHkCCkFAyRNQCAJKnoBCEFDyBBSCgJInoBAElDwBhSCg5AkoBAElT0AhCCh5AgpBQMkTUAgCSp6AQhBQ8gQUgoCSJ6AQBJQ8AYUgoOQJKAQBJU9AIQgoeQIKQUDJE1AIAkqegEIQUPIEFIKAkiegEASUPAGFIKDkCSgEASVPQCEIKHkCCkFAyRNQCAJKnoBCEFDyBBSCgJInoBAElDwBhSCg5AkoBAElT0AhCCh5AgpBQMkTUAgCSp6AQhBQ8gQUgoCSJ6AQBJQ8AYUgoOQJKAQBJU9AIQgoeQIKQUDJE1AIAkqegEIQUPIEFIKAkiegEASUPAGFIKDkCSgEASVPQCEIKHkCCkFAyRNQCAJKnoBCEFDyBBSCgJInoBAElDwBhSCg5AkoBAElT0AhCCh5AgpBQMkTUAgCSp6AQhBQ8gQUgoCSJ6AQBJQ8AYUgoOQJKAQBJU9AIQgoeQIKQUDJE1AIAkqegEIQUPIEFMLtAjo7evfrlXF0m2/4u6u6bs8gCCiEkoB+nk4/1B/PnlVzo39fG0cFWWtP1XV7BkFAIeQD+nFcZ/Pel/OTeLB43BxHxXFrQ9V1ewZBQCGkA3q4rOb9b0/nW5+TyYP68co4Kq9bC6qu2zMIAgohG9DT+Wbn3Vdv5zvvf6mqJ/UzdVGfN8dRed1aUHXdnkEQUAjZgO4v9thnLy43PPdXN0EFdPgEFEIyoHU4Y3PzZL7//mbx3HyjtHkUVECHT0AhJAP67Wl155eVBysPYxyVtq0VVdftGQQBhSCg5AkohPwu/GLPfb7fbhd+ZwkohIKTSPeXHxcn4eM0vJNIu0VAIWQDejIP578cH/9cVQ8vt0VNY9oxAgohPZF+/+Lyo/87D+fj6fTl+qVIAjp8AgohHdDZz9HP+dbnxTVJK6eQBHQXCCiEgsVEjn56+Giv3ub8x+Ji+Mcrl8IL6A4QUAi3Ws5u9vmnyav19ewEdPgEFIIFlckTUAgCSp6AQhBQ8gQUgoCSJ6AQquvkmuRa+J0joBAElDwBhbCFXXgB3TkCCmEbx0C/Hjfnggro8AkoBCeRyBNQCAJKnoBCEFDyBBRCYUBnx5+n0+m74y9X/0lAh09AIZQE9OhlY8rT4/fr46ika62pum7PIAgohHxAz56tzRq9+2Z1HJWVrSVV1+0ZBAGFkA7oSSwC+nCy8CAWV27e0UNAd4CAQii47KgavW488Wm8tiS9gA6fgELIBvRw/Q4ekdQnzXGUjlqbqq7bMwgCCiF/X/iVW3DWTir3hd8xAgohGdC1696ve05Ah09AIQgoeQIKIb8LP3qz9pxd+J0joBCyJ5H2V2t5vjgser85jtJRa1PVdXsGQUAhZAN6Op4X9EPjibN5P1c2SgV0+AQUQnoi/WFMnZ+8mtbeLmbSN2cxCegOEFAI+Us5P47XLuUc/bg6jkrb1oqq6/YMgoBCKFhMZHbQTOhob21FJgEdPgGFULac3exoejCZTPam76+uZyegwyegECyoTJ6AQhBQ8gQUgoCSJ6AQBJQ8AYUgoOQJKAQBJU9AIQgoeQIKQUDJE1AIAkqegEIQUPIEFIKAkiegEASUPAGFIKDkCSgEASVPQCEIKHkCCkFAyRNQCAJKnoBCEFDyBBSCgJInoBAElDwBhSCg5AkoBAElT0AhCCh5AgqhdwH99sPe1XvRb67quj2DIKAQ+hfQp1U1+rcPpS+vum7PIAgohF4GdG70+H3Ry6uu2zMIAgqhdwE9Pz/7j3E0tHr0Ov/iquv2DIKAQuhhQOdmb39YNPTu35IHRKuu2zMIAgqhnwGtHb1cbIje+yXzqqrr9gyCgELob0Dnzl7OA3pHQFsnoBD6G9Cv/2uxGy+g7RNQCP0M6EU867PxuTNJVdftGQQBhdC/gK7EMz2nvuq6PYMgoBB6F9CLeaB/zsezVnXdnkEQUAi9DOjo8a+lL6+6bs8gCCiEXga0cPe9VnXdnkEQUAi9C+j5+dnBs8Ux0D/9NX85Z9V1ewZBQCH0MKC1o/94sIzov+UiWnXdnkEQUAg9DWhtGVHzQNsnoBB6HNDz89nBWEC7IKAQ+hvQz8tr4QW0fQIKoZ8BPbs4BDpKHgIV0K0QUAj9C+js+5VI6bXszgV0OwQUQu8CupwHWiWvgb9Qdd2eQRBQCL0MqHsidUxAIfQvoP+jYMf9UtV1ewZBQCH0LqC3VHXdnkEQUAg9DejX6dy7giVFqq7bMwgCCqGXAf344GJF0B+zL626bs8gCCiEPgb05+rSv7grZwcEFEIPA3oYq9lNp2/jUqT7uRdXXbdnEAQUQv8Cejr+vt05m2+Ljt6kXl113Z5BEFAI/QvofnOrcz+7CVp13Z5BEFAIvQvo7EVzo3O+OXovdRS06ro9gyCgEHoX0G9Pm+svrX62garr9gyCgEIQUPIEFELvAmoX/g9AQCH0LqBOIv0BCCiE/gX0pKqqiwuQPs4fP0+9uuq6PYMgoBD6F9B6q7O6++r4+PjtMxPpuyGgEHoY0NmLxqWcuSOgArodAgqhhwGNC5CWi4lkL4UX0K0QUAh9DOjc558mk8lf3+VfWHXdnkEQUAg9DWixquv2DIKAQhBQ8gQUgoCSJ6AQehTQixsar3EpZ/sEFIKAkiegEPoU0B8eXueRgLZOQCH0KKBbUXXdnkEQUAgCSp6AQhBQ8gQUgoCSJ6AQBJQ8AYUgoOQJKAQBJU9AIQgoeQIKQUDJE1AIAkqegEK4VUC/fp6+v7IkvIAOn4BCKAjo0Q+xfsfsYByLedx9vTaOisLWlqrr9gyCgEJIB3T2crEAUuPWbqs3JhLQ4RNQCNmARjfnAY2Po8lkMl6/tbCADp+AQsgG9GTey3/9svj4pH5i9vd5SN80x1Fx3NpQdd2eQRBQCNmA7i+7uX+53bm/ugkqoMMnoBCSAf32dLG5efGxdjqu7jWOggro8AkohHxA4xT8xcfztcfnAroLBBRCYUBnLwR0hwkohGRA65Pvz+sH+5e78CeVXfgdI6AQsieRDpe3wTwdX5w5qpv6pDmOCtPWjqrr9gyCgELIBrS+t/DdD+dR0sU0pp9NY9o5AgohfSXSST1z/tGr4+O/z0u69/bluFrdABXQHSCgEPLXwp+OqzUr/RTQHSCgEAoWE7lYRWTJYiK7R0AhlC1n9/Xt5IeHc4/++spydjtIQCFYUJk8AYUgoOQJKAQBJU9AIQgoeQIKYX1KUsg1ybXwO0dAIQgoeQIKYQu78AK6cwQUwjaOgX49/rU5jm7/DX9HVdftGQQBheAkEnkCCkFAyRNQCAJKnoBCKAzo7PjzdDp9d3zlSngB3QUCCqEkoEcvG1OeHr9fH0clXWtN1XV7BkFAIeQDevZsbdbo3Ter46isbC2pum7PIAgohLIV6auHk4UH9Sej5yvjqLxuLai6bs8gCCiEknsijZpLKH8aVyvz6AV0BwgohNK7cl6qk+qunLtFQCGU3he+wX3hd46AQkgGdO269+ueE9DhE1AIAkqegELI78KP3qw9Zxd+5wgohOxJpP3VWp4vDoveb46jdNTaVHXdnkEQUAjZgJ6O5wX90HjibN7PlY1SAR0+AYWQnkh/GFPnJ6+mtbeLmfTNWUwCugMEFEL+Us6P47VLOUc/ro6j0ra1ouq6PYMgoBAKFhOZHTQTOtpbW5FJQIdPQCGULWc3O5oeTCaTven7q+vZCejwCSgECyqTJ6AQBJQ8AYUgoOQJKAQBJU9AIQgoeQIKQUDJE1AIAkqegEIQUPIEFIKAkiegEASUPAGFIKDkCSgEASVPQCEIKHkCCkFAyRNQCAJKnoBCEFDyBBSCgJInoBAElDwBhSCg5AkoBAElT0AhCCh5AgpBQMkTUAgCSp6AQhBQ8gQUgoCSJ6AQBJQ8AYUgoOQJKAQBJU9AIQgoeQIKoY2Azt5t+2eUq7puzyAIKIQ2AvrtafXo/bZ/TKGq6/YMgoBCaCmgc4//EA2tum7PIAgohFaOgX56Vhe0Gj3+sO0fllZ13Z5BEFAILZ1Emh08WDR079dt/7ycquv2DIKAQmjvLPxFQ/+092XbPzKh6ro9gyCgEFqdxvT1YBwNvfu6s4ZWXbdnEAQUQtvzQJcNHXW1GVp13Z5BEFAILQf008tqafRm2z94I1XX7RkEAYXQZkA//bDcgT962VlBq67bMwgCCqG1gC63PZf77rMXVXV/2z95E1XX7RkEAYXQTkCPlnvulxNBT8fVnV+2/aM3UHXdnkEQUAjtXYk033VffU5Ae0tAIbQV0PXT7vPn7nVxIr7quj2DIKAQ2gnoNddwHm/7526m6ro9gyCgEKwHSp6AQhBQ8gQUgoCSJ6AQBJQ8AYUgoOQJKAQBJU9AIQgoeQIKQUDJE1AIAkqegEIQUPIEFIKAkiegEASUPAGFIKDkCSgEASVPQCEIKHkCCkFAyRNQCAJKnoBCEFDyBBSCgJInoBAElDwBhSCg5AkoBAElT0AhCCh5AgpBQMkTUAgCSp6AQhBQ8gQUgoCSJ6AQBJQ8AYUgoOQJKAQBJU9AIQgoeQIKQUDJE1AIAkqegEIQUPIEFMLtAjr7PH33ZX0c3eYb/u6qrtszCAIK4XYB/fa0uvPL+ji6zTf83VVdt2cQBBSCgJInoBCyAf163HQ0D+j7+cdfm+PoNn373VVdt2cQBBRCMqDzTc7rNDdDBXT4BBSCgJInoBCyu/Afx1U1mlz4y7ga/Xn+8a+NU/ECOnwCCiF9EunsRVXd/bD8xEmk3SSgEArOwv9jvtn574uHArqbBBRCyTSms2dVdS82QgV0NwkohKJ5oLO/V9Xox3MB3VUCCqFwIv3pfCP08RcB3VECCqH0SqTZz/ON0NcCupsEFEL5pZz1hKY/jwV0FwkohFtcC19PaKoEdBcJKIRbLSbyj7GA7iQBhXC71ZjOflq5CGkxjm7zDX93VdftGQQBhWBFevIEFIKAkiegEASUPAGFcO3qdLkmrU0GFdDhE1AIAkqegELYwi68gO4cAYWwjWOgX90TaccIKAQnkcgTUAgCSp6AQhBQ8gQUQmFAZ8efp9Ppu+P16zjPBXQXCCiEkoAevWxMeXr8fn0clXStNVXX7RkEAYWQD2h9R6QVd9+sjqOysrWk6ro9gyCgENIBPRnX0Xy4vDH8g/qT0fOVcVRetxZUXbdnEAQUQsFlR9XodeOJT+trggro8AkohGxAD68soVwn9UlzHKWj1qaq6/YMgoBCSAZ09qKqnq89d1JV9xpn4wV0+AQUQjKg192G07XwO0dAIQgoeQIKIb8LP3qz9pxd+J0joBCyJ5H2V2t5vjgser85jtJRa9O165+Sdu2ftus3M7QtG9DT8bygHxpP1HeHX9koFdBdcO2ftus3M7QtPZH+sB4+o8mrae3tYiZ9cxbTHz2gXf/BB0FAIeQv5fw4XtsYGf24Oo5K29YKg3wbBBRCwWIis4NmQkd7aysyCejwCSiEsuXsZkfTg8lksjd9f3U9OwEdPgGFsHMLKnf9Bx8EAYUgoOQJKAQBJU9AIQgoeQIKQUDJE1AIAkqegEIQUPIEFIKAkiegEASUPAGFIKDkCSgEASVPQCEIKHkCCkFAyRNQCAJKnoBCEFDyBBSCgJInoBAElDwBhSCg5AkoBAElT0AhCCh5AgpBQMkTUAgCSp6AQhBQ8gQUgoCSJ6AQBJQ8AYUgoOQJKAQBJU9AIQgoeQIKQUDJE1AIAkqegEIQUPIEFIKAkiegEASUPAGFIKDkCSgEASVPQCEIKHkCCkFAyRNQCAJKnoBCEFDyBBSCgJInoBAElDwBhSCg5AkoBAElT0AhCCh5AgpBQMkTUAgCSp6AQhBQ8gQUgoCSJ6AQBJQ8AYUgoOQJKAQBJU9AIQgoeQIKQUDJE1AIAkqegEIQUPIEFIKAkiegEASUPAGFIKDkCSgEASVPQCEIKHkCCkFAyRNQCAJKnoBCEFDyBBSCgJInoBAElDwBhSCg5AkoBAElT0AhCCh5AgpBQMkTUAgCSp6AQhBQ8gQUgoCSJ6AQBJQ8AYUgoOQJKAQBJU9AIQgoeQIKQUDJE1AIAkqegEIQUPIEFEJBQGcHPzz889++fP/829Pqzi+NcVSQtaSjg8mlv3755y+4ZJBvg4BCyAf0H+OqNtq7CFfbAT19VjU1f/Y/Z5Bvg4BCSAf08Hu57i0L2nJA5z9OQDsmoBCyAT2db3/efX18/HP98ZeLorUZ0Lrgj14df/dr6tUG+TYIKIRsQA8vtjzPnl0UtN2Azl5U1f3ylxvk2yCgEJIBrfP1/PJhtLTdgM5/2uhN+csN8m0QUAjJgDZjebEt2HpAc0c9Vxnk2yCgEG4R0Did86SDXXgB7ZqAQrhNQOszSvPd6fZPIj0vf7VBvg0CCqH8GGjtpKrufGg5oLfbBDXIt0FAIRSchb+/+umd/9PyRPrZy2q0d1z4YoN8GwQUQsk80MeNqZf7Vyaz/24BXZ9BbyJ9ZwQUQtGVSM1m/Sygu0dAIeSvhf84Xm3W/POWAvrDw+s8EtDWCSiEktWYPq0ugDT7edzyaky3YJBvg4BCsB4oeQIKQUDJE1AIAkqegELoXUBnn6drUlNCDfJtEFAI184MyiWt9cVErnj8YeOXG+TbIKAQBhHQxAJ3Bvk2CCiELezCt7wa0+e/18V8/Go6/Wlc35rp7cvx5e1F/imDfBsEFMI2joF+XbmtRhv3RPrXZS8PYw5//cymCzQZ5NsgoBB6dxJpdTmT/ViR9GTzu3wY5NsgoBB6F9DZi+YRz9Nxvfe++N+NGOTbIKAQehfQ1SOui88St/kwyLdBQCEUBnR2XE/HfHd8zXafgA6fgEIoCejRy+YczPfr4yj/DTNW18Q/qZa78ALaJgGFkA9ofUP4FXffrI6j7DdMOmysnre8rd2hk0jtElAI6YCejOtoPpwsPIhp7CtziNqYxjT6MR4ulyKtPzzZ8NUG+TYIKISCy46q0evGE5/W1lP+/RcTWSS8elgt413/ShsvS2+Qb4OAQii4qdxarJa70ZfjKPcNC5xeHkS4+yF+AZdytktAIdzutsbhZPVKyjaWszt6WR87+NPiBNbsp79teiGngG6HgEJIBvS6CUMt3xf+dgzybRBQCAJKnoBCyO/CXzne2MEufDmDfBsEFEL2JNL+laXj6sOizVmYv+d94ZdLL7kvfMcEFEI2oKf14pvNBeDPXqytZyygwyegENIT6Q9j9uXkVdyO6O1iJv3KLPbfL6A/PHz0S/2/qx4JaOsEFEL+Us6P4/X7afy4Oo6y37BVBvk2CCiEgsVEZgfNhI721iZhCujwCSiEsuXsZkfTg8lksjd9f3UKu4AOn4BC6N2CyrdkkG+DgELoZUCPDiaX/rr5dZznArodAgqhhwE9XV2Q1DSm9gkohP4FdH0iqIC2T0Ah9C+g9UTUR6+Ov/v1n7+kwSDfBgGF0LuArl85mmSQb4OAQuhdQFPLJ19lkG+DgELoY0BzRz1XGeTbIKAQehfQ+S68gHZNQCH0LqD1SaT1m4okGOTbIKAQ+hfQ222CGuTbIKAQ+hfQ89nLarR3XPhig3wbBBRCjwJ6ZSllE+m7IqAQBJQ8AYXQp4Cur0VvRfquCCiEHgV0KwzybRBQCAJKnoBCEFDyBBSCgJInoBAElDwBhSCg5AkoBAElT0AhCCh5AgpBQMkTUAgCSp6AQhBQ8gQUgoCSJ6AQBJQ8AYUgoOQJKAQBJU9AIQgoeQIKQUDJE1AIAkqegEIQUPIEFIKAkiegEASUPAGFIKDkCSgEASVPQCEIKHkCCkFAyRNQCAJKnoBCEFDyBBSCgJInoBAElDwBhSCg5AkoBAElT0AhCCh5AgpBQMkTUAgCSp6AQhBQ8gQUgoCSJ6AQBJQ8AYUgoOQJKAQBJU9AIQgoeQIKQUDJE1AIAkqegEIQUPIEFIKAkiegEASUPAGFIKDkCSgEASVPQCEIKHkCCkFAyRNQCAJKnoBCEFDyBBSCgJInoBAElDwBhSCg5AkoBAElT0AhCCh5AgpBQMkTUAgCSp6AQhBQ8gQUgoCSJ6AQBJQ8AYUgoOQJKAQBJU9AIQgoeQIKoTCgs+PP0+n03fGXa8ZR0Tdsi0G+DQIKoSSgRy+rS4/fr4+jkq61xiDfBgGFkA/o2bNq1d03q+OorGwtMci3QUAhpAN6Mq6j+XCy8KD+ZPR8ZRyV160FBvk2CCiEbEC/PZ0H83XjiU/zoN75pTmOCrLWHoN8GwQUQjagh2u5XCT1SXMcpaPWJoN8GwQUQjKgsxdV9XztuZOqutc4Gy+gwyegEJIBnW9urm2AXnlOQIdPQCEIKHkCCiG/Cz96s/acXfidI6AQsieR9ldreb44LHq/OY7SUWuTQb4NAgohG9DT8bygHxpPnM37ubJRKqDDJ6AQ0hPpD2Pq/OTVtPZ2MZO+OYtJQHeAgELIX8r5cbx2Kefox9VxVNq2Vhjk2yCgEAoWE5kdNBM62ltbkUlAh09AIZQtZzc7mh5MJpO96fur69kJ6PAJKAQLKpMnoBAElDwBhSCg5AkohJ0LKFvhTws3yTWpX9fCsxX+tHCTXJN6FVCAPxIBBSj19fjXxmcCClBIQAEKCShAIQEF+C2z48/T6fTd8dVL4QUU4GZHLxtTnh6/X/tXAQW4wdmztVmjd9+s/LuAAlzvJBYDfThZiAXpRyt3ihdQgGt9ezoP5uvGE5/mQV2507GAAlzrsFq/MXyd1OZNkQQU4Dr1PYyfrz3Xq/vCA3Rl7br3654TUIDrCChAofku/OjN2nN24QE2sb9ay/PFYdH7jc8FFOBap+N5QT80njib93Nlo1RAAa53GFPnJ6+mtbeLmfTNWUwCCnCTj+O1SzlHP678u4AC3GR20EzoaG9tRSYBBfgNs6PpwWQy2Zu+v7qenYACFBJQgEICClBIQAEKCShAIQEFKCSgAIUEFKCQgAIUElCAQgIKUEhAAQoJKEAhAQUoJKAAhQQUoJCAAhQSUIBCAgpQSEABCgkoQCEBBSgkoACFBBSgkIACFBLQTc1eVHd+6fqXoCfm75bRm/Vnrn3/XP1KekRANyWgbE5Ad4SAbkpA2ZyA7ggB3ZSAsrnNsyigvSagmxJQNiegO0JANyWgbE5Ad4SAbuoyoLNPP1RV9ej1l/qT/Yu3/7enjUf3O/kV+cNYZPHjg6oaPf5w8czy/XMWb58P87fJvS/XfSU9IqCb+j4Azp5VC3fr9/thVT2Jfz+pGo+ed/Zr8odQZ/E/9xfvk9Hz5TOL98/h8u3z3y4DuvqV9IiAbupiAMw3HC7Un5+Ol5ub9bhYPNq3r7/z6iw+aL5Pvr9/TqpLFwFd/Up6REA3dTEA5hsLo70v57ODcQTz4un5x8WAOF/umrHL4u0w+nH+Pvn7cs9k+Uap//tb7z+CfS0AAARSSURBVLp8HF8GdO0r6REB3dRyAMy3OJeHOpePDhefzwfGZPFo/rxhsOvqLN5ZHNI8XOyZLN8/h8v/zNZvk+8BXf1KekRAN3U5AC7e5PuxwbDs5Ul153+P49jnobOq1Flc/md0/gZZhrJ+/+x/P0B+eBnQ1a+kRwR0U1cGwPLw53KP/bC69/+eLvfpjYKd15ictBLQ+bvl4jjn5fNrX0mPCOimFgOgOWtv+X7fXz7/ZP5o/rk9eH4zoBeNXJnG1PxKekRAN/U9oN/PlC5HQMxamj9+vth5P7EHz40BbTRSQIdAQDd14xbofCA8qQ+Bxuh4vtgMZcfZAt0RArqpq8dAT76fXr33JbJZX4LkMiTOHQPdGQK6qZvOwsdp9/98EQ/nGf3oMiRuDmh9zv3KWXgB7S8B3dRN80Djwb99n8H0F1eTcHNAL+eB1jPqBbT3BHRT112JtHi7x7Uk8W/15Gh78PxGQC+uRPrUuBJJQPtLQDd1w7Xwtf3GVZz24Dn/jYBeey386lfSIwK6qRtWY6pdLsS0bz0IajcH9LrVmFa/kh4R0E1dXQ/0+z/VG56L7U5XMxN+I6AX64Eu1/ES0F4TUOjE94UQ6TEBhRZdziPet3jdAAgotKiexFEf/Pn6s8PlQyCg0KKY6bZkA7T/BBTa9HGsnwMioNCqrwf1LZD+tPdr178IWyCgAIUEFKCQgAIUElCAQgIKUEhAAQoJKEAhAQUoJKAAhQQUoJCAAhQSUIBCAgpQSEABCgkoQCEBBSgkoACFBBSgkIACFBJQgEICClBIQAEKCShAIQEFKCSgAIUEFKCQgAIUElCAQgIKUEhAAQoJKEAhAQUoJKAAhQQUoJCAAhQSUIBCAgpQSEABCgkoQCEBBSgkoACFBBSgkIACFBJQgEICClBIQAEKCShAIQEFKCSgAIUEFKCQgAIUElCAQgIKUEhAAQoJKH12UlV3fqkfzF5U1f2ufxt2joDSZ9+7+b2k0CIBpddOx9Xozfn5t6dV9bzr34XdI6D0235V3fuy/F9omYDSb7HtOd+Br7dDoWUCSs/N4/mncVU96fr3YBcJKD1Xn0eyA083BJS+Ox3bgacjAkrf1ZugpjDRCQGl7w7rXXiHQOmCgNJz355Wo7F9eDohoPTc/nzz89B1nHRCQOm3k/oMvAuR6IaA0mv1GaTnLoWnIwJKrx0upoDWHXUeidYJKH12enH6yMWcdEFA6bP972eP9p1Hon0CClBIQAEKCShAIQEFKCSgAIUEFKCQgAIUElCAQgIKUEhAAQoJKEAhAQUoJKAAhQQUoJCAAhQSUIBCAgpQSEABCgkoQCEBBSgkoACFBBSgkIACFBJQgEICClBIQAEKCShAIQEFKCSgAIUEFKCQgAIUElCAQgIKUEhAAQoJKEAhAQUoJKAAhQQUoJCAAhQSUIBCAgpQSEABCgkoQCEBBSgkoACFBBSgkIACFBJQgEICClDo/wNkFUqS6CNJSQAAAABJRU5ErkJggg==" width="672" /></p>
-<p>Looking at the Separate Accurracies of each base model in the stacked
+<p><img src="data:image/png;base64,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" width="672" />
+Looking at the Separate Accurracies of each base model in the stacked
 model.</p>
 <pre class="r"><code># confusion matrix for base models
 
@@ -955,9 +966,9 @@ colnames(member_preds) %&gt;%
 ##   .metric  .estimator .estimate member                 
 ##   &lt;chr&gt;    &lt;chr&gt;          &lt;dbl&gt; &lt;chr&gt;                  
 ## 1 accuracy binary         1     Cutaneous.Leishmaniasis
-## 2 accuracy binary         0.855 .pred_class            
-## 3 accuracy binary         0.857 .pred_class_xgb_res_1_2
-## 4 accuracy binary         0.857 .pred_class_rf_res_1_5</code></pre>
+## 2 accuracy binary         0.799 .pred_class            
+## 3 accuracy binary         0.824 .pred_class_xgb_res_1_5
+## 4 accuracy binary         0.826 .pred_class_rf_res_1_5</code></pre>
 
 
 
