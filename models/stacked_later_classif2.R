@@ -11,6 +11,7 @@ load("./data/imp")
 
 data <- data %>%
   filter(Year > 2013) %>%
+  filter(Year < 2019) %>%
   filter(!is.na(Cutaneous.Leishmaniasis)) %>%
   filter(Cutaneous.Leishmaniasis > 0) %>%
   dplyr::select(c("Population", "Cutaneous.Leishmaniasis", "LST_Day", "Precip", "AvgRad", "SWOccurrence", "NDVI", "EVI", "pland_forest", "te_forest", "enn_mn_forest"))
@@ -23,8 +24,8 @@ library(dplyr)
 summary(data$Cutaneous.Leishmaniasis)
 cat_df <- data
 cat_df$Cutaneous.Leishmaniasis <- cut(cat_df$Cutaneous.Leishmaniasis, 
-                                      breaks = c(0, 0.6806611, 10^3), 
-                                      labels = c("low", "high")) # median
+                                      breaks = c(0, 0.1170344 , 10^3), 
+                                      labels = c("low", "high")) # 30th percentile
 
 
 skimr::skim(cat_df)
@@ -86,97 +87,97 @@ log_reg_res <-
 
 
 # define svm model using parsnip
-# svm_spec <- 
-#   svm_rbf(
-#     cost = tune(),
-#     rbf_sigma = tune()
-#   ) %>% 
-#   set_engine('kernlab') %>% 
-#   set_mode('classification')
-#   
-# 
-# # add it to a workflow
-# svm_wflow <- 
-#   data_wflow %>% 
-#   add_model(svm_spec)
-# 
-# # tune cost and rbf_sigma and fit to the 10-fold cv
-# set.seed(123)
-# svm_res <-
-#   tune_grid(
-#     svm_wflow,
-#     resamples = folds,
-#     grid = 5,
-#     control = ctrl_grid
-#   )
-# 
-# save(svm_res, file = 'models/stacking/svm_res_later_classif_2')
-load(file = 'models/stacking/svm_res_later_classif_2')
+svm_spec <-
+  svm_rbf(
+    cost = tune(),
+    rbf_sigma = tune()
+  ) %>%
+  set_engine('kernlab') %>%
+  set_mode('classification')
+
+
+# add it to a workflow
+svm_wflow <-
+  data_wflow %>%
+  add_model(svm_spec)
+
+# tune cost and rbf_sigma and fit to the 10-fold cv
+set.seed(123)
+svm_res <-
+  tune_grid(
+    svm_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+save(svm_res, file = 'models/stacking/svm_res_later_classif_2')
+# load(file = 'models/stacking/svm_res_later_classif_2')
 
 
 
 # define xgboost model using parsnip
 
-# set.seed(123)
-# xgb_spec <- 
-#   boost_tree(
-#     mtry = tune(),
-#     trees = tune(),
-#     min_n = tune(),
-#     tree_depth = tune(),
-#     learn_rate = tune(),
-#     loss_reduction = tune()
-#   ) %>% 
-#   set_engine('xgboost') %>% 
-#   set_mode('classification')
-# 
-# # add it to a workflow
-# xgb_wflow <- 
-#   data_wflow %>%
-#   add_model(xgb_spec)
-# 
-# # tune mtry, trees, min_n, tree_depth, etc.
-# xgb_res <-
-#   tune_grid(
-#     xgb_wflow,
-#     resamples = folds,
-#     grid = 5,
-#     control = ctrl_grid
-#   )
-# 
-# save(xgb_res, file = 'models/stacking/xgb_res_later_classif_2')
+set.seed(123)
+xgb_spec <-
+  boost_tree(
+    mtry = tune(),
+    trees = tune(),
+    min_n = tune(),
+    tree_depth = tune(),
+    learn_rate = tune(),
+    loss_reduction = tune()
+  ) %>%
+  set_engine('xgboost') %>%
+  set_mode('classification')
 
-load(file = 'models/stacking/xgb_res_later_classif_2')
+# add it to a workflow
+xgb_wflow <-
+  data_wflow %>%
+  add_model(xgb_spec)
+
+# tune mtry, trees, min_n, tree_depth, etc.
+xgb_res <-
+  tune_grid(
+    xgb_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+save(xgb_res, file = 'models/stacking/xgb_res_later_classif_2')
+
+# load(file = 'models/stacking/xgb_res_later_classif_2')
 
 # define rf model using parsnip
 
-# set.seed(123)
-# rf_spec <- 
-#   rand_forest(
-#     mtry = tune(),
-#     trees = tune(),
-#     min_n = tune()
-#   ) %>% 
-#   set_engine('ranger') %>% 
-#   set_mode('classification')
-# 
-# # add it to a workflow
-# rf_wflow <- 
-#   data_wflow %>%
-#   add_model(rf_spec)
-# 
-# # tune mtry, trees, min_n
-# rf_res <-
-#   tune_grid(
-#     rf_wflow,
-#     resamples = folds,
-#     grid = 5,
-#     control = ctrl_grid
-#   )
-# 
-# save(rf_res, file = 'models/stacking/rf_res_later_classif_2')
+set.seed(123)
+rf_spec <-
+  rand_forest(
+    mtry = tune(),
+    trees = tune(),
+    min_n = tune()
+  ) %>%
+  set_engine('ranger') %>%
+  set_mode('classification')
 
-load(file = 'models/stacking/rf_res_later_classif_2')
+# add it to a workflow
+rf_wflow <-
+  data_wflow %>%
+  add_model(rf_spec)
+
+# tune mtry, trees, min_n
+rf_res <-
+  tune_grid(
+    rf_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+save(rf_res, file = 'models/stacking/rf_res_later_classif_2')
+
+# load(file = 'models/stacking/rf_res_later_classif_2')
 
 data_st <- 
   stacks() %>% 
@@ -218,7 +219,7 @@ model_st <-
   model_st %>% 
   fit_members()
 
-data_test70 <- 
+data_test <- 
   data_test %>% 
   bind_cols(predict(model_st, .))
 
@@ -227,11 +228,11 @@ data_test70 <-
 # ) %>% as.factor()
 
 # confusion matrix for stacks
-caret::confusionMatrix(data_test30$Cutaneous.Leishmaniasis, 
-                       data_test30$.pred_class,
+caret::confusionMatrix(data_test$Cutaneous.Leishmaniasis, 
+                       data_test$.pred_class,
                        positive = 'high')
 
-plot(data_test30$Cutaneous.Leishmaniasis, data_test30$.pred_class)
+plot(data_test$Cutaneous.Leishmaniasis, data_test$.pred_class)
 
 
 ## fit a logistic regression to the data...
@@ -339,14 +340,13 @@ member_preds <-
     predict(
       model_st,
       data_test,
-      members = TRUE,
-      type = 'prob'
+      members = TRUE
     )
   )
 
-member_preds$.pred_class = ifelse (
-  member_preds$.pred_low < 0.5, "high", "low"
-) %>% as.factor()
+# member_preds$.pred_class = ifelse (
+#   member_preds$.pred_low < 0.5, "high", "low"
+# ) %>% as.factor()
 
 colnames(member_preds) %>% 
   map_dfr(

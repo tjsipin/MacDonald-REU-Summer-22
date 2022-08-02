@@ -21,52 +21,47 @@ Loading the Annual Amazon Data Set and Tidying it by removing any NA values for 
 
 ```{r}
 getwd()
-aad <- read.csv("data/aad.csv")
-aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
-aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
-aad <-subset(aad, aad$Year < 2019)
+load("../data/imp")
+
+data <- data %>%
+  filter(Year > 2013) %>%
+  filter(Year < 2019) %>%
+  filter(!is.na(Cutaneous.Leishmaniasis)) %>%
+  filter(Cutaneous.Leishmaniasis > 0) %>%
+  dplyr::select(c("Population", "Cutaneous.Leishmaniasis", "LST_Day", "Precip", "AvgRad", "SWOccurrence", "NDVI", "EVI", "pland_forest", "te_forest", "enn_mn_forest"))
+
+data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
+data$te_forest <- ifelse(is.na(data$te_forest), 0, data$te_forest)
+data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
+
 ```
 
-Separating the data into two separate data sets, one for data before 2014 (early_data) and one for data after 2013 (later_data), and then tidying it while removing unnecessary columns. 
-```{r}
-library(dplyr)
-early_data <- aad %>%
-  filter(Year < 2014)
-later_data <- aad %>%
-  filter(Year > 2013)
-
-early_data <- early_data %>%
-  select(-c("AvgRad"))
-later_data <- later_data %>%
-  select(-c("StableLights"))
-```
 
 Reducing columns to desired Predicitive Variables: Population, LAST_Day, Precip, AvgRad, SWOccurrence, NDVI, EVI, pland_forest, te_forest, enn_mn_forest.
 ```{r}
-later_data_small <- later_data %>%
-  select(c("Population", "Cutaneous.Leishmaniasis", "LST_Day", "Precip", "AvgRad", "SWOccurrence", "NDVI", "EVI", "pland_forest", "te_forest", "enn_mn_forest"))
 later_data_small <- subset(later_data_small, !is.na(later_data_small$LST_Day))
 later_data_small <- subset(later_data_small, !is.na(later_data_small$SWOccurrence))
 ```
 
-Converting all NA values in pland_forest, te_forest, and enn_mn_forest to 0.
-```{r}
-later_data_small$pland_forest <- ifelse(is.na(later_data_small$pland_forest), 
-                                        0, later_data_small$pland_forest)
-later_data_small$te_forest <- ifelse(is.na(later_data_small$te_forest), 
-                                     0, later_data_small$te_forest)
-later_data_small$enn_mn_forest <- ifelse(is.na(later_data_small$enn_mn_forest), 
-                                         0, later_data_small$enn_mn_forest)
-```
 
 Creating new dataset cat_df where values of Cutaneous.Leishmaniasis are split at the 30th percentile threshold and categorized into low and high risk labels.
 ```{r}
 library(dplyr)
-summary(later_data_small$Cutaneous.Leishmaniasis)
-cat_df <- later_data_small
-cat_df$Cutaneous.Leishmaniasis <- cut(later_data_small$Cutaneous.Leishmaniasis, 
-                                      breaks = c(0, 0.11703435, 10^3), 
-                                      labels = c("low", "high")) # median
+cat_df <- data
+cat_df$Cutaneous.Leishmaniasis <- cut(data$Cutaneous.Leishmaniasis,breaks = c(0, 0.1852263, 10^3), 
+                                      labels = c("low", "high")) # 4s0th percentile
+
+# cat_df <-subset(cat_df, cat_df$Population < 4000000)
+# cat_df <-subset(cat_df, cat_df$Precip < 6000)
+# cat_df <-subset(cat_df, cat_df$LST_Day < 37)
+# cat_df <-subset(cat_df, cat_df$LST_Day > 17)
+# cat_df <-subset(cat_df, cat_df$AvgRad < 50)
+# cat_df <-subset(cat_df, cat_df$NDVI > 0.2)
+# cat_df <-subset(cat_df, cat_df$EVI > 0.1)
+# cat_df <-subset(cat_df, cat_df$pland_forest > 0)
+# cat_df <-subset(cat_df, cat_df$te_forest > 0)
+# cat_df <-subset(cat_df, cat_df$enn_mn_forest > 0)
+# cat_df <-subset(cat_df, cat_df$enn_mn_forest < 3000)
 
 
 skimr::skim(cat_df)
@@ -81,19 +76,6 @@ split <- initial_split(cat_df)
 
 data_train <- training(split)
 data_test <- testing(split)
-
-
-data_train <-subset(data_train, data_train$Population < 4000000)
-data_train <-subset(data_train, data_train$Precip < 6000)
-data_train <-subset(data_train, data_train$LST_Day < 37)
-data_train <-subset(data_train, data_train$LST_Day > 17)
-data_train <-subset(data_train, data_train$AvgRad < 50)
-data_train <-subset(data_train, data_train$NDVI > 0.2)
-data_train <-subset(data_train, data_train$EVI > 0.1)
-data_train <-subset(data_train, data_train$pland_forest > 0)
-data_train <-subset(data_train, data_train$te_forest > 0)
-data_train <-subset(data_train, data_train$enn_mn_forest > 0)
-data_train <-subset(data_train, data_train$enn_mn_forest < 3000)
 
 
 # use a 5-fold cross-validation
@@ -275,19 +257,19 @@ model_st <-
 
 Using stacked model to make predictions on Cutaneous Leishmaniasis and Preparing Confusion Matrix
 ```{r}
-data_test <-
+data_test40 <-
   data_test %>%
   bind_cols(predict(model_st, .))
 
 # confusion matrix for stacks
-caret::confusionMatrix(data_test$Cutaneous.Leishmaniasis,data_test$.pred_class, positive = 'high')
+caret::confusionMatrix(data_test40$Cutaneous.Leishmaniasis,data_test40$.pred_class, positive = 'high')
 ```
 
 Plot of positive predictive and negative predictive values for Cutaneous Leishmaniasis at 30th percentile threshold split.
 ```{r}
 plot(data_test$Cutaneous.Leishmaniasis, data_test$.pred_class)
 ```
-Looking at the Separate Accurracies of each base model in the stacked model.
+Looking at the Separate Accuracies of each base model in the stacked model.
 ```{r}
 # confusion matrix for base models
 
@@ -310,6 +292,31 @@ colnames(member_preds) %>%
     data = member_preds
   ) %>% 
   mutate(member = colnames(member_preds))
+```
+
+```{r}
+model_st$splits
+```
+
+
+
+
+
+analyzing the missclassified observations (false negatives)
+```{r}
+data_test_missclassified <- data_test %>%
+  mutate(CL = data_test$Cutaneous.Leishmaniasis) %>%
+  filter(data_test$Cutaneous.Leishmaniasis!= data_test$.pred_class) %>%
+  mutate(Case = which(data_test$.pred_class != data_test$Cutaneous.Leishmaniasis))
+
+data_test_missclassified %>% filter(enn_mn_forest > 0)
+
+data_test_correct <- data_test %>%
+  mutate(CL = data_test$Cutaneous.Leishmaniasis) %>%
+  filter(data_test$Cutaneous.Leishmaniasis== data_test$.pred_class) %>%
+  mutate(Case = which(data_test$.pred_class == data_test$Cutaneous.Leishmaniasis))
+
+data_test_missclassified %>% filter(enn_mn_forest > 0)
 ```
 
 

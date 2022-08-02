@@ -13,6 +13,7 @@ getwd()
 aad <- read.csv("models/data/aad.csv")
 aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
 aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+quantile(aad$Cutaneous.Leishmaniasis, probs = c(0.3, 0.4, 0.5, 0.6, 0.7))
 aad <-subset(aad, aad$Year < 2019)
 
 

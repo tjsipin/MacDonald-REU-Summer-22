@@ -10,7 +10,7 @@ load('./data/imp')
 median_data <- data %>% 
   filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
   filter(Cutaneous.Leishmaniasis > 0) %>% 
-  dplyr::select(Cutaneous.Leishmaniasis) 
+  dplyr::select(Cutaneous.Leishmaniasis)
 
 median <- median_data$Cutaneous.Leishmaniasis %>% 
   median() # 0.2817695
@@ -20,7 +20,7 @@ data <- data %>%
   filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
   filter(Cutaneous.Leishmaniasis > 0) %>%
   dplyr::select(c('Cutaneous.Leishmaniasis', 'LST_Day', # include LST_Night?
-           'OptTemp_Obs', 'NDVI', 'EVI', 'Precip', 
+           'NDVI', 'EVI', 'Precip', 
            'StableLights', 'SWOccurrence', 'pland_forest',
            'te_forest', 'enn_mn_forest'))
 
@@ -39,11 +39,13 @@ data_train <- training(split)
 data_test <- testing(split)
 
 # use a 5-fold cross-validation
-folds <- rsample::vfold_cv(data_train, v = 5)
+folds <- rsample::vfold_cv(data_train, 
+                           v = 10, 
+                           strata = Cutaneous.Leishmaniasis)
 
 # set up a basic recipe
 data_rec <-
-  recipe(Cutaneous.Leishmaniasis ~ LST_Day + OptTemp_Obs + NDVI + 
+  recipe(Cutaneous.Leishmaniasis ~ LST_Day + NDVI + 
            EVI + Precip + StableLights + SWOccurrence + pland_forest + 
            te_forest + enn_mn_forest, data = data_train) %>%
   step_dummy(all_nominal() - all_outcomes()) %>% 
@@ -55,7 +57,7 @@ data_wflow <-
   add_recipe(data_rec)
 
 # add metric rmse (same as malaria)
-metric <- metric_set(f_meas) #.784 for roc_auc
+metric <- metric_set(f_meas, accuracy) #.784 for roc_auc
 
 # save assessment set predictions and workflow used to fit the resamples
 ctrl_grid <- control_stack_grid()
@@ -85,11 +87,11 @@ log_reg_res <-
 # define svm model using parsnip
 svm_spec <- 
   svm_rbf(
-    cost = tune(),
-    rbf_sigma = tune()
-  ) %>% 
-  set_engine('kernlab') %>% 
-  set_mode('classification')
+    cost = parsnip::tune(),
+    rbf_sigma = parsnip::tune(),
+    engine = 'kernlab',
+    mode = 'classification'
+  ) 
 
 # add it to a workflow
 svm_wflow <- 
@@ -212,7 +214,7 @@ model_st <-
   data_st %>% 
   blend_predictions()
 
-model_st <- 
+model_st <-  
   model_st %>% 
   fit_members()
 
