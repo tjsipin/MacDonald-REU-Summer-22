@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = T, cache = T, eval = F, results = 'show')
+knitr::opts_chunk$set(echo = T, cache = T, eval = T, results = 'show')
 ```
 
 This report gives five different stacked models to predict cutaneous leishmaniasis using data from 2000 to 2013, with each model differing by threshold determining what constitutes low levels and high levels of cutaneous leishmaniasis.
@@ -18,8 +18,8 @@ set.seed(123)
 library(tidyverse)
 library(tidymodels)
 library(stacks)
-load('./data/imp')
 aad <- read_csv('models/data/aad.csv')
+load('./data/imp')
 ```
 
 
@@ -38,7 +38,7 @@ First, we clean our data by removing all NA values and 0s of cutaneous leishmani
 We both chose our predictors to be `LST_Day`, `NDVI`, `EVI`, `Precip`, `SWOccurrence`, `pland_forest`, `te_forest`, `enn_mn_forest`, `Population`, and the socioeconomic variable. Since all target variables are reported on the continuous scale and we are not using a regression model, we categorize each observation as low levels (0) and high levels (1), splitting at the 30th quantile of the subset of cutaneous leishmaniasis with NAs and zeros removed. The other models are split at the 40th, 50th, 60th, and 70th quantiles, respectively.
 
 
-```{r, eval=F}
+```{r}
 # load and split the early data using imputed data
 
 quantile_data <- data %>% 
@@ -68,13 +68,30 @@ data$Cutaneous.Leishmaniasis <- as.factor(ifelse(data$Cutaneous.Leishmaniasis < 
 
 The next step is to split data set into the training and testing subsets and set up a 5-fold cross-validation for when we train our base models.
 
-```{r, eval=F}
+```{r}
 set.seed(123) # for reproducibility
+aad <- aad %>% 
+  filter(Year < 2014) %>%
+  filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
+  filter(Cutaneous.Leishmaniasis > 0) 
 
 split <- initial_split(data)
 
 data_train <- training(split)
-data_test_30 <- testing(split)
+data_test_30_temp <- testing(split)
+Index_temp <- as.numeric(rownames(data_test_30_temp))
+data_test_30 <-  (aad %>% 
+                    select(c(colnames(data_test_30_temp)))) %>% 
+  slice(Index_temp) %>% 
+  subset(!is.na(LST_Day)) %>% 
+  subset(!is.na(SWOccurrence))
+
+
+data_test_30$pland_forest <- ifelse(is.na(data_test_30$pland_forest), 0, data_test_30$pland_forest)
+data_test_30$te_forest <- ifelse(is.na(data_test_30$te_forest), 0, data_test_30$te_forest)
+data_test_30$enn_mn_forest <- ifelse(is.na(data_test_30$enn_mn_forest), 0, data_test_30$enn_mn_forest)
+
+data_test_30$Cutaneous.Leishmaniasis <- as.factor(ifelse(data_test_30$Cutaneous.Leishmaniasis < quantile, 0, 1))
 
 # use a 5-fold cross-validation
 folds <- rsample::vfold_cv(data_train, 
@@ -94,6 +111,8 @@ explanatory = c('LST_Day', # include LST_Night?
 dependent = 'Cutaneous.Leishmaniasis'
 data_test_30_2 %>% 
   missing_pairs(dependent, explanatory)
+
+# remove NA for SWO and LST_Day
 ```
 
 Here, we set up the recipe and workflow using Tidyverse functions.
@@ -286,7 +305,7 @@ save(data_st_30, file = 'models/stacking/data_st_early_CL_classif_30')
 
 # creating a model stack
 ## ready to evaluate how it is that we need to combine predictions from
-## each candidate ensembe member
+## each candidate ensemble member
 
 model_st_30 <-
   data_st_30 %>% 
@@ -298,18 +317,18 @@ model_st_30 <-
 
 save(model_st_30, file = 'models/stacking/model_st_early_CL_classif_30')
 
-set.seed(123)
-data_test_30 <- testing(split)
-
+# set.seed(123)
+# data_test_30 <- testing(split)
+# 
 data_test_30_2 <-
-  data_test_30_2 %>%
+  data_test_30 %>%
   bind_cols(predict(model_st_30, .))
 
 save(data_test_30, file = 'models/stacking/data_test_early_CL_classif_30')
 
 
 # confusion matrix for stacks
-conf_mat_early_CL_classif_30 <- caret::confusionMatrix(data = data_test_30$.pred_class, 
+conf_mat_early_CL_classif_30 <- caret::confusionMatrix(data = data_test_30_2$.pred_class, 
                                                        reference = data_test_30$Cutaneous.Leishmaniasis,
                                                        positive = '1')
 
@@ -318,20 +337,28 @@ save(conf_mat_early_CL_classif_30, file = 'models/stacking/conf_mat_early_CL_cla
 # confusion matrix for base models
 
 member_preds <- 
-  data_test_30 %>% 
+  data_test_30_2 %>% 
   dplyr::select(Cutaneous.Leishmaniasis) %>% 
   bind_cols(
     predict(
       model_st_30,
-      data_test_30,
+      data_test_30_2,
       members = TRUE
     )
   )
+
+colnames(member_preds) %>% 
+  map_dfr(
+    .f = sensitivity,
+    truth = as.factor(Cutaneous.Leishmaniasis),
+    data = member_preds
+  ) %>% 
+  mutate(member = colnames(member_preds))
 ```
 
 The rest of the models are built similarly, with only the quantile threshold as a parameter.
 
-```{r 40th percentile, eval=F, echo=F}
+```{r 40th percentile, , echo=F}
 # helper packages
 library(tidyverse)
 library(tidymodels)
@@ -367,11 +394,27 @@ data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
 data$Cutaneous.Leishmaniasis <- as.factor(ifelse(data$Cutaneous.Leishmaniasis < quantile, 0, 1))
 
 set.seed(123) # for reproducibility
+aad <- aad %>% 
+  filter(Year < 2014) %>%
+  filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
+  filter(Cutaneous.Leishmaniasis > 0) 
 
 split <- initial_split(data)
 
 data_train <- training(split)
-data_test_40 <- testing(split)
+data_test_40_temp <- testing(split)
+
+data_test_40 <-  (aad %>% 
+                    select(c(colnames(data_test_40_temp))))[Index_temp,] %>% 
+  subset(!is.na(LST_Day)) %>% 
+  subset(!is.na(SWOccurrence))
+
+
+data_test_40$pland_forest <- ifelse(is.na(data_test_40$pland_forest), 0, data_test_40$pland_forest)
+data_test_40$te_forest <- ifelse(is.na(data_test_40$te_forest), 0, data_test_40$te_forest)
+data_test_40$enn_mn_forest <- ifelse(is.na(data_test_40$enn_mn_forest), 0, data_test_40$enn_mn_forest)
+
+data_test_40$Cutaneous.Leishmaniasis <- as.factor(ifelse(data_test_40$Cutaneous.Leishmaniasis < quantile, 0, 1))
 
 # use a 5-fold cross-validation
 folds <- rsample::vfold_cv(data_train, 
@@ -554,6 +597,7 @@ data_st_40 <-
 
 
 save(data_st_40, file = 'models/stacking/data_st_early_CL_classif_40')
+load('models/stacking/data_st_early_CL_classif_40')
 
 # creating a model stack
 ## ready to evaluate how it is that we need to combine predictions from
@@ -569,8 +613,7 @@ model_st_40 <-
 
 save(model_st_40, file = 'models/stacking/model_st_early_CL_classif_40')
 
-set.seed(123)
-data_test_40 <- testing(split)
+load('models/stacking/model_st_early_CL_classif_40')
 
 data_test_40 <-
   data_test_40 %>%
@@ -599,14 +642,11 @@ member_preds <-
     )
   )
 
-
-
-
 ```
 
 
 
-```{r 50th percentile, eval=F, echo=F}
+```{r 50th percentile, , echo=F}
 # helper packages
 library(tidyverse)
 library(tidymodels)
@@ -642,11 +682,27 @@ data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
 data$Cutaneous.Leishmaniasis <- as.factor(ifelse(data$Cutaneous.Leishmaniasis < quantile, 0, 1))
 
 set.seed(123) # for reproducibility
+aad <- aad %>% 
+  filter(Year < 2014) %>%
+  filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
+  filter(Cutaneous.Leishmaniasis > 0) 
 
 split <- initial_split(data)
 
 data_train <- training(split)
-data_test_50 <- testing(split)
+data_test_50_temp <- testing(split)
+
+data_test_50 <-  (aad %>% 
+                    select(c(colnames(data_test_50_temp))))[Index_temp,] %>% 
+  subset(!is.na(LST_Day)) %>% 
+  subset(!is.na(SWOccurrence))
+
+
+data_test_50$pland_forest <- ifelse(is.na(data_test_50$pland_forest), 0, data_test_50$pland_forest)
+data_test_50$te_forest <- ifelse(is.na(data_test_50$te_forest), 0, data_test_50$te_forest)
+data_test_50$enn_mn_forest <- ifelse(is.na(data_test_50$enn_mn_forest), 0, data_test_50$enn_mn_forest)
+
+data_test_50$Cutaneous.Leishmaniasis <- as.factor(ifelse(data_test_50$Cutaneous.Leishmaniasis < quantile, 0, 1))
 
 # use a 5-fold cross-validation
 folds <- rsample::vfold_cv(data_train, 
@@ -878,7 +934,7 @@ member_preds <-
 ```
 
 
-```{r 60th percentile, eval=F, echo=F}
+```{r 60th percentile, , echo=F}
 # helper packages
 library(tidyverse)
 library(tidymodels)
@@ -886,7 +942,7 @@ library(stacks)
 
 
 # load and split the early data using imputed data
-load('./data/imp')
+data <- read_csv('models/data/aad.csv')
 
 
 quantile_data <- data %>% 
@@ -914,11 +970,28 @@ data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
 data$Cutaneous.Leishmaniasis <- as.factor(ifelse(data$Cutaneous.Leishmaniasis < quantile, 0, 1))
 
 set.seed(123) # for reproducibility
+aad <- aad %>% 
+  filter(Year < 2014) %>%
+  filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
+  filter(Cutaneous.Leishmaniasis > 0) 
 
 split <- initial_split(data)
 
 data_train <- training(split)
-data_test_60 <- testing(split)
+data_test_60_temp <- testing(split)
+
+data_test_60 <-  (aad %>% 
+                    select(c(colnames(data_test_60_temp)))) %>% 
+  slice(Index_temp) %>% 
+  subset(!is.na(LST_Day)) %>% 
+  subset(!is.na(SWOccurrence))
+
+
+data_test_60$pland_forest <- ifelse(is.na(data_test_60$pland_forest), 0, data_test_60$pland_forest)
+data_test_60$te_forest <- ifelse(is.na(data_test_60$te_forest), 0, data_test_60$te_forest)
+data_test_60$enn_mn_forest <- ifelse(is.na(data_test_60$enn_mn_forest), 0, data_test_60$enn_mn_forest)
+
+data_test_60$Cutaneous.Leishmaniasis <- as.factor(ifelse(data_test_60$Cutaneous.Leishmaniasis < quantile, 0, 1))
 
 # use a 5-fold cross-validation
 folds <- rsample::vfold_cv(data_train, 
@@ -1150,7 +1223,7 @@ member_preds <-
 ```
 
 
-```{r 70th percentile, eval=F, echo=F}
+```{r 70th percentile, , echo=F}
 # helper packages
 library(tidyverse)
 library(tidymodels)
@@ -1158,7 +1231,7 @@ library(stacks)
 
 
 # load and split the early data using imputed data
-load('./data/imp')
+data <- read_csv('models/data/aad.csv')
 
 
 quantile_data <- data %>% 
@@ -1186,11 +1259,28 @@ data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
 data$Cutaneous.Leishmaniasis <- as.factor(ifelse(data$Cutaneous.Leishmaniasis < quantile, 0, 1))
 
 set.seed(123) # for reproducibility
+aad <- aad %>% 
+  filter(Year < 2014) %>%
+  filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
+  filter(Cutaneous.Leishmaniasis > 0) 
 
 split <- initial_split(data)
 
 data_train <- training(split)
-data_test_70 <- testing(split)
+data_test_70_temp <- testing(split)
+
+data_test_70 <-  (aad %>% 
+                    select(c(colnames(data_test_70_temp)))) %>% 
+  slice(Index_temp) %>% 
+  subset(!is.na(LST_Day)) %>% 
+  subset(!is.na(SWOccurrence))
+
+
+data_test_70$pland_forest <- ifelse(is.na(data_test_70$pland_forest), 0, data_test_70$pland_forest)
+data_test_70$te_forest <- ifelse(is.na(data_test_70$te_forest), 0, data_test_70$te_forest)
+data_test_70$enn_mn_forest <- ifelse(is.na(data_test_70$enn_mn_forest), 0, data_test_70$enn_mn_forest)
+
+data_test_70$Cutaneous.Leishmaniasis <- as.factor(ifelse(data_test_70$Cutaneous.Leishmaniasis < quantile, 0, 1))
 
 # use a 5-fold cross-validation
 folds <- rsample::vfold_cv(data_train, 
@@ -1523,7 +1613,7 @@ Now we look at the observations in which our model wrongly classified observatio
 ```{r, eval=T}
 # to get true levels of CL again
 
-load('./data/imp')
+data <- read_csv('models/data/aad.csv')
 quantile_data <- data %>% 
   filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
   filter(Cutaneous.Leishmaniasis > 0) %>% 
@@ -1627,5 +1717,5 @@ ggplot(data = melted_cormat_mis_40,
 
 # Appendix: All code for this report
 
-```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```{r ref.label=knitr::all_labels(), echo=TRUE, ALSE}
 ```
