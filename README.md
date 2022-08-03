@@ -26,6 +26,9 @@ Our research and analysis comes from an annual data set containing numbers on 69
 **Note:** We encountered a problem involving the methods of measuring light emitted by each municipality. Before 2014, a variable called StableLights was used to measure light, but 2014 onward, a variable called AvgRad (average radiance) was used. To deal with this, the data was split between the early, pre-2014 observations and the later, 2014-present observations and models for each were developed separately.
 TJ was responsible for building models using the variables from the early data while Lyndsey built models using the variables from the later data.
 
+### Missing Values
+Missing values were dealt with by imputing the predictor values of the training set using random-forest-based imputation.
+
 ### Models
 
 Several base models had been run, including but not limited to:
@@ -39,4 +42,4 @@ Then, we built stacked models including an ensemble of the above base models, wi
 
 ### Picking the Threshold
 
-We built five stacked models for five different quantiles to categorize leishmaniasis levels into low- and high-risk, ranging from the 30th percentile to the 70th percentile by tens.
+We built five stacked models for five different quantiles to categorize leishmaniasis levels into low- and high-risk, ranging from the 30th percentile to the 70th percentile by tens. In order of importance, we chose our "best" model based on high Area Under the Receiver Operating Characteristics (AUROC) Curve, sensitivity, and accuracy. 
