@@ -1,0 +1,325 @@
+---
+title: "Stacked Model for Cutaneous Leishmaniasis"
+author: "Lyndsey Umsted"
+date: "2022-07-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Loading Neccessary Libraries
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(stacks)
+library(pROC)
+```
+
+Loading the Annual Amazon Data Set and Tidying it by removing any NA values for Cutaneuous Leishmaniasis along with any case reportings of 0.
+
+```{r}
+getwd()
+load("../data/imp")
+
+data <- data %>%
+  filter(Year > 2013) %>%
+  filter(Year < 2019) %>%
+  filter(!is.na(Cutaneous.Leishmaniasis)) %>%
+  filter(Cutaneous.Leishmaniasis > 0) %>%
+  dplyr::select(c("Population", "Cutaneous.Leishmaniasis", "LST_Day", "Precip", "AvgRad", "SWOccurrence", "NDVI", "EVI", "pland_forest", "te_forest", "enn_mn_forest"))
+
+data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
+data$te_forest <- ifelse(is.na(data$te_forest), 0, data$te_forest)
+data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
+
+```
+
+
+Reducing columns to desired Predicitive Variables: Population, LAST_Day, Precip, AvgRad, SWOccurrence, NDVI, EVI, pland_forest, te_forest, enn_mn_forest.
+```{r}
+later_data_small <- subset(later_data_small, !is.na(later_data_small$LST_Day))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$SWOccurrence))
+```
+
+
+Creating new dataset cat_df where values of Cutaneous.Leishmaniasis are split at the 30th percentile threshold and categorized into low and high risk labels.
+```{r}
+library(dplyr)
+cat_df <- data
+cat_df$Cutaneous.Leishmaniasis <- cut(data$Cutaneous.Leishmaniasis,breaks = c(0, 0.1852263, 10^3), 
+                                      labels = c("low", "high")) # 4s0th percentile
+
+# cat_df <-subset(cat_df, cat_df$Population < 4000000)
+# cat_df <-subset(cat_df, cat_df$Precip < 6000)
+# cat_df <-subset(cat_df, cat_df$LST_Day < 37)
+# cat_df <-subset(cat_df, cat_df$LST_Day > 17)
+# cat_df <-subset(cat_df, cat_df$AvgRad < 50)
+# cat_df <-subset(cat_df, cat_df$NDVI > 0.2)
+# cat_df <-subset(cat_df, cat_df$EVI > 0.1)
+# cat_df <-subset(cat_df, cat_df$pland_forest > 0)
+# cat_df <-subset(cat_df, cat_df$te_forest > 0)
+# cat_df <-subset(cat_df, cat_df$enn_mn_forest > 0)
+# cat_df <-subset(cat_df, cat_df$enn_mn_forest < 3000)
+
+
+skimr::skim(cat_df)
+round(prop.table(table(cat_df$Cutaneous.Leishmaniasis)), 2)
+```
+
+Creating Testing and Training sets for our base models.
+```{r}
+set.seed(123) # for reproducibility
+
+split <- initial_split(cat_df)
+
+data_train <- training(split)
+data_test <- testing(split)
+
+
+# use a 5-fold cross-validation
+folds <- rsample::vfold_cv(data_train, v = 5)
+```
+
+Creating basic recipe defining both predictor and target variables, along with definig a minimal workflow and metric for all the base models.
+```{r}
+# set up a basic recipe
+data_rec <-
+  recipe(Cutaneous.Leishmaniasis ~ Population + LST_Day + NDVI + 
+           EVI + Precip + AvgRad + SWOccurrence + pland_forest + 
+           te_forest + enn_mn_forest, data = data_train) %>%
+  step_dummy(all_nominal() - all_outcomes()) %>% 
+  step_zv(all_predictors())
+
+# define a minimal workflow
+data_wflow <-
+  workflow() %>% 
+  add_recipe(data_rec)
+
+# add metric rmse (same as malaria)
+metric <- metric_set(recall, accuracy) #.784 for roc_auc
+```
+
+Setting up control grids and resamples along with a logistic regression model for
+```{r}
+library(stacks)
+
+# save assessment set predictions and workflow used to fit the resamples
+ctrl_grid <- control_stack_grid()
+ctrl_res <- control_stack_resamples()
+
+# models: SVM, XGBoost, RF
+## models to try: logistic regression 
+
+# toy model
+log_reg_spec <-
+  logistic_reg() %>%
+  set_engine('glm')
+
+log_reg_wflow <- 
+  data_wflow %>%
+  add_model(log_reg_spec)
+
+set.seed(123)
+log_reg_res <-
+  fit_resamples(
+    log_reg_wflow,
+    resamples = folds,
+    metrics = metric,
+    control = ctrl_res
+  )
+```
+
+Setting up Support Vector Machine base model:
+```{r}
+# define svm model using parsnip
+svm_spec <-
+  svm_rbf(
+    cost = tune(),
+    rbf_sigma = tune()
+  ) %>%
+  set_engine('kernlab') %>%
+  set_mode('classification')
+
+# add it to a workflow
+svm_wflow <-
+  data_wflow %>%
+  add_model(svm_spec)
+
+# tune cost and rbf_sigma and fit to the 10-fold cv
+set.seed(123)
+svm_res <-
+  tune_grid(
+    svm_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+save(svm_res, file = 'stacking/svm_res_later_classif_2')
+#load(file = 'models/stacking/svm_res_later_classif_2')
+
+```
+
+Setting up XGBoost base model:
+```{r}
+# define xgboost model using parsnip
+
+set.seed(123)
+xgb_spec <-
+  boost_tree(
+    mtry = tune(),
+    trees = tune(),
+    min_n = tune(),
+    tree_depth = tune(),
+    learn_rate = tune(),
+    loss_reduction = tune()
+  ) %>%
+  set_engine('xgboost') %>%
+  set_mode('classification')
+
+# add it to a workflow
+xgb_wflow <-
+  data_wflow %>%
+  add_model(xgb_spec)
+
+# tune mtry, trees, min_n, tree_depth, etc.
+xgb_res <-
+  tune_grid(
+    xgb_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+save(xgb_res, file = 'stacking/xgb_res_later_classif_2')
+
+#load(file = 'models/stacking/xgb_res_later_classif_2')
+```
+
+Setting up Random Forest base model:
+```{r}
+# define rf model using parsnip
+
+set.seed(123)
+rf_spec <-
+  rand_forest(
+    mtry = tune(),
+    trees = tune(),
+    min_n = tune()
+  ) %>%
+  set_engine('ranger') %>%
+  set_mode('classification')
+
+# add it to a workflow
+rf_wflow <-
+  data_wflow %>%
+  add_model(rf_spec)
+
+# tune mtry, trees, min_n
+rf_res <-
+  tune_grid(
+    rf_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+save(rf_res, file = 'stacking/rf_res_later_classif_2')
+
+#load(file = 'models/stacking/rf_res_later_classif_2')
+```
+
+Adding candidate models to stacked model
+```{r}
+data_st <- 
+  stacks() %>% 
+  add_candidates(svm_res) %>% 
+  add_candidates(xgb_res) %>% 
+  add_candidates(rf_res)
+
+data_st
+
+as_tibble(data_st)
+```
+
+Blending base model predictions and fitting them.
+```{r}
+model_st <-
+  data_st %>% 
+  blend_predictions()
+
+model_st <- 
+  model_st %>% 
+  fit_members()
+```
+
+Using stacked model to make predictions on Cutaneous Leishmaniasis and Preparing Confusion Matrix
+```{r}
+data_test40 <-
+  data_test %>%
+  bind_cols(predict(model_st, .))
+
+# confusion matrix for stacks
+caret::confusionMatrix(data_test40$Cutaneous.Leishmaniasis,data_test40$.pred_class, positive = 'high')
+```
+
+Plot of positive predictive and negative predictive values for Cutaneous Leishmaniasis at 30th percentile threshold split.
+```{r}
+plot(data_test$Cutaneous.Leishmaniasis, data_test$.pred_class)
+```
+Looking at the Separate Accuracies of each base model in the stacked model.
+```{r}
+# confusion matrix for base models
+
+member_preds <- 
+  data_test %>% 
+  select(Cutaneous.Leishmaniasis) %>% 
+  bind_cols(
+    predict(
+      model_st,
+      data_test,
+      members = TRUE
+    )
+  )
+
+
+colnames(member_preds) %>% 
+  map_dfr(
+    .f = accuracy,
+    truth = Cutaneous.Leishmaniasis,
+    data = member_preds
+  ) %>% 
+  mutate(member = colnames(member_preds))
+```
+
+```{r}
+model_st$splits
+```
+
+
+
+
+
+analyzing the missclassified observations (false negatives)
+```{r}
+data_test_missclassified <- data_test %>%
+  mutate(CL = data_test$Cutaneous.Leishmaniasis) %>%
+  filter(data_test$Cutaneous.Leishmaniasis!= data_test$.pred_class) %>%
+  mutate(Case = which(data_test$.pred_class != data_test$Cutaneous.Leishmaniasis))
+
+data_test_missclassified %>% filter(enn_mn_forest > 0)
+
+data_test_correct <- data_test %>%
+  mutate(CL = data_test$Cutaneous.Leishmaniasis) %>%
+  filter(data_test$Cutaneous.Leishmaniasis== data_test$.pred_class) %>%
+  mutate(Case = which(data_test$.pred_class == data_test$Cutaneous.Leishmaniasis))
+
+data_test_missclassified %>% filter(enn_mn_forest > 0)
+```
+
+
+
+
+

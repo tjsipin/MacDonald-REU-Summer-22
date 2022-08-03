@@ -57,7 +57,7 @@ library(dplyr)
 summary(later_data_small$Dengue)
 cat_df <- later_data_small
 cat_df$Dengue <- cut(later_data_small$Dengue, 
-                          breaks = c(0, 0.9228, 10^3), 
+                          breaks = c(0, 922793, 10^3), 
                           labels = c("low", "high")) # median
 
 
@@ -250,13 +250,13 @@ model_st <-
   model_st %>% 
   fit_members()
 
-data_test <- 
+data_test50 <- 
   data_test %>% 
   bind_cols(predict(model_st, .))
 
 # confusion matrix for stacks
-caret::confusionMatrix(data_test$Dengue, 
-                       data_test$.pred_class,
+caret::confusionMatrix(data_test50$Dengue, 
+                       data_test50$.pred_class,
                        positive = 'high')
 
 

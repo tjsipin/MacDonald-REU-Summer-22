@@ -7,200 +7,127 @@ output:
   html_document: default
 ---
 
-
+Tidying dataset and removing outliers for each variable
 ```{r}
 getwd()
-HFI <- read.csv("data/HFI.csv")
-HFI <- subset(HFI, !is.na(HFI$c_leish_incidence))
-HFI <- subset(HFI, !is.na(HFI$crop_perc_change))
-HFI <- subset(HFI, !is.na(HFI$annual_tmp))
-# HFI <- subset(HFI, HFI$human_footprint > 10)
-# HFI <- subset(HFI, HFI$human_footprint < 17)
-HFI <- subset(HFI, HFI$c_leish_incidence > 0)
-HFI <- subset(HFI, HFI$human_footprint < 25)
-HFI <- subset(HFI, HFI$cropland > 0)
-HFI <- subset(HFI, HFI$urban < 5)
-HFI <- subset(HFI, HFI$crop_perc_change < 4)
-HFI <- subset(HFI, HFI$crop_perc_change > 0)
-HFI <- subset(HFI, HFI$crop_perc_change != 0)
 aad <- read.csv("data/aad.csv")
-aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
-aad <- subset(aad, !is.na(aad$EVI))
-aad <- subset(aad, !is.na(aad$StableLights))
-aad <- subset(aad, aad$Country == "Brazil")
-aad <- subset(aad, aad$Name == c("Altamira", "São Félix do Xingu", "Porto Velho", "Lábrea", "Balsas", "Novo Progresso", "Itaituba", "Apuí", "Pacajá", "Portel"))
-aad <-subset(aad, aad$Malaria > 0)
 aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
-aad <-subset(aad, aad$OptTemp_Obs > 0)
-aad <-subset(aad, aad$LST_Day > 20)
-aad <-subset(aad, aad$Year > 2009)
-aad <-subset(aad, aad$enn_mn_forest > 0)
-aad <-subset(aad, aad$enn_mn_forest < 500)
-plot(HFI$year, HFI$forest)
+aad <-subset(aad, aad$Year < 2019)
 ```
 
 ```{r}
+monthly_df <- read.csv("data/monthly_df.csv")
+monthly_df <- subset(monthly_df, !is.na(monthly_df$Cutaneous.Leishmaniasis))
+monthly_df <-subset(monthly_df, monthly_df$Cutaneous.Leishmaniasis > 0)
+monthly_df <- subset(monthly_df, !is.na(monthly_df$Year))
+```
+
+
+
+```{r}
+aad <-subset(aad, aad$Population < 4000000)
+aad <-subset(aad, aad$Precip < 6000)
+aad <-subset(aad, aad$LST_Day < 37)
+aad <-subset(aad, aad$LST_Day > 17)
+aad <-subset(aad, aad$AvgRad < 50)
+aad <-subset(aad, aad$NDVI > 0.2)
+aad <-subset(aad, aad$EVI > 0.1)
+aad <-subset(aad, aad$pland_forest > 0)
+aad <-subset(aad, aad$te_forest > 0)
+aad <-subset(aad, aad$enn_mn_forest > 0)
+aad <-subset(aad, aad$enn_mn_forest < 3000)
+```
+
+Removing NAs:
+```{r}
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <- subset(aad, !is.na(aad$Precip))
+aad <- subset(aad, !is.na(aad$LST_Day))
+aad <- subset(aad, !is.na(aad$SWOccurrence))
+aad <- subset(aad, !is.na(aad$AvgRad))
+aad <- subset(aad, !is.na(aad$Population))
+aad <- subset(aad, !is.na(aad$EVI))
+aad <- subset(aad, !is.na(aad$pland_forest))
+aad <- subset(aad, !is.na(aad$te_forest))
+aad <- subset(aad, !is.na(aad$enn_mn_forest))
+```
+
+
+
+```{r}
+plot(aad$Year, aad$Precip)
+boxplot(aad$te_forest[aad$Year == 2001])
+```
+
+
+```{r}
 library(dplyr)
-mean_malaria <- aad %>%
+mean_Cutaneous <- aad %>%
   group_by(Year) %>%
-  summarise_at(vars(AvgRad), list(name = mean))
-mean_malaria
-plot(mean_malaria)
+  summarise_at(vars(Cutaneous.Leishmaniasis), list(name = mean))
+mean_Cutaneous
+plot(mean_Cutaneous, main = "Cutaneous Cases between 2001 and 2019", xlab = "Year", ylab = "Cases")
 
-mean_te_forest <- aad %>%
-  group_by(Year) %>%
-  summarise_at(vars(EVI), list(name = mean))
-mean_te_forest
-plot(mean_te_forest)
+# mean_te_forest <- aad %>%
+#   group_by(Year) %>%
+#   summarise_at(vars(NDVI), list(name = mean))
+# mean_te_forest
+# plot(mean_te_forest)
 
-fit <- lm(aad$AvgRad ~ aad$Year, data = aad)
+fit <- lm(aad$Cutaneous.Leishmaniasis~ aad$Year, data = aad)
 summary(fit)
 abline(fit, col = "red")
+```
 
-set.seed(200)
+
+```{r}
+monthly_df$Year <- monthly_df$Year - 2006
+monthly_df$Month <- monthly_df$Month + monthly_df$Year*12
+```
+
+
+```{r}
+library(dplyr)
+mean_Cutaneous <- monthly_df %>%
+  group_by(Month) %>%
+  summarise_at(vars(Cutaneous.Leishmaniasis), list(name = mean))
+mean_Cutaneous
+plot(mean_Cutaneous, main = "Cutaneous Cases between 2001 and 2019", xlab = "Month", ylab = "Cases")
+
+fit <- lm(monthly_df$Cutaneous.Leishmaniasis ~ monthly_df$Month, data = monthly_df)
+summary(fit)
+abline(fit, col = "red")
+```
+
+
+
+```{r}
+set.seed(2)
 sample <- sample_n(aad, 500)
 
 fit <- lm(sample$Cutaneous.Leishmaniasis ~ sample$EVI, data = sample)
 summary(fit)
 
 confint(fit)
-plot(sample$EVI, sample$Cutaneous.Leishmaniasis)
+plot(sample$EVI, sample$Cutaneous.Leishmaniasis, main = "Enhanced Vegetation Index vs Cutaneous Leishmaniasis Cases", xlab = "EVI", ylab = "Cases per Thousand")
 abline(fit, col = "red")
-
-library(MASS)
-boxcox(fit, lambda =seq(-0.1,0.1, 1), plotit = TRUE)
+# 
+# library(MASS)
+# boxcox(fit, lambda =seq(-0.1,0.1, 1), plotit = TRUE)
 ```
 
 
 Diagnostic PlotS:
 ```{r}
-par(mfrow = c(2,2), mgp = c(2,1,0), mar = c(3,3,3,1) + 0.1)
-plot(fitted(fit), residuals(fit), xlab = "fitted", ylab = "residuals")
-abline(h=0)
-title("Residuals vs Fitted")
-qqnorm(residuals(fit), ylab = "residuals", main = "QQ plot")
-qqline(residuals(fit))
-plot(sample$human_footprint, residuals(fit), xlab = "time", ylab = "resdisuals")
-abline(h=0)
-title("Residuals vs human_footprint")
-```
-
-
-
-```{r}
-unique(aad$Name)
-```
-
-
-
-
-```{r}
-hist(HFI$c_leish_incidence[HFI$c_leish_incidence > 2 & HFI$c_leish_incidence < 100], breaks = 200, freq = FALSE)
-lines(density(HFI$c_leish_incidence[HFI$c_leish_incidence > 2 & HFI$c_leish_incidence < 100], bw = 'nrd0', kernel = "rectangular"), col = "Red")
-```
-
-
-```{r}
-kde <- density(HFI$c_leish_incidence[HFI$c_leish_incidence > 0], bw = 'nrd0', kernel = "rectangular")
-kde
-```
-
-```{r}
-hist(HFI$chik_incidence[HFI$chik_incidence > 2 & HFI$chik_incidence < 100], breaks = 200, freq = FALSE)
-lines(density(HFI$chik_incidence[HFI$chik_incidence > 2 & HFI$chik_incidence < 100], bw = 'nrd0', kernel = "rectangular"), col = "Red")
-```
-
-```{r}
-hist(HFI$denv_incidence[HFI$denv_incidence > 1 & HFI$denv_incidence < 100], breaks = 200, freq = FALSE)
-lines(density(HFI$denv_incidence[HFI$denv_incidence > 1 & HFI$denv_incidence < 100], bw = 'nrd0', kernel = "rectangular"), col = "Red")
-```
-
-
-```{r}
-hist(HFI$malaria_incidence[HFI$malaria_incidence > 1 & HFI$malaria_incidence < 100], breaks = 200, freq = FALSE)
-lines(density(HFI$malaria_incidence[HFI$malaria_incidence > 1 & HFI$malaria_incidence < 100], bw = 'nrd0', kernel = "rectangular"), col = "Red")
-```
-
-```{r}
-hist(HFI$v_leish_incidence[HFI$v_leish_incidence > 0 & HFI$v_leish_incidence < 100], breaks = 200, freq = FALSE)
-lines(density(HFI$v_leish_incidence[HFI$v_leish_incidence > 0 & HFI$v_leish_incidence < 100], bw = 'nrd0', kernel = "rectangular"), col = "Red")
-```
-
-```{r}
-hist(HFI$yfv_incidence[HFI$yfv_incidence > 0 & HFI$yfv_incidence < 100], breaks = 200, freq = FALSE)
-lines(density(HFI$yfv_incidence[HFI$yfv_incidence > 0 & HFI$yfv_incidence < 100], bw = 'nrd0', kernel = "rectangular"), col = "Red")
-```
-
-```{r}
-hist(HFI$zika_incidence[HFI$zika_incidence > 1 & HFI$zika_incidence < 100], breaks = 200, freq = FALSE)
-lines(density(HFI$zika_incidence[HFI$zika_incidence > 1 & HFI$zika_incidence < 100], bw = 'nrd0', kernel = "rectangular"), col = "Red")
-```
-
-```{r}
-hist(HFI$human_footprint[HFI$human_footprint], breaks = 8, freq = FALSE)
-lines(density(HFI$human_footprint[HFI$human_footprint], bw =1, kernel = "gaussian"), col = "Red")
-```
-
-```{r}
-hist(HFI$forest[HFI$forest], breaks = 30, freq = FALSE)
-lines(density(HFI$forest[HFI$forest], bw = 5, kernel = "gaussian"), col = "Red")
-```
-
-```{r}
-hist(HFI$pasture[HFI$pasture], breaks = 20, freq = FALSE)
-lines(density(HFI$pasture[HFI$pasture], bw = 5, kernel = "gaussian"), col = "Red")
-```
-
-
-```{r}
-hist(HFI$cropland[HFI$cropland], breaks = 20, freq = FALSE)
-lines(density(HFI$cropland[HFI$cropland], bw = 5, kernel = "gaussian"), col = "Red")
-```
-
-```{r}
-hist(HFI$urban[HFI$urban], breaks = 20, freq = FALSE)
-lines(density(HFI$urban[HFI$urban], bw = 5, kernel = "gaussian"), col = "Red")
-```
-
-```{r}
-hist(HFI$crop_perc_change, breaks = 100, freq = FALSE)
-lines(density(HFI$crop_perc_change, bw = 5, kernel = "gaussian"), col = "Red")
-```
-
-
-```{r}
-hist(HFI$pasture_perc_change, breaks = 100, freq = FALSE)
-lines(density(HFI$pasture_perc_change, bw = 0.5, kernel = "gaussian"), col = "Red")
-```
-
-```{r}
-hist(HFI$forest_perc_change, breaks = 75, freq = FALSE)
-lines(density(HFI$forest_perc_change, bw = 0.25, kernel = "gaussian"), col = "Red")
-```
-
-```{r}
-hist(HFI$urban_perc_change, breaks = 100, freq = FALSE)
-lines(density(HFI$urban_perc_change, bw = 0.05, kernel = "gaussian"), col = "Red")
-```
-
-```{r}
-hist(HFI$annual_tmp, breaks = 50, freq = FALSE)
-lines(density(HFI$annual_tmp, bw = 1, kernel = "gaussian"), col = "Red")
-```
-
-```{r}
-hist(HFI$annual_pre, breaks = 50, freq = FALSE)
-lines(density(HFI$annual_pre, bw = 15, kernel = "gaussian"), col = "Red")
-```
-
-```{r}
-hist(HFI$annual_wet, breaks = 50, freq = FALSE)
-lines(density(HFI$annual_wet, bw = 2, kernel = "gaussian"), col = "Red")
-```
-
-```{r}
-hist(HFI$mammal_richness, breaks = 50, freq = FALSE)
-lines(density(HFI$mammal_richness, bw = 12, kernel = "gaussian"), col = "Red")
+# par(mfrow = c(2,2), mgp = c(2,1,0), mar = c(3,3,3,1) + 0.1)
+# plot(fitted(fit), residuals(fit), xlab = "fitted", ylab = "residuals")
+# abline(h=0)
+# title("Residuals vs Fitted")
+# qqnorm(residuals(fit), ylab = "residuals", main = "QQ plot")
+# qqline(residuals(fit))
+# plot(sample$human_footprint, residuals(fit), xlab = "time", ylab = "resdisuals")
+# abline(h=0)
+# title("Residuals vs human_footprint")
 ```
 
 
