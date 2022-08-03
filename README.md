@@ -42,4 +42,6 @@ Then, we built stacked models including an ensemble of the above base models, wi
 
 ### Picking the Threshold
 
-We built five stacked models for five different quantiles to categorize leishmaniasis levels into low- and high-risk, ranging from the 30th percentile to the 70th percentile by tens. In order of importance, we chose our "best" model based on high Area Under the Receiver Operating Characteristics (AUROC) Curve, sensitivity, and accuracy. 
+We built five stacked models for five different quantiles to categorize leishmaniasis levels into low- and high-risk, ranging from the 30th percentile to the 70th percentile by tens. We decided to stay within this range to avoid large amounts of false positive and false negative missclassifications. In order of importance, we chose our "best" model based on high Area Under the Receiver Operating Characteristics (AUROC) Curve, sensitivity, and accuracy. 
+
+These five stacked models all used training data from the imputed data set which combated the problem of missing values among the predictor variables. Each model was then tested on on a test set of the same dimensions of the testing set from the imputed data in order to validate our models on the original raw data.
