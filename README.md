@@ -73,3 +73,7 @@ For the later data set, the following AUC, sensitivity and accuracy were recorde
 **
 * 70th Percentile:
 **
+
+From this method, we were able to chose the model split at the xth percentile for both early and later data.
+
+### Using our Model on New Data
