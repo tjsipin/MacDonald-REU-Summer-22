@@ -6,20 +6,26 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = T, cache = T, eval = T, results = 'show')
+knitr::opts_chunk$set(echo = T, 
+                      cache = T, 
+                      eval = F, 
+                      results = 'show',
+                      warning = F,
+                      message = F)
 ```
 
 This report gives five different stacked models to predict cutaneous leishmaniasis using data from 2000 to 2013, with each model differing by threshold determining what constitutes low levels and high levels of cutaneous leishmaniasis.
 
 ## Seed, Packages, and Data Set
 
-```{r}
+```{r, eval=T}
 set.seed(123)
 library(tidyverse)
 library(tidymodels)
 library(stacks)
 aad <- read_csv('models/data/aad.csv')
 load('./data/imp')
+aad <- read_csv('models/data/aad.csv')
 ```
 
 
@@ -80,9 +86,9 @@ split <- initial_split(data)
 data_train <- training(split)
 data_test_30_temp <- testing(split)
 Index_temp <- as.numeric(rownames(data_test_30_temp))
+save(Index_temp, file = 'models/stacking/Index_temp')
 data_test_30 <-  (aad %>% 
-                    select(c(colnames(data_test_30_temp)))) %>% 
-  slice(Index_temp) %>% 
+                    select(c(colnames(data_test_30_temp))))[Index_temp,] %>% 
   subset(!is.na(LST_Day)) %>% 
   subset(!is.na(SWOccurrence))
 
@@ -316,11 +322,12 @@ model_st_30 <-
   fit_members()
 
 save(model_st_30, file = 'models/stacking/model_st_early_CL_classif_30')
+load('models/stacking/model_st_early_CL_classif_30')
 
 # set.seed(123)
 # data_test_30 <- testing(split)
 # 
-data_test_30_2 <-
+data_test_30 <-
   data_test_30 %>%
   bind_cols(predict(model_st_30, .))
 
@@ -328,7 +335,7 @@ save(data_test_30, file = 'models/stacking/data_test_early_CL_classif_30')
 
 
 # confusion matrix for stacks
-conf_mat_early_CL_classif_30 <- caret::confusionMatrix(data = data_test_30_2$.pred_class, 
+conf_mat_early_CL_classif_30 <- caret::confusionMatrix(data = data_test_30$.pred_class, 
                                                        reference = data_test_30$Cutaneous.Leishmaniasis,
                                                        positive = '1')
 
@@ -337,12 +344,12 @@ save(conf_mat_early_CL_classif_30, file = 'models/stacking/conf_mat_early_CL_cla
 # confusion matrix for base models
 
 member_preds <- 
-  data_test_30_2 %>% 
+  data_test_30 %>% 
   dplyr::select(Cutaneous.Leishmaniasis) %>% 
   bind_cols(
     predict(
       model_st_30,
-      data_test_30_2,
+      data_test_30,
       members = TRUE
     )
   )
@@ -367,6 +374,7 @@ library(stacks)
 
 # load and split the early data using imputed data
 load('./data/imp')
+aad <- read_csv('models/data/aad.csv')
 
 
 quantile_data <- data %>% 
@@ -655,6 +663,7 @@ library(stacks)
 
 # load and split the early data using imputed data
 load('./data/imp')
+aad <- read_csv('models/data/aad.csv')
 
 
 quantile_data <- data %>% 
@@ -899,9 +908,10 @@ model_st_50 <-
   fit_members()
 
 save(model_st_50, file = 'models/stacking/model_st_early_CL_classif_50')
+load('models/stacking/model_st_early_CL_classif_50')
 
 set.seed(123)
-data_test_50 <- testing(split)
+
 
 data_test_50 <-
   data_test_50 %>%
@@ -942,7 +952,8 @@ library(stacks)
 
 
 # load and split the early data using imputed data
-data <- read_csv('models/data/aad.csv')
+load('./data/imp')
+aad <- read_csv('models/data/aad.csv')
 
 
 quantile_data <- data %>% 
@@ -981,8 +992,7 @@ data_train <- training(split)
 data_test_60_temp <- testing(split)
 
 data_test_60 <-  (aad %>% 
-                    select(c(colnames(data_test_60_temp)))) %>% 
-  slice(Index_temp) %>% 
+                    select(c(colnames(data_test_60_temp))))[Index_temp,] %>% 
   subset(!is.na(LST_Day)) %>% 
   subset(!is.na(SWOccurrence))
 
@@ -1188,9 +1198,10 @@ model_st_60 <-
   fit_members()
 
 save(model_st_60, file = 'models/stacking/model_st_early_CL_classif_60')
+load('models/stacking/model_st_early_CL_classif_60')
 
 set.seed(123)
-data_test_60 <- testing(split)
+
 
 data_test_60 <-
   data_test_60 %>%
@@ -1231,7 +1242,8 @@ library(stacks)
 
 
 # load and split the early data using imputed data
-data <- read_csv('models/data/aad.csv')
+load('./data/imp')
+aad <- read_csv('models/data/aad.csv')
 
 
 quantile_data <- data %>% 
@@ -1270,8 +1282,7 @@ data_train <- training(split)
 data_test_70_temp <- testing(split)
 
 data_test_70 <-  (aad %>% 
-                    select(c(colnames(data_test_70_temp)))) %>% 
-  slice(Index_temp) %>% 
+                    select(c(colnames(data_test_70_temp))))[Index_temp,] %>% 
   subset(!is.na(LST_Day)) %>% 
   subset(!is.na(SWOccurrence))
 
@@ -1477,9 +1488,10 @@ model_st_70 <-
   fit_members()
 
 save(model_st_70, file = 'models/stacking/model_st_early_CL_classif_70')
+load('models/stacking/model_st_early_CL_classif_70')
 
 set.seed(123)
-data_test_70 <- testing(split)
+
 
 data_test_70 <-
   data_test_70 %>%
@@ -1610,17 +1622,13 @@ Our best model is either the one split at the 40th percentile, as it is the best
 
 Now we look at the observations in which our model wrongly classified observations. Perhaps we can develop a second model trained on the misclassified cases to further improve our model.
 
-```{r, eval=T}
+```{r, eval=F}
 # to get true levels of CL again
 
-data <- read_csv('models/data/aad.csv')
-quantile_data <- data %>% 
-  filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
-  filter(Cutaneous.Leishmaniasis > 0) %>% 
-  dplyr::select(Cutaneous.Leishmaniasis)
+load('./data/imp')
+load('models/stacking/Index_temp')
+aad <- read_csv('models/data/aad.csv')
 
-quantile <- (quantile_data$Cutaneous.Leishmaniasis %>% 
-  quantile(0.4))[[1]] # PARAMETER
 
 data <- data %>%
   filter(Year < 2014) %>%
@@ -1639,7 +1647,17 @@ data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
 set.seed(123)
 split_t <- initial_split(data)
 training_t <- training(split_t)
-testing_t <- testing(split_t)
+testing_t_temp <- testing(split_t)
+
+aad_clean <- aad %>% 
+  filter(Year < 2014) %>%
+  filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
+  filter(Cutaneous.Leishmaniasis > 0) 
+
+testing_t <- (aad_clean %>% 
+                    select(c(colnames(testing_t_temp))))[Index_temp,] %>% 
+  subset(!is.na(LST_Day)) %>% 
+  subset(!is.na(SWOccurrence))
 
 
 mis_40 <- data_test_40 %>%
@@ -1649,30 +1667,9 @@ mis_40 <- data_test_40 %>%
 
 
 
-mis_40 %>% filter(enn_mn_forest > 0)
-
-pairs(mis_40 %>% filter(enn_mn_forest > 0) %>% dplyr::select(-c(Case, .pred_class, Cutaneous.Leishmaniasis)))
 
 # correlation heatmap
 library(reshape2)
-
-cormat_mis_40 <- round(cor(mis_40 %>% select(-c(Cutaneous.Leishmaniasis,Case,.pred_class))), 2)
-melted_cormat_mis_40 <- melt(cormat_mis_40)
-
-
-ggplot(data = melted_cormat_mis_40,
-       aes(x = Var1,
-           y = Var2,
-           fill = value)) + 
-  geom_tile()
-
-cormat_data <- cor(data) %>% round(2)
-melted_cormat_data <- melt(reorder_cormat(cormat_data))
-ggplot(data = melted_cormat_data,
-       aes(x = Var1,
-           y = Var2,
-           fill = value)) + 
-  geom_tile()
 
 # helper function for reordering the correlation matrix
 reorder_cormat <- function(cormat){
@@ -1682,10 +1679,28 @@ reorder_cormat <- function(cormat){
   cormat <-cormat[hc$order, hc$order]
 }
 
-# heat maps for both original (imputed) data and misclassified data
-cormat_data <- cor(data) %>% round(2)
+
+
+
+# heat maps for original, misclassified, and correctly classified
+aad <- read_csv('models/data/aad.csv')
+aad_clean <- (aad %>% 
+          select(c(Cutaneous.Leishmaniasis, LST_Day, NDVI,
+                   EVI, Precip, StableLights,
+                   SWOccurrence, pland_forest, te_forest, 
+                   enn_mn_forest, Population))) %>% 
+  subset(!is.na(LST_Day)) %>% 
+  subset(!is.na(SWOccurrence)) %>% 
+  subset(!is.na(StableLights)) %>% 
+  subset(!is.na(Cutaneous.Leishmaniasis)) %>% 
+  subset(Cutaneous.Leishmaniasis > 0)
+aad_clean$pland_forest <- ifelse(is.na(aad_clean$pland_forest), 0, aad_clean$pland_forest)
+aad_clean$te_forest <- ifelse(is.na(aad_clean$te_forest), 0, aad_clean$te_forest)
+aad_clean$enn_mn_forest <- ifelse(is.na(aad_clean$enn_mn_forest), 0, aad_clean$enn_mn_forest)
+
+cormat_data <- cor(aad_clean) %>% round(2)
 melted_cormat_data <- melt(cormat_data)
-ggplot(data = melted_cormat_data,
+heatmap_aad <- ggplot(data = melted_cormat_data,
        aes(x = Var1,
            y = Var2,
            fill = value)) + 
@@ -1695,24 +1710,88 @@ ggplot(data = melted_cormat_data,
                        name = 'Pearson\nCorrelation') + 
   theme(axis.text.x = element_text(angle = 45, vjust = 1,
                                    size = 12, hjust = 1)) +
-  coord_fixed()
+  coord_fixed() +
+  ggtitle('Original data')
 
+save(heatmap_aad, file = "models/stacking/heatmap_aad")
 
-cormat_mis_40 <- round(cor(mis_40 %>% select(-c(Cutaneous.Leishmaniasis,Case,.pred_class))), 2)
+# misclassified
+
+cormat_mis_40 <- round(cor(mis_40 %>% 
+                             mutate(Cutaneous.Leishmaniasis = CL) %>% 
+                             select(-c(CL, Case,.pred_class))), 2)
 melted_cormat_mis_40 <- melt(cormat_mis_40)
-ggplot(data = melted_cormat_mis_40,
-       aes(x = Var1,
-           y = Var2,
-           fill = value)) + 
+heatmap_mis_40 <- ggplot(data = melted_cormat_mis_40,
+                         aes(x = Var1,
+                             y = Var2,
+                             fill = value)) + 
   geom_tile(color = 'white') +
   scale_fill_gradient2(low = 'blue', high = 'red', mid = 'white',
                        midpoint = 0, limit = c(-1,1), space = 'Lab',
                        name = 'Pearson\nCorrelation') + 
   theme(axis.text.x = element_text(angle = 45, vjust = 1,
                                    size = 12, hjust = 1)) +
-  coord_fixed()
+  coord_fixed() +
+  ggtitle('Incorrectly Classified')
+
+save(heatmap_mis_40, file = "models/stacking/heatmap_mis_40")
+
+# correctly classified
+
+correct_40 <- data_test_40 %>%
+  mutate(CL = testing_t$Cutaneous.Leishmaniasis) %>% 
+  filter((data_test_40$Cutaneous.Leishmaniasis == data_test_40$.pred_class)) %>% 
+  mutate(Case = which((data_test_40$.pred_class == data_test_40$Cutaneous.Leishmaniasis)))
+
+cormat_correct_40 <- round(cor(correct_40 %>% 
+                             mutate(Cutaneous.Leishmaniasis = CL) %>% 
+                             select(-c(CL, Case,.pred_class))), 2)
+
+melted_cormat_correct_40 <- melt(cormat_correct_40)
+
+heatmap_correct_40 <- ggplot(data = melted_cormat_correct_40,
+                             aes(x = Var1,
+                                 y = Var2,
+                                 fill = value)) + 
+  geom_tile(color = 'white') +
+  scale_fill_gradient2(low = 'blue', high = 'red', mid = 'white',
+                       midpoint = 0, limit = c(-1,1), space = 'Lab',
+                       name = 'Pearson\nCorrelation') + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1,
+                                   size = 12, hjust = 1)) +
+  coord_fixed() +
+  ggtitle('Correctly Classified')
+save(heatmap_correct_40, file = "models/stacking/heatmap_correct_40")
 ```
 
+```{r, eval=T}
+load("models/stacking/heatmap_aad")
+load("models/stacking/heatmap_mis_40")
+load("models/stacking/heatmap_correct_40")
+
+heatmap_aad
+heatmap_mis_40 
+heatmap_correct_40
+```
+
+
+We see here that the correlation between cutaneous leishmaniasis and all other variables is opposite for the incorrectly classified data compared to the original and correctly classified data.
+
+### Base Models
+
+```{r}
+load("models/stacking/svm_res_early_CL_classif_40")
+load("models/stacking/rf_res_early_CL_classif_40")
+load("models/stacking/xgb_res_early_CL_classif_40")
+load("models/stacking/nb_res_early_CL_classif_40")
+
+library(e1071)
+library(kernlab)
+
+svm_radial_fit <- svm_res %>% 
+  fit(Cutaneous.Leishmaniasis ~ ., data = data_test_40 %>% select(-c(.pred_class)))
+
+```
 
 
 # Appendix: All code for this report
