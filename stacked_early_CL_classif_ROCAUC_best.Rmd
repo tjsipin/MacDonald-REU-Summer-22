@@ -7,12 +7,12 @@ output: html_document
 
 ```{r setup, include=FALSE, eval=T}
 knitr::opts_chunk$set(echo = T, 
-                      cache = T, 
+                      cache = F, 
                       eval = F, 
                       results = 'show',
                       warning = F,
                       message = F)
-options(digits = 10, scipen = 0)
+
 ```
 
 This report gives five different stacked models to predict cutaneous leishmaniasis using data from 2000 to 2013, with each model differing by threshold determining what constitutes low levels and high levels of cutaneous leishmaniasis.
@@ -1538,7 +1538,8 @@ load(file = 'models/stacking/conf_mat_early_CL_classif_70')
 
 ### 30th percentile
 ```{r, echo=F, eval=T}
-conf_mat_early_CL_classif_30
+
+conf_mat_early_CL_classif_30[1:4]
 ```
 
 ### 40th percentile

@@ -22,3 +22,14 @@ workflowsets
 yardstick
 stacks
 finalfit
+kernlab
+xgboost
+ranger
+discrim
+agua
+naivebayes
+Matrix
+glmnet
+pROC
+plotROC
+reshape2

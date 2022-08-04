@@ -8,7 +8,7 @@ output: html_document
 ```{r setup, include=FALSE, eval=T}
 knitr::opts_chunk$set(echo = T, 
                       cache = T, 
-                      eval = T, 
+                      eval = F, 
                       results = 'show',
                       warning = F,
                       message = F)
@@ -1564,9 +1564,9 @@ conf_mat_early_VL_classif_70[1:4]
 
 ## ROC AUC Graphs
 
-Now, we show the ROC AUC graphs
+Now, we show the ROC AUC graphs:
 
-```{r roc auc graphs, eval=T}
+```{r roc auc graphs, eval=T, echo=F}
 library(tidyverse)
 library(pROC)
 library(dplyr)
@@ -1623,7 +1623,7 @@ Our best model is the one split at the 40th percentile, as it is the best at min
 
 Now we look at the observations in which our model wrongly classified observations. Perhaps we can develop a second model trained on the misclassified cases to further improve our model.
 
-```{r, eval=T}
+```{r, eval=T, echo=F}
 # to get true levels of VL again
 
 load('./data/imp')
