@@ -21,9 +21,11 @@ Loading the Annual Amazon Data Set and Tidying it by removing any NA values for 
 
 ```{r}
 getwd()
-load("../data/imp")
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
 
-data <- data %>%
+
+data <- aad%>%
   filter(Year > 2013) %>%
   filter(Year < 2019) %>%
   filter(!is.na(Cutaneous.Leishmaniasis)) %>%
@@ -39,8 +41,8 @@ data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
 
 Reducing columns to desired Predicitive Variables: Population, LAST_Day, Precip, AvgRad, SWOccurrence, NDVI, EVI, pland_forest, te_forest, enn_mn_forest.
 ```{r}
-later_data_small <- subset(later_data_small, !is.na(later_data_small$LST_Day))
-later_data_small <- subset(later_data_small, !is.na(later_data_small$SWOccurrence))
+data <- subset(data, !is.na(data$LST_Day))
+data <- subset(data, !is.na(data$SWOccurrence))
 ```
 
 
@@ -49,7 +51,7 @@ Creating new dataset cat_df where values of Cutaneous.Leishmaniasis are split at
 library(dplyr)
 cat_df <- data
 cat_df$Cutaneous.Leishmaniasis <- cut(data$Cutaneous.Leishmaniasis,breaks = c(0, 0.1852263, 10^3), 
-                                      labels = c("low", "high")) # 4s0th percentile
+                                      labels = c("low", "high")) # 40th percentile
 
 # cat_df <-subset(cat_df, cat_df$Population < 4000000)
 # cat_df <-subset(cat_df, cat_df$Precip < 6000)
@@ -158,7 +160,7 @@ svm_res <-
   )
 
 save(svm_res, file = 'stacking/svm_res_later_classif_2')
-#load(file = 'models/stacking/svm_res_later_classif_2')
+#load(file = 'stacking/svm_res_later_classif_2')
 
 ```
 
@@ -195,7 +197,7 @@ xgb_res <-
 
 save(xgb_res, file = 'stacking/xgb_res_later_classif_2')
 
-#load(file = 'models/stacking/xgb_res_later_classif_2')
+#load(file = 'stacking/xgb_res_later_classif_2')
 ```
 
 Setting up Random Forest base model:
@@ -228,7 +230,7 @@ rf_res <-
 
 save(rf_res, file = 'stacking/rf_res_later_classif_2')
 
-#load(file = 'models/stacking/rf_res_later_classif_2')
+#load(file = 'stacking/rf_res_later_classif_2')
 ```
 
 Adding candidate models to stacked model

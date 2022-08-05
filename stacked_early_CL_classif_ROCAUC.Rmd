@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = T, cache = T, eval = F, results = 'show')
+knitr::opts_chunk$set(echo = T, cache = T, eval = T, results = 'show')
 ```
 
 This report gives five different stacked models to predict cutaneous leishmaniasis using data from 2000 to 2013, with each model differing by threshold determining what constitutes low levels and high levels of cutaneous leishmaniasis.
@@ -284,13 +284,12 @@ model_st_30 <-
 save(model_st_30, file = 'models/stacking/model_st_early_CL_classif_30')
 
 set.seed(123)
-data_test_30 <- testing(split)
 
 data_test_30 <-
   data_test_30 %>%
   bind_cols(predict(model_st_30, .))
 
-save(data_test_30, file = 'models/stacking/data_test_early_CL_classif_30')
+save(data_test_30, file = 'models/stacking/data_tesNt_early_CL_classif_30')
 
 
 # confusion matrix for stacks
@@ -1420,7 +1419,7 @@ load(file = 'models/stacking/conf_mat_early_CL_classif_70')
 
 ### 30th percentile
 ```{r, echo=F, eval=T}
-conf_mat_early_CL_classif_30[1:4]
+conf_mat_early_CL_classif_30
 ```
 
 ### 40th percentile

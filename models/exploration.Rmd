@@ -78,6 +78,9 @@ fit <- lm(aad$Cutaneous.Leishmaniasis~ aad$Year, data = aad)
 summary(fit)
 abline(fit, col = "red")
 ```
+```{r}
+ggplot(mean_Cutaneous, aes(x=Year, y = name)) + geom_line()
+```
 
 
 ```{r}
@@ -92,11 +95,20 @@ mean_Cutaneous <- monthly_df %>%
   group_by(Month) %>%
   summarise_at(vars(Cutaneous.Leishmaniasis), list(name = mean))
 mean_Cutaneous
-plot(mean_Cutaneous, main = "Cutaneous Cases between 2001 and 2019", xlab = "Month", ylab = "Cases")
+plot(mean_Cutaneous, main = "Cutaneous Cases between 2007 and 2019", xlab = "Month", ylab = "Cases", cex = 0.1)
 
-fit <- lm(monthly_df$Cutaneous.Leishmaniasis ~ monthly_df$Month, data = monthly_df)
+fit <- glm(monthly_df$Cutaneous.Leishmaniasis ~ monthly_df$Month, data = monthly_df)
 summary(fit)
 abline(fit, col = "red")
+```
+
+
+```{r}
+mean_Cutaneous <- monthly_df %>%
+  group_by(Month) %>%
+  summarise_at(vars(Cutaneous.Leishmaniasis), list(name = mean))
+mean_Cutaneous
+ggplot(mean_Cutaneous, aes(x=Month/12 + 2006, y = name)) + geom_line()
 ```
 
 

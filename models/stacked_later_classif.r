@@ -18,17 +18,17 @@ aad <-subset(aad, aad$Year < 2019)
 
 
 
-aad <-subset(aad, aad$Population < 4000000)
-aad <-subset(aad, aad$Precip < 6000)
-aad <-subset(aad, aad$LST_Day < 37)
-aad <-subset(aad, aad$LST_Day > 17)
-aad <-subset(aad, aad$AvgRad < 50)
-aad <-subset(aad, aad$NDVI > 0.2)
-aad <-subset(aad, aad$EVI > 0.1)
-aad <-subset(aad, aad$pland_forest > 0)
-aad <-subset(aad, aad$te_forest > 0)
-aad <-subset(aad, aad$enn_mn_forest > 0)
-aad <-subset(aad, aad$enn_mn_forest < 3000)
+# aad <-subset(aad, aad$Population < 4000000)
+# aad <-subset(aad, aad$Precip < 6000)
+# aad <-subset(aad, aad$LST_Day < 37)
+# aad <-subset(aad, aad$LST_Day > 17)
+# aad <-subset(aad, aad$AvgRad < 50)
+# aad <-subset(aad, aad$NDVI > 0.2)
+# aad <-subset(aad, aad$EVI > 0.1)
+# aad <-subset(aad, aad$pland_forest > 0)
+# aad <-subset(aad, aad$te_forest > 0)
+# aad <-subset(aad, aad$enn_mn_forest > 0)
+# aad <-subset(aad, aad$enn_mn_forest < 3000)
 
 
 

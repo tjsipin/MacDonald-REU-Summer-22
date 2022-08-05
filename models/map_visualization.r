@@ -1,7 +1,9 @@
 # libraries
 
 library(tidyverse)
+install.packages("maps")
 library(maps)
+install.packages("mapproj")
 library(mapproj)
 
 
@@ -12,20 +14,21 @@ world_tbl <- map_data("world") %>%
 world_tbl
 
 # world base
-world_base <- world_tbl %>%
+map_data("world") %>%
   ggplot() + 
-  geo_map(
-    aes(long, lat, map_id = region),
-    map = world_tbl
-    color = "gray80", fill = "gray30", size = 0.3
-  )
+  geom_polygon(
+    aes(long, lat, group = group))
 
 
-world_base
+map_data("world") %>%
+  ggplot() +
+  borders(fill = "gray")
+
+
 
 # Ortho Projection
 
 world_base +
-  coord_map("ortho", orientation = c(-14, -52))
+  coord_map("ortho", orientation = c(-14, -52, 0))
 
 
