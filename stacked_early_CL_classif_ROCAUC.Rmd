@@ -1419,7 +1419,7 @@ load(file = 'models/stacking/conf_mat_early_CL_classif_70')
 
 ### 30th percentile
 ```{r, echo=F, eval=T}
-conf_mat_early_CL_classif_30[1:4]
+conf_mat_early_CL_classif_30
 ```
 
 ### 40th percentile
