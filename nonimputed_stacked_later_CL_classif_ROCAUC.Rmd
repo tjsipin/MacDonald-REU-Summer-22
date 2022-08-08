@@ -568,7 +568,7 @@ model_st_40 <-
 
 save(model_st_40, file = 'models/stacking/model_st_later_CL_classif_40')
 
-#load('models/stacking/model_st_later_CL_classif_40')
+load('models/stacking/model_st_later_CL_classif_40')
 
 data_test_40 <-
   data_test_40 %>%
@@ -576,7 +576,7 @@ data_test_40 <-
 
 save(data_test_40, file = 'models/stacking/data_test_later_CL_classif_40')
 
-#load(file = 'models/stacking/data_test_later_CL_classif_40')
+load(file = 'models/stacking/data_test_later_CL_classif_40')
 # confusion matrix for stacks
 
 
