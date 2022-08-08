@@ -217,3 +217,12 @@ models/data/monthly_df.csv filter=lfs diff=lfs merge=lfs -text
 /stacked_early_CL_classif_ROCAUC_best_cache/html/__packages filter=lfs diff=lfs merge=lfs -text
 /stacked_early_CL_classif_ROCAUC_cache/html/__packages filter=lfs diff=lfs merge=lfs -text
 /stacked_early_VL_classif_ROCAUC_best_cache/html/__packages filter=lfs diff=lfs merge=lfs -text
+*.RDataTmp filter=lfs diff=lfs merge=lfs -text
+/models/stacking/conf_mat_later_CL_classif_40_imp filter=lfs diff=lfs merge=lfs -text
+/models/stacking/data_st_later_CL_classif_40_imp filter=lfs diff=lfs merge=lfs -text
+/models/stacking/data_test_later_CL_classif_40_imp filter=lfs diff=lfs merge=lfs -text
+/models/stacking/model_st_later_CL_classif_40_imp filter=lfs diff=lfs merge=lfs -text
+/models/stacking/nb_res_later_CL_classif_40_imp filter=lfs diff=lfs merge=lfs -text
+/models/stacking/rf_res_later_CL_classif_40_imp filter=lfs diff=lfs merge=lfs -text
+/models/stacking/svm_res_later_CL_classif_40_imp filter=lfs diff=lfs merge=lfs -text
+/models/stacking/xgb_res_later_CL_classif_40_imp filter=lfs diff=lfs merge=lfs -text
