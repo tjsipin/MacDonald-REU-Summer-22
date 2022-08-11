@@ -217,3 +217,4 @@ models/data/monthly_df.csv filter=lfs diff=lfs merge=lfs -text
 /stacked_early_CL_classif_ROCAUC_best_cache/html/__packages filter=lfs diff=lfs merge=lfs -text
 /stacked_early_CL_classif_ROCAUC_cache/html/__packages filter=lfs diff=lfs merge=lfs -text
 /stacked_early_VL_classif_ROCAUC_best_cache/html/__packages filter=lfs diff=lfs merge=lfs -text
+*.RDataTmp filter=lfs diff=lfs merge=lfs -text
