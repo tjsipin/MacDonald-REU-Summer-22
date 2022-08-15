@@ -223,7 +223,7 @@ ggAcf(lst_lag_1)
 
 ```{r}
 fc <- rwf(test_data_y[,'LST_Day'], drift=T, lambda=0, h=50, level=80)
-fc2 <- rwf(test_data_y[,'LST_Day'], drift=T, lambda=0, h=50, level=80,
+fc2 <- rwf(test_data_y[,'LST_Day'], drift=T, lambda=0, h=50, level=10,
            biasadj=T)
 autoplot(test_data_y[,'LST_Day']) + 
   autolayer(fc, series='Simple back transformation') +
@@ -243,28 +243,179 @@ autoplot(res2) +
 rwf(test_data_y[,'EVI'], drift=T, lambda=0, h=50, level=80)
 rwf(test_data_y[,'EVI'], drift=T, lambda=0, h=50, level=80, bootstrap=T)
 
-rwf_df <- data.frame()
+rwf_df <- data.frame(matrix(ncol = ncol(data_1),
+                            nrow = 0))
+h = 10 # param
 
-for (i in unique(data_1[,'Code'])){
-  for (j in colnames(data_1 %>% 
-                     filter(Code == i) %>% 
-                     select(-c(Code, Year)))) {
-    rwf((data_1 %>% 
-           filter(Code == i) %>% 
-           select(c(j)) %>% ts()), 
-        drift=T,
-        lambda=0,
-        h=10,
-        level=80)
+for (i in 1:(unique(data_1[,'Code']) %>% length)){ # 1:8554
+  for(j in 1:h) { # 1:10
+    for (k in 1:(colnames(data_1 %>% 
+                       select(-c(Code, Year))) %>% length)) { # 1:10
+      rwf_df[(i-1)*h + j, k] = rwf(data_1 %>% 
+                                      filter(Code == unique(data_1[,'Code'])[i]) %>% 
+                                      select(c(colnames(data_1 %>% 
+                                                          select(-c(Code, Year)))[k])) %>%
+                                      ts(start = 2000), 
+                                   lambda=0,
+                                   h=10,
+                                   level=80)$mean[j]
+    }
   }
 }
+
+colnames(rwf_df) <- data_1 %>% select(-c(Code,Year)) %>% colnames
+rwf_df
 ```
 
+```{r}
+test_data_1 <- data_1 %>% 
+  filter(Code == c(5001, 5002, 5004, 5021))
+
+test_rwf_df_1 <- data.frame(matrix(ncol = ncol(data_1),
+                            nrow = 0))
+
+for (i in 1:(unique(test_data_1[,'Code']) %>% length)){ # 1:8554
+  for(j in 1:h) { # 1:10
+    for (k in 1:(colnames(test_data_1 %>% 
+                       select(-c(Code, Year))) %>% length)) { # 1:10
+      test_rwf_df_1[(i-1)*h + j, k] = rwf(test_data_1 %>% 
+                                      filter(Code == unique(test_data_1[,'Code'])[i]) %>% 
+                                      select(c(colnames(test_data_1 %>% 
+                                                          select(-c(Code, Year)))[k])) %>%
+                                      ts(start = 2000), 
+                                   lambda=0,
+                                   h=10,
+                                   level=80)$mean[j]
+    }
+  }
+}
+
+colnames(test_rwf_df_1) <- data_1 %>% select(-c(Code,Year)) %>% colnames
+```
+
+```{r}
+h = 10 # param
+test_data_2 <- data_1 %>% 
+  filter(Code < 5002)
+
+test_rwf_df_2 <- data.frame(matrix(ncol = ncol(data_1),
+                            nrow = 0))
+
+for (i in 1:(unique(test_data_2[,'Code']) %>% length)){ # 1:8554
+  for(j in 1:h) { # 1:10
+    for (k in 3:(colnames(test_data_2) %>% length)) { # 1:10
+      test_rwf_df_2[(i-1)*h + j, k] = rwf(test_data_2 %>% 
+                                            filter(Code == unique(test_data_2[,'Code'])[i]) %>% 
+                                            select(c(colnames(test_data_2)[k])) %>%
+                                            ts(start = 2000), 
+                                          lambda='auto',
+                                          h=10,
+                                          level=80,
+                                          drift=T,
+                                          bootstrap=T)$mean[j]
+      rwf(test_data_2 %>% 
+                                            filter(Code == unique(test_data_2[,'Code'])[i]) %>% 
+                                            select(c(colnames(test_data_2)[k])) %>%
+                                            ts(start = 2000), 
+                                          lambda='auto',
+                                          h=10,
+                                          level=80,
+                                          drift=T,
+                                          bootstrap=T) %>% print
+    }
+    test_rwf_df_2[(i-1)*h + j, 1] = unique(test_data_2[,'Code'])[i]
+    test_rwf_df_2[(i-1)*h + j, 2] = 2019 + j
+  }
+}
+
+
+colnames(test_rwf_df_2) <- data_1 %>% colnames
+
+test_data_2 %>% dim
+```
+
+
+```{r}
+rwf(test_data_2 %>% 
+                                      filter(Code == unique(test_data_2[,'Code'])[1]) %>% 
+                                      select(c(colnames(test_data_2)[5])) %>%
+                                      ts(start = 2000), 
+                                   lambda=0,
+                                   h=10,
+                                   level=80,
+    drift=T)
+```
+```{r}
+h = 10 # param
+test_data_3 <- data_1
+
+test_rwf_df_3 <- data.frame(matrix(ncol = ncol(data_1),
+                            nrow = 0))
+
+for (i in 1:(unique(test_data_3[,'Code']) %>% length)){ # 1:8554
+  for(j in 1:h) { # 1:10
+    for (k in 3:(colnames(test_data_3) %>% length)) { # 1:10
+      skip <- FALSE
+      
+      test_rwf_df_3[(i-1)*h + j, k] = rwf(test_data_3 %>% 
+                                            filter(Code == unique(test_data_3[,'Code'])[i]) %>% 
+                                            select(c(colnames(test_data_3)[k])) %>%
+                                            ts(start = 2000), 
+                                          na.rm = TRUE,
+                                          lambda='auto',
+                                          h=10,
+                                          level=80,
+                                          drift=T,
+                                          bootstrap=T)$mean[j] %>% 
+        tryCatch(error = function(e){ skip <- TRUE })
+      if(skip) {
+        test_rwf_df_3[(i-1)*h + j, k] = rwf(test_data_3 %>% 
+                                            filter(Code == unique(test_data_3[,'Code'])[i]) %>% 
+                                            select(c(colnames(test_data_3)[k])) %>%
+                                            ts(start = 2000), 
+                                          na.rm = TRUE,
+                                          lambda='auto',
+                                          h=10,
+                                          level=80,
+                                          drift=F,
+                                          bootstrap=T)$mean[j]
+      }
+
+    }
+    test_rwf_df_3[(i-1)*h + j, 1] = unique(test_data_3[,'Code'])[i]
+    test_rwf_df_3[(i-1)*h + j, 2] = 2019 + j
+  }
+}
+
+
+colnames(test_rwf_df_3) <- data_1 %>% colnames
+
+test_data_3 %>% dim
+```
 
 ```{r}
 test_data_y <- data %>% 
   filter(Code == 10609) %>% 
   ts(start = 2000)
 rwf(test_data_y, h = 20, drift = T)
+```
+
+# FORECAST FUNCTION
+
+```{r}
+h = 10 # param
+test_data_4 <- data_1 %>% 
+  filter(Code < 5002)
+
+test_rwf_df_4 <- data.frame(matrix(ncol = ncol(data_1),
+                            nrow = 0))
+
+
+
+
+colnames(test_rwf_df_4) <- data_1 %>% colnames
+
+test_data_4 %>% dim
+```
 ```
 
