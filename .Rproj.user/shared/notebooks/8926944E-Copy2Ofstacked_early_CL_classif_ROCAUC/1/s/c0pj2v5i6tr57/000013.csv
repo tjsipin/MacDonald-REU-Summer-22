@@ -1,0 +1,10 @@
+"0","roc_30 <- roc(data_test_30$Cutaneous.Leishmaniasis,
+    data_test_30$.pred_class %>% as.numeric(),
+    print.auc = T)
+"
+"2","Warning: Unknown or uninitialised column: `.pred_class`."
+"2","Setting levels: control = 0, case = 1
+"
+"2","Error in roc.default(data_test_30$Cutaneous.Leishmaniasis, data_test_30$.pred_class %>%  : 
+  Response and predictor must be vectors of the same length.
+"

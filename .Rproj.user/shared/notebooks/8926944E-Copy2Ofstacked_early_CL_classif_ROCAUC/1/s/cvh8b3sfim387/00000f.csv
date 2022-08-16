@@ -1,0 +1,43 @@
+"0","set.seed(123)"
+"0","library(tidyverse)"
+"0","library(tidymodels)"
+"2","Warning: package ‘tidymodels’ was built under R version 4.1.2"
+"2","[30m── [1mAttaching packages[22m ───────────────────────────────────────────────────────────────────────────────────────────── tidymodels 1.0.0 ──[39m
+"
+"2","[30m[32m✔[30m [34mbroom       [30m 1.0.0     [32m✔[30m [34mrsample     [30m 1.0.0
+[32m✔[30m [34mdials       [30m 1.0.0     [32m✔[30m [34mtune        [30m 1.0.0
+[32m✔[30m [34minfer       [30m 1.0.2     [32m✔[30m [34mworkflows   [30m 1.0.0
+[32m✔[30m [34mmodeldata   [30m 1.0.0     [32m✔[30m [34mworkflowsets[30m 1.0.0
+[32m✔[30m [34mparsnip     [30m 1.0.0     [32m✔[30m [34myardstick   [30m 1.0.0
+[32m✔[30m [34mrecipes     [30m 1.0.1     [39m
+"
+"2","Warning: package ‘broom’ was built under R version 4.1.2"
+"2","Warning: package ‘dials’ was built under R version 4.1.2"
+"2","Warning: package ‘scales’ was built under R version 4.1.2"
+"2","Warning: package ‘infer’ was built under R version 4.1.2"
+"2","Warning: package ‘modeldata’ was built under R version 4.1.2"
+"2","Warning: package ‘parsnip’ was built under R version 4.1.2"
+"2","Warning: package ‘recipes’ was built under R version 4.1.2"
+"2","Warning: package ‘rsample’ was built under R version 4.1.2"
+"2","Warning: package ‘tune’ was built under R version 4.1.2"
+"2","Warning: package ‘workflows’ was built under R version 4.1.2"
+"2","Warning: package ‘workflowsets’ was built under R version 4.1.2"
+"2","Warning: package ‘yardstick’ was built under R version 4.1.2"
+"2","[30m── [1mConflicts[22m ──────────────────────────────────────────────────────────────────────────────────────────────── tidymodels_conflicts() ──
+[31m✖[30m [34mforeach[30m::[32maccumulate()[30m    masks [34mpurrr[30m::accumulate()
+[31m✖[30m [34myardstick[30m::[32maccuracy()[30m    masks [34mforecast[30m::accuracy()
+[31m✖[30m [34mrandomForest[30m::[32mcombine()[30m  masks [34mgridExtra[30m::combine(), [34mdplyr[30m::combine()
+[31m✖[30m [34mscales[30m::[32mdiscard()[30m        masks [34mpurrr[30m::discard()
+[31m✖[30m [34mdplyr[30m::[32mfilter()[30m          masks [34mstats[30m::filter()
+[31m✖[30m [34mrecipes[30m::[32mfixed()[30m         masks [34mstringr[30m::fixed()
+[31m✖[30m [34mkableExtra[30m::[32mgroup_rows()[30m masks [34mdplyr[30m::group_rows()
+[31m✖[30m [34mdplyr[30m::[32mlag()[30m             masks [34mstats[30m::lag()
+[31m✖[30m [34mrandomForest[30m::[32mmargin()[30m   masks [34mggplot2[30m::margin()
+[31m✖[30m [34myardstick[30m::[32mspec()[30m        masks [34mreadr[30m::spec()
+[31m✖[30m [34mrecipes[30m::[32mstep()[30m          masks [34mstats[30m::step()
+[31m✖[30m [34mforeach[30m::[32mwhen()[30m          masks [34mpurrr[30m::when()
+[34m•[30m Learn how to get started at [32mhttps://www.tidymodels.org/start/[30m[39m
+"
+"0","library(stacks)"
+"2","Warning: package ‘stacks’ was built under R version 4.1.2"
+"0","load('./data/imp')"

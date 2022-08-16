@@ -1,0 +1,6 @@
+"0","model_st_30 <-
+  model_st_30 %>% 
+  fit_members()
+"
+"2","Error in pkgs$pkg[[1]] : subscript out of bounds
+"

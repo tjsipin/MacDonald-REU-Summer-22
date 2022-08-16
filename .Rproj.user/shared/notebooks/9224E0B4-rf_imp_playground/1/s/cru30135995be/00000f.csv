@@ -1,0 +1,107 @@
+"0","library(PRROC) # ROC curves in data frames"
+"0","library(tidyverse) # everything"
+"0","library(visdat) # missingness plots"
+"0","library(doParallel) # parallel missForest"
+"2","Warning: package ‘doParallel’ was built under R version 4.1.2"
+"2","Loading required package: foreach
+"
+"2","Warning: package ‘foreach’ was built under R version 4.1.2"
+"2","
+Attaching package: ‘foreach’
+
+"
+"2","The following objects are masked from ‘package:purrr’:
+
+    accumulate, when
+
+"
+"2","Loading required package: iterators
+"
+"2","Warning: package ‘iterators’ was built under R version 4.1.2"
+"2","Loading required package: parallel
+"
+"0","library(doRNG) # reproducible parallel results"
+"2","Loading required package: rngtools
+"
+"0","library(gridExtra) # combining graphs"
+"2","
+Attaching package: ‘gridExtra’
+
+"
+"2","The following object is masked from ‘package:dplyr’:
+
+    combine
+
+"
+"0","library(randomForest) # random forests"
+"2","Warning: package ‘randomForest’ was built under R version 4.1.2"
+"2","randomForest 4.7-1.1
+"
+"2","Type rfNews() to see new features/changes/bug fixes.
+"
+"2","
+Attaching package: ‘randomForest’
+
+"
+"2","The following object is masked from ‘package:gridExtra’:
+
+    combine
+
+"
+"2","The following object is masked from ‘package:dplyr’:
+
+    combine
+
+"
+"2","The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+"
+"0","library(missForest) # ..."
+"2","Warning: package ‘missForest’ was built under R version 4.1.2"
+"0","library(kableExtra) # pretty tables"
+"2","Warning: package ‘kableExtra’ was built under R version 4.1.2"
+"2","
+Attaching package: ‘kableExtra’
+
+"
+"2","The following object is masked from ‘package:dplyr’:
+
+    group_rows
+
+"
+"0","library(ggplot2)"
+"0","library(ggfortify)"
+"2","Warning: package ‘ggfortify’ was built under R version 4.1.2"
+"2","Registered S3 methods overwritten by 'ggfortify':
+  method                 from    
+  autoplot.Arima         forecast
+  autoplot.acf           forecast
+  autoplot.ar            forecast
+  autoplot.bats          forecast
+  autoplot.decomposed.ts forecast
+  autoplot.ets           forecast
+  autoplot.forecast      forecast
+  autoplot.glmnet        parsnip 
+  autoplot.stl           forecast
+  autoplot.ts            forecast
+  fitted.ar              forecast
+  fortify.ts             forecast
+  residuals.ar           forecast
+"
+"0","library(forecast)"
+"2","Warning: package ‘forecast’ was built under R version 4.1.2"
+"0","theme_set(theme_light()) # ggplot theme"
+"0",""
+"0","aad <- read_csv('../models/data/aad.csv')"
+"2","Warning: One or more parsing issues, see `problems()` for details"
+"2","[1mRows: [22m[34m171146[39m [1mColumns: [22m[34m1[39m"
+"2","[36m──[39m [1mColumn specification[22m [36m────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m
+[1mDelimiter:[22m "",""
+[31mchr[39m (1): <<<<<<< HEAD"
+"2","
+[36mℹ[39m Use `spec()` to retrieve the full column specification for this data.
+[36mℹ[39m Specify the column types or set `show_col_types = FALSE` to quiet this message."
+"0","load('../data/imp')"
+"0",""
