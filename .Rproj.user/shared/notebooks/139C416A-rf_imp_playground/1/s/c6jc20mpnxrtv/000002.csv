@@ -1,0 +1,45 @@
+"0","```r
+fc <- rwf(test_data_y[,'LST_Day'], drift=T, lambda=0, h=50, level=80)
+fc2 <- rwf(test_data_y[,'LST_Day'], drift=T, lambda=0, h=50, level=10,
+           biasadj=T)
+autoplot(test_data_y[,'LST_Day']) + 
+  autolayer(fc, series='Simple back transformation') +
+  autolayer(fc2, series='Bias adjusted', PI=F) +
+  guides(color=guide_legend(title='Forecast'))
+
+res <- residuals(fc)
+
+autoplot(res) + 
+  xlab('Year')
+
+res2 <- residuals(fc2)
+
+autoplot(res2) + 
+  xlab('Year')
+
+rwf(test_data_y[,'EVI'], drift=T, lambda=0, h=50, level=80)
+rwf(test_data_y[,'EVI'], drift=T, lambda=0, h=50, level=80, bootstrap=T)
+
+rwf_df <- data.frame(matrix(ncol = ncol(data_1),
+                            nrow = 0))
+h = 10 # param
+
+for (i in 1:(unique(data_1[,'Code']) %>% length)){ # 1:8554
+  for(j in 1:h) { # 1:10
+    for (k in 1:(colnames(data_1 %>% 
+                       select(-c(Code, Year))) %>% length)) { # 1:10
+      rwf_df[(i-1)*h + j, k] = rwf(data_1 %>% 
+                                      filter(Code == unique(data_1[,'Code'])[i]) %>% 
+                                      select(c(colnames(data_1 %>% 
+                                                          select(-c(Code, Year)))[k])) %>%
+                                      ts(start = 2000), 
+                                   lambda=0,
+                                   h=10,
+                                   level=80)$mean[j]
+    }
+  }
+}
+
+colnames(rwf_df) <- data_1 %>% select(-c(Code,Year)) %>% colnames
+rwf_df
+```"

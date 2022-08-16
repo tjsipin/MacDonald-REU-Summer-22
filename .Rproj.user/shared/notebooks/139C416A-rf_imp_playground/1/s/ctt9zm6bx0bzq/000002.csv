@@ -1,0 +1,12 @@
+"0","```r
+y <- ts(test_aad, start = 2000)
+
+for(i in colnames(test_aad)) {
+  (autoplot(test_aad %>% 
+             select(i) %>% 
+             ts(start = 2000)) +
+     ggtitle(str_interp('${i}')) +
+     xlab('Year')) %>% 
+    print()
+}
+```"

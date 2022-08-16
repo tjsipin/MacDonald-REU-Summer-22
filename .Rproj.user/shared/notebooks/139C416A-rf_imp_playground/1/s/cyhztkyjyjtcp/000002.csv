@@ -1,0 +1,48 @@
+"0","```r
+doParallel::registerDoParallel(cores = 4) # set based on number of CPU cores
+doRNG::registerDoRNG(seed = 123)
+# v1
+missForest_v1 <- missForest(as.data.frame(train_X), 
+                    xtrue = as.data.frame(later),
+                    variablewise = T,
+                    maxiter = 3, 
+                    mtry = 9, 
+                    ntree = 1000,
+                    parallelize = 'forests')
+
+
+# v2
+missForest_v2 <- missForest(as.data.frame(train_X), 
+                    xtrue = as.data.frame(later),
+                    variablewise = T,
+                    parallelize = 'forests')
+
+
+# MSE
+data.frame(varname = 
+             names(missForest_v1$ximp), 
+           error_type = 
+             names(missForest_v1$OOBerror), 
+           error = 
+             missForest_v1$OOBerror) %>%
+  mutate(error_type = cell_spec(error_type, 
+                                color = \"white\",
+                                background = \"deepskyblue\")) %>%
+  kable(escape = F) %>% 
+  kable_styling(full_width = F)
+
+data.frame(varname = 
+             names(missForest_v2$ximp), 
+           error_type = 
+             names(missForest_v2$OOBerror), 
+           error = 
+             missForest_v2$OOBerror) %>%
+  mutate(error_type = cell_spec(error_type, 
+                                color = \"white\",
+                                background = \"deepskyblue\")) %>%
+  kable(escape = F) %>% 
+  kable_styling(full_width = F)
+
+
+missForest_v1$error; missForest_v2$error
+```"
