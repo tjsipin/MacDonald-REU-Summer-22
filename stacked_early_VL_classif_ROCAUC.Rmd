@@ -1,3 +1,1656 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:a72dafebb265cf1a69e11e697ee8033c093278cb8a2370deb2c191597ba612fa
-size 39249
+---
+title: "stacked_early_VL_classif_ROCAUC"
+author: "TJ Sipin"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval=F)
+library(tidyverse)
+library(tidymodels)
+library(stacks)
+library(rsample)
+```
+
+## 30th percentile
+```{r}
+# helper packages
+library(tidyverse)
+library(tidymodels)
+library(stacks)
+
+
+# load and split the early data using imputed data
+load('./data/imp')
+
+
+quantile_data <- data %>% 
+  filter(!is.na(Visceral.Leishmaniasis)) %>% 
+  filter(Visceral.Leishmaniasis > 0) %>% 
+  dplyr::select(Visceral.Leishmaniasis)
+
+quantile <- (quantile_data$Visceral.Leishmaniasis %>% 
+  quantile(0.3))[[1]] # PARAMETER
+
+data <- data %>%
+  filter(Year < 2014) %>%
+  filter(!is.na(Visceral.Leishmaniasis)) %>% 
+  filter(Visceral.Leishmaniasis > 0) %>%
+  dplyr::select(c('Visceral.Leishmaniasis', 'LST_Day', # include LST_Night?
+                  'NDVI', 'EVI', 'Precip', 
+                  'StableLights', 'SWOccurrence', 'pland_forest',
+                  'te_forest', 'enn_mn_forest','Population'))
+
+
+data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
+data$te_forest <- ifelse(is.na(data$te_forest), 0, data$te_forest)
+data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
+
+data$Visceral.Leishmaniasis <- as.factor(ifelse(data$Visceral.Leishmaniasis < quantile, 0, 1))
+
+set.seed(123) # for reproducibility
+
+split <- initial_split(data)
+
+data_train <- training(split)
+data_test_30 <- testing(split)
+
+# use a 5-fold cross-validation
+folds <- rsample::vfold_cv(data_train, 
+                           v = 5, 
+                           strata = Visceral.Leishmaniasis)
+
+# set up a basic recipe
+data_rec <-
+  recipe(Visceral.Leishmaniasis ~ LST_Day + NDVI + 
+           EVI + Precip + StableLights + SWOccurrence + pland_forest + 
+           te_forest + enn_mn_forest + Population, data = data_train) %>%
+  step_dummy(all_nominal() - all_outcomes()) %>% 
+  step_zv(all_predictors()) %>% 
+  step_normalize(all_numeric())
+
+# define a minimal workflow
+data_wflow <-
+  workflow() %>% 
+  add_recipe(data_rec)
+
+# add metric rmse (same as malaria)
+metric <- metric_set(sensitivity, accuracy)
+
+# save assessment set predictions and workflow used to fit the resamples
+ctrl_grid <- control_stack_grid()
+ctrl_res <- control_stack_resamples()
+
+# models: SVM, XGBoost, RF
+## models to try: logistic regression 
+
+# toy model
+log_reg_spec <-
+  logistic_reg() %>%
+  set_engine('glm')
+
+log_reg_wflow <- 
+  data_wflow %>%
+  add_model(log_reg_spec)
+
+set.seed(123)
+log_reg_res <-
+  fit_resamples(
+    log_reg_wflow,
+    resamples = folds,
+    metrics = metric,
+    control = ctrl_res
+  )
+
+# define svm model using parsnip
+svm_spec <- 
+  svm_rbf(
+    cost = parsnip::tune(),
+    rbf_sigma = parsnip::tune(),
+    engine = 'kernlab',
+    mode = 'classification'
+  ) 
+
+# add it to a workflow
+svm_wflow <- 
+  data_wflow %>% 
+  add_model(svm_spec)
+
+# tune cost and rbf_sigma and fit to the 5-fold cv
+set.seed(123)
+svm_res <-
+  tune_grid(
+    svm_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+save(svm_res, file = 'models/stacking/svm_res_early_VL_classif_30')
+
+# define xgboost model using parsnip
+
+set.seed(123)
+xgb_spec <- 
+  boost_tree(
+    mtry = tune(),
+    trees = tune(),
+    min_n = tune(),
+    tree_depth = tune(),
+    learn_rate = tune(),
+    loss_reduction = tune()
+  ) %>% 
+  set_engine('xgboost') %>% 
+  set_mode('classification')
+
+# add it to a workflow
+xgb_wflow <- 
+  data_wflow %>%
+  add_model(xgb_spec)
+
+# tune mtry, trees, min_n, tree_depth, etc.
+xgb_res <-
+  tune_grid(
+    xgb_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+save(xgb_res, file = 'models/stacking/xgb_res_early_VL_classif_30')
+
+
+# define rf model using parsnip
+
+set.seed(123)
+rf_spec <- 
+  rand_forest(
+    mtry = tune(),
+    trees = tune(),
+    min_n = tune()
+  ) %>% 
+  set_engine('ranger') %>% 
+  set_mode('classification')
+
+# add it to a workflow
+rf_wflow <- 
+  data_wflow %>%
+  add_model(rf_spec)
+
+# tune mtry, trees, min_n
+rf_res <-
+  tune_grid(
+    rf_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+
+save(rf_res, file = 'models/stacking/rf_res_early_VL_classif_30')
+# 
+
+
+library(discrim) # for engine = 'naivebayes' or 'klaR'
+library(agua) # for engine = 'h2o'
+
+# define nb model using parsnip
+nb_spec <- 
+  naive_Bayes(
+    mode = 'classification',
+    smoothness = tune(),
+    Laplace = tune(),
+    engine = 'naivebayes'
+  )
+
+
+
+# add it to a workflow
+nb_wflow <- 
+  data_wflow %>%
+  add_model(nb_spec)
+
+# tune smoothness and Laplace
+nb_res <-
+  tune_grid(
+    nb_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+save(nb_res, file = 'models/stacking/nb_res_early_VL_classif_30')
+
+load(file = 'models/stacking/svm_res_early_VL_classif_30')
+load(file = 'models/stacking/xgb_res_early_VL_classif_30')
+load(file = 'models/stacking/rf_res_early_VL_classif_30')
+load(file = 'models/stacking/nb_res_early_VL_classif_30')
+
+
+data_st_30 <- 
+  stacks() %>% 
+  add_candidates(xgb_res) %>% 
+  add_candidates(rf_res) %>% 
+  add_candidates(svm_res) %>% 
+  add_candidates(nb_res)
+
+
+save(data_st_30, file = 'models/stacking/data_st_early_VL_classif_30')
+
+# creating a model stack
+## ready to evaluate how it is that we need to combine predictions from
+## each candidate ensembe member
+
+model_st_30 <-
+  data_st_30 %>% 
+  blend_predictions()
+
+model_st_30 <-
+  model_st_30 %>% 
+  fit_members()
+
+save(data_st_30, file = 'models/stacking/model_st_early_VL_classif_30')
+
+set.seed(123)
+data_test_30 <- testing(split)
+
+data_test_30 <-
+  data_test_30 %>%
+  bind_cols(predict(model_st_30, .))
+
+save(data_test_30, file = 'models/stacking/data_test_early_VL_classif_30')
+
+
+# confusion matrix for stacks
+conf_mat_early_VL_classif_30 <- caret::confusionMatrix(data = data_test_30$.pred_class, 
+                                                       reference = data_test_30$Visceral.Leishmaniasis,
+                                                       positive = '1')
+
+save(conf_mat_early_VL_classif_30, file = 'models/stacking/conf_mat_early_VL_classif_30')
+
+# confusion matrix for base models
+
+member_preds <- 
+  data_test_30 %>% 
+  dplyr::select(Visceral.Leishmaniasis) %>% 
+  bind_cols(
+    predict(
+      model_st_30,
+      data_test_30,
+      members = TRUE
+    )
+  )
+
+
+
+colnames(member_preds) %>% 
+  map_dfr(
+    .f = recall,
+    truth = as.factor(Visceral.Leishmaniasis),
+    data = member_preds
+  ) %>% 
+  mutate(member = colnames(member_preds))
+```
+
+## 40th percentile
+
+```{r}
+# helper packages
+library(tidyverse)
+library(tidymodels)
+library(stacks)
+
+
+# load and split the early data using imputed data
+load('./data/imp')
+
+
+quantile_data <- data %>% 
+  filter(!is.na(Visceral.Leishmaniasis)) %>% 
+  filter(Visceral.Leishmaniasis > 0) %>% 
+  dplyr::select(Visceral.Leishmaniasis)
+
+quantile <- (quantile_data$Visceral.Leishmaniasis %>% 
+  quantile(0.4))[[1]] # PARAMETER
+
+data <- data %>%
+  filter(Year < 2014) %>%
+  filter(!is.na(Visceral.Leishmaniasis)) %>% 
+  filter(Visceral.Leishmaniasis > 0) %>%
+  dplyr::select(c('Visceral.Leishmaniasis', 'LST_Day', # include LST_Night?
+                  'NDVI', 'EVI', 'Precip', 
+                  'StableLights', 'SWOccurrence', 'pland_forest',
+                  'te_forest', 'enn_mn_forest','Population'))
+
+
+data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
+data$te_forest <- ifelse(is.na(data$te_forest), 0, data$te_forest)
+data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
+
+data$Visceral.Leishmaniasis <- as.factor(ifelse(data$Visceral.Leishmaniasis < quantile, 0, 1))
+
+set.seed(123) # for reproducibility
+
+split <- initial_split(data)
+
+data_train <- training(split)
+data_test_40 <- testing(split)
+
+# use a 5-fold cross-validation
+folds <- rsample::vfold_cv(data_train, 
+                           v = 5, 
+                           strata = Visceral.Leishmaniasis)
+
+# set up a basic recipe
+data_rec <-
+  recipe(Visceral.Leishmaniasis ~ LST_Day + NDVI + 
+           EVI + Precip + StableLights + SWOccurrence + pland_forest + 
+           te_forest + enn_mn_forest + Population, data = data_train) %>%
+  step_dummy(all_nominal() - all_outcomes()) %>% 
+  step_zv(all_predictors()) %>% 
+  step_normalize(all_numeric())
+
+# define a minimal workflow
+data_wflow <-
+  workflow() %>% 
+  add_recipe(data_rec)
+
+# add metric rmse (same as malaria)
+metric <- metric_set(sensitivity, accuracy)
+
+# save assessment set predictions and workflow used to fit the resamples
+ctrl_grid <- control_stack_grid()
+ctrl_res <- control_stack_resamples()
+
+# models: SVM, XGBoost, RF
+## models to try: logistic regression 
+
+# toy model
+log_reg_spec <-
+  logistic_reg() %>%
+  set_engine('glm')
+
+log_reg_wflow <- 
+  data_wflow %>%
+  add_model(log_reg_spec)
+
+set.seed(123)
+log_reg_res <-
+  fit_resamples(
+    log_reg_wflow,
+    resamples = folds,
+    metrics = metric,
+    control = ctrl_res
+  )
+
+# define svm model using parsnip
+svm_spec <- 
+  svm_rbf(
+    cost = parsnip::tune(),
+    rbf_sigma = parsnip::tune(),
+    engine = 'kernlab',
+    mode = 'classification'
+  ) 
+
+# add it to a workflow
+svm_wflow <- 
+  data_wflow %>% 
+  add_model(svm_spec)
+
+# tune cost and rbf_sigma and fit to the 5-fold cv
+set.seed(123)
+svm_res <-
+  tune_grid(
+    svm_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+save(svm_res, file = 'models/stacking/svm_res_early_VL_classif_40')
+
+# define xgboost model using parsnip
+
+set.seed(123)
+xgb_spec <- 
+  boost_tree(
+    mtry = tune(),
+    trees = tune(),
+    min_n = tune(),
+    tree_depth = tune(),
+    learn_rate = tune(),
+    loss_reduction = tune()
+  ) %>% 
+  set_engine('xgboost') %>% 
+  set_mode('classification')
+
+# add it to a workflow
+xgb_wflow <- 
+  data_wflow %>%
+  add_model(xgb_spec)
+
+# tune mtry, trees, min_n, tree_depth, etc.
+xgb_res <-
+  tune_grid(
+    xgb_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+save(xgb_res, file = 'models/stacking/xgb_res_early_VL_classif_40')
+# 
+
+# define rf model using parsnip
+
+set.seed(123)
+rf_spec <- 
+  rand_forest(
+    mtry = tune(),
+    trees = tune(),
+    min_n = tune()
+  ) %>% 
+  set_engine('ranger') %>% 
+  set_mode('classification')
+
+# add it to a workflow
+rf_wflow <- 
+  data_wflow %>%
+  add_model(rf_spec)
+
+# tune mtry, trees, min_n
+rf_res <-
+  tune_grid(
+    rf_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+
+save(rf_res, file = 'models/stacking/rf_res_early_VL_classif_40')
+# 
+
+
+library(discrim) # for engine = 'naivebayes' or 'klaR'
+library(agua) # for engine = 'h2o'
+
+# define nb model using parsnip
+nb_spec <- 
+  naive_Bayes(
+    mode = 'classification',
+    smoothness = tune(),
+    Laplace = tune(),
+    engine = 'naivebayes'
+  )
+
+
+
+# add it to a workflow
+nb_wflow <- 
+  data_wflow %>%
+  add_model(nb_spec)
+
+# tune smoothness and Laplace
+nb_res <-
+  tune_grid(
+    nb_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+save(nb_res, file = 'models/stacking/nb_res_early_VL_classif_40')
+
+load(file = 'models/stacking/svm_res_early_VL_classif_40')
+load(file = 'models/stacking/xgb_res_early_VL_classif_40')
+load(file = 'models/stacking/rf_res_early_VL_classif_40')
+load(file = 'models/stacking/nb_res_early_VL_classif_40')
+
+
+data_st_40 <- 
+  stacks() %>% 
+  add_candidates(xgb_res) %>% 
+  add_candidates(rf_res) %>% 
+  add_candidates(svm_res) %>% 
+  add_candidates(nb_res)
+
+
+save(data_st_40, file = 'models/stacking/data_st_early_VL_classif_40')
+
+# creating a model stack
+## ready to evaluate how it is that we need to combine predictions from
+## each candidate ensembe member
+
+model_st_40 <-
+  data_st_40 %>% 
+  blend_predictions()
+
+model_st_40 <-
+  model_st_40 %>% 
+  fit_members()
+
+save(data_st_40, file = 'models/stacking/model_st_early_VL_classif_40')
+
+set.seed(123)
+data_test_40 <- testing(split)
+
+data_test_40 <-
+  data_test_40 %>%
+  bind_cols(predict(model_st_40, .))
+
+save(data_test_40, file = 'models/stacking/data_test_early_VL_classif_40')
+
+
+# confusion matrix for stacks
+conf_mat_early_VL_classif_40 <- caret::confusionMatrix(data = data_test_40$.pred_class, 
+                                                       reference = data_test_40$Visceral.Leishmaniasis,
+                                                       positive = '1')
+
+save(conf_mat_early_VL_classif_40, file = 'models/stacking/conf_mat_early_VL_classif_40')
+
+# confusion matrix for base models
+
+member_preds <- 
+  data_test_40 %>% 
+  dplyr::select(Visceral.Leishmaniasis) %>% 
+  bind_cols(
+    predict(
+      model_st_40,
+      data_test_40,
+      members = TRUE
+    )
+  )
+
+
+
+colnames(member_preds) %>% 
+  map_dfr(
+    .f = recall,
+    truth = as.factor(Visceral.Leishmaniasis),
+    data = member_preds
+  ) %>% 
+  mutate(member = colnames(member_preds))
+```
+
+## 50th percentile
+
+You can also embed plots, for example:
+
+```{r 50th, echo=FALSE}
+# helper packages
+library(tidyverse)
+library(tidymodels)
+library(stacks)
+
+
+# load and split the early data using imputed data
+load('./data/imp')
+
+
+quantile_data <- data %>% 
+  filter(!is.na(Visceral.Leishmaniasis)) %>% 
+  filter(Visceral.Leishmaniasis > 0) %>% 
+  dplyr::select(Visceral.Leishmaniasis)
+
+quantile <- (quantile_data$Visceral.Leishmaniasis %>% 
+  quantile(0.5))[[1]] # PARAMETER
+
+data <- data %>%
+  filter(Year < 2014) %>%
+  filter(!is.na(Visceral.Leishmaniasis)) %>% 
+  filter(Visceral.Leishmaniasis > 0) %>%
+  dplyr::select(c('Visceral.Leishmaniasis', 'LST_Day', # include LST_Night?
+                  'NDVI', 'EVI', 'Precip', 
+                  'StableLights', 'SWOccurrence', 'pland_forest',
+                  'te_forest', 'enn_mn_forest','Population'))
+
+
+data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
+data$te_forest <- ifelse(is.na(data$te_forest), 0, data$te_forest)
+data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
+
+data$Visceral.Leishmaniasis <- as.factor(ifelse(data$Visceral.Leishmaniasis < quantile, 0, 1))
+
+set.seed(123) # for reproducibility
+
+split <- initial_split(data)
+
+data_train <- training(split)
+data_test_50 <- testing(split)
+
+# use a 5-fold cross-validation
+folds <- rsample::vfold_cv(data_train, 
+                           v = 5, 
+                           strata = Visceral.Leishmaniasis)
+
+# set up a basic recipe
+data_rec <-
+  recipe(Visceral.Leishmaniasis ~ LST_Day + NDVI + 
+           EVI + Precip + StableLights + SWOccurrence + pland_forest + 
+           te_forest + enn_mn_forest + Population, data = data_train) %>%
+  step_dummy(all_nominal() - all_outcomes()) %>% 
+  step_zv(all_predictors()) %>% 
+  step_normalize(all_numeric())
+
+# define a minimal workflow
+data_wflow <-
+  workflow() %>% 
+  add_recipe(data_rec)
+
+# add metric rmse (same as malaria)
+metric <- metric_set(sensitivity, accuracy)
+
+# save assessment set predictions and workflow used to fit the resamples
+ctrl_grid <- control_stack_grid()
+ctrl_res <- control_stack_resamples()
+
+# models: SVM, XGBoost, RF
+## models to try: logistic regression 
+
+# toy model
+log_reg_spec <-
+  logistic_reg() %>%
+  set_engine('glm')
+
+log_reg_wflow <- 
+  data_wflow %>%
+  add_model(log_reg_spec)
+
+set.seed(123)
+log_reg_res <-
+  fit_resamples(
+    log_reg_wflow,
+    resamples = folds,
+    metrics = metric,
+    control = ctrl_res
+  )
+
+# define svm model using parsnip
+svm_spec <- 
+  svm_rbf(
+    cost = parsnip::tune(),
+    rbf_sigma = parsnip::tune(),
+    engine = 'kernlab',
+    mode = 'classification'
+  ) 
+
+# add it to a workflow
+svm_wflow <- 
+  data_wflow %>% 
+  add_model(svm_spec)
+
+# tune cost and rbf_sigma and fit to the 5-fold cv
+set.seed(123)
+svm_res <-
+  tune_grid(
+    svm_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+save(svm_res, file = 'models/stacking/svm_res_early_VL_classif_50')
+
+# define xgboost model using parsnip
+
+set.seed(123)
+xgb_spec <- 
+  boost_tree(
+    mtry = tune(),
+    trees = tune(),
+    min_n = tune(),
+    tree_depth = tune(),
+    learn_rate = tune(),
+    loss_reduction = tune()
+  ) %>% 
+  set_engine('xgboost') %>% 
+  set_mode('classification')
+
+# add it to a workflow
+xgb_wflow <- 
+  data_wflow %>%
+  add_model(xgb_spec)
+
+# tune mtry, trees, min_n, tree_depth, etc.
+xgb_res <-
+  tune_grid(
+    xgb_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+save(xgb_res, file = 'models/stacking/xgb_res_early_VL_classif_50')
+# 
+
+# define rf model using parsnip
+
+set.seed(123)
+rf_spec <- 
+  rand_forest(
+    mtry = tune(),
+    trees = tune(),
+    min_n = tune()
+  ) %>% 
+  set_engine('ranger') %>% 
+  set_mode('classification')
+
+# add it to a workflow
+rf_wflow <- 
+  data_wflow %>%
+  add_model(rf_spec)
+
+# tune mtry, trees, min_n
+rf_res <-
+  tune_grid(
+    rf_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+
+save(rf_res, file = 'models/stacking/rf_res_early_VL_classif_50')
+# 
+
+
+library(discrim) # for engine = 'naivebayes' or 'klaR'
+library(agua) # for engine = 'h2o'
+
+# define nb model using parsnip
+nb_spec <- 
+  naive_Bayes(
+    mode = 'classification',
+    smoothness = tune(),
+    Laplace = tune(),
+    engine = 'naivebayes'
+  )
+
+
+
+# add it to a workflow
+nb_wflow <- 
+  data_wflow %>%
+  add_model(nb_spec)
+
+# tune smoothness and Laplace
+nb_res <-
+  tune_grid(
+    nb_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+save(nb_res, file = 'models/stacking/nb_res_early_VL_classif_50')
+
+load(file = 'models/stacking/svm_res_early_VL_classif_50')
+load(file = 'models/stacking/xgb_res_early_VL_classif_50')
+load(file = 'models/stacking/rf_res_early_VL_classif_50')
+load(file = 'models/stacking/nb_res_early_VL_classif_50')
+
+
+data_st_50 <- 
+  stacks() %>% 
+  add_candidates(xgb_res) %>% 
+  add_candidates(rf_res) %>% 
+  add_candidates(svm_res) %>% 
+  add_candidates(nb_res)
+
+
+save(data_st_50, file = 'models/stacking/data_st_early_VL_classif_50')
+
+# creating a model stack
+## ready to evaluate how it is that we need to combine predictions from
+## each candidate ensembe member
+
+model_st_50 <-
+  data_st_50 %>% 
+  blend_predictions()
+
+model_st_50 <-
+  model_st_50 %>% 
+  fit_members()
+
+save(data_st_50, file = 'models/stacking/model_st_early_VL_classif_50')
+
+set.seed(123)
+data_test_50 <- testing(split)
+
+data_test_50 <-
+  data_test_50 %>%
+  bind_cols(predict(model_st_50, .))
+
+save(data_test_50, file = 'models/stacking/data_test_early_VL_classif_50')
+
+
+# confusion matrix for stacks
+conf_mat_early_VL_classif_50 <- caret::confusionMatrix(data = data_test_50$.pred_class, 
+                                                       reference = data_test_50$Visceral.Leishmaniasis,
+                                                       positive = '1')
+
+save(conf_mat_early_VL_classif_50, file = 'models/stacking/conf_mat_early_VL_classif_50')
+
+# confusion matrix for base models
+
+member_preds <- 
+  data_test_50 %>% 
+  dplyr::select(Visceral.Leishmaniasis) %>% 
+  bind_cols(
+    predict(
+      model_st_50,
+      data_test_50,
+      members = TRUE
+    )
+  )
+
+
+
+colnames(member_preds) %>% 
+  map_dfr(
+    .f = recall,
+    truth = as.factor(Visceral.Leishmaniasis),
+    data = member_preds
+  ) %>% 
+  mutate(member = colnames(member_preds))
+```
+
+## 60th percentile
+
+```{r}
+# helper packages
+library(tidyverse)
+library(tidymodels)
+library(stacks)
+
+
+# load and split the early data using imputed data
+load('./data/imp')
+
+
+quantile_data <- data %>% 
+  filter(!is.na(Visceral.Leishmaniasis)) %>% 
+  filter(Visceral.Leishmaniasis > 0) %>% 
+  dplyr::select(Visceral.Leishmaniasis)
+
+quantile <- (quantile_data$Visceral.Leishmaniasis %>% 
+  quantile(0.6))[[1]] # PARAMETER
+
+data <- data %>%
+  filter(Year < 2014) %>%
+  filter(!is.na(Visceral.Leishmaniasis)) %>% 
+  filter(Visceral.Leishmaniasis > 0) %>%
+  dplyr::select(c('Visceral.Leishmaniasis', 'LST_Day', # include LST_Night?
+                  'NDVI', 'EVI', 'Precip', 
+                  'StableLights', 'SWOccurrence', 'pland_forest',
+                  'te_forest', 'enn_mn_forest','Population'))
+
+
+data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
+data$te_forest <- ifelse(is.na(data$te_forest), 0, data$te_forest)
+data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
+
+data$Visceral.Leishmaniasis <- as.factor(ifelse(data$Visceral.Leishmaniasis < quantile, 0, 1))
+
+set.seed(123) # for reproducibility
+
+split <- initial_split(data)
+
+data_train <- training(split)
+data_test_60 <- testing(split)
+
+# use a 5-fold cross-validation
+folds <- rsample::vfold_cv(data_train, 
+                           v = 5, 
+                           strata = Visceral.Leishmaniasis)
+
+# set up a basic recipe
+data_rec <-
+  recipe(Visceral.Leishmaniasis ~ LST_Day + NDVI + 
+           EVI + Precip + StableLights + SWOccurrence + pland_forest + 
+           te_forest + enn_mn_forest + Population, data = data_train) %>%
+  step_dummy(all_nominal() - all_outcomes()) %>% 
+  step_zv(all_predictors()) %>% 
+  step_normalize(all_numeric())
+
+# define a minimal workflow
+data_wflow <-
+  workflow() %>% 
+  add_recipe(data_rec)
+
+# add metric rmse (same as malaria)
+metric <- metric_set(sensitivity, accuracy)
+
+# save assessment set predictions and workflow used to fit the resamples
+ctrl_grid <- control_stack_grid()
+ctrl_res <- control_stack_resamples()
+
+# models: SVM, XGBoost, RF
+## models to try: logistic regression 
+
+# toy model
+log_reg_spec <-
+  logistic_reg() %>%
+  set_engine('glm')
+
+log_reg_wflow <- 
+  data_wflow %>%
+  add_model(log_reg_spec)
+
+set.seed(123)
+log_reg_res <-
+  fit_resamples(
+    log_reg_wflow,
+    resamples = folds,
+    metrics = metric,
+    control = ctrl_res
+  )
+
+# define svm model using parsnip
+svm_spec <- 
+  svm_rbf(
+    cost = parsnip::tune(),
+    rbf_sigma = parsnip::tune(),
+    engine = 'kernlab',
+    mode = 'classification'
+  ) 
+
+# add it to a workflow
+svm_wflow <- 
+  data_wflow %>% 
+  add_model(svm_spec)
+
+# tune cost and rbf_sigma and fit to the 5-fold cv
+set.seed(123)
+svm_res <-
+  tune_grid(
+    svm_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+save(svm_res, file = 'models/stacking/svm_res_early_VL_classif_60')
+
+# define xgboost model using parsnip
+
+set.seed(123)
+xgb_spec <- 
+  boost_tree(
+    mtry = tune(),
+    trees = tune(),
+    min_n = tune(),
+    tree_depth = tune(),
+    learn_rate = tune(),
+    loss_reduction = tune()
+  ) %>% 
+  set_engine('xgboost') %>% 
+  set_mode('classification')
+
+# add it to a workflow
+xgb_wflow <- 
+  data_wflow %>%
+  add_model(xgb_spec)
+
+# tune mtry, trees, min_n, tree_depth, etc.
+xgb_res <-
+  tune_grid(
+    xgb_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+save(xgb_res, file = 'models/stacking/xgb_res_early_VL_classif_60')
+# 
+
+# define rf model using parsnip
+
+set.seed(123)
+rf_spec <- 
+  rand_forest(
+    mtry = tune(),
+    trees = tune(),
+    min_n = tune()
+  ) %>% 
+  set_engine('ranger') %>% 
+  set_mode('classification')
+
+# add it to a workflow
+rf_wflow <- 
+  data_wflow %>%
+  add_model(rf_spec)
+
+# tune mtry, trees, min_n
+rf_res <-
+  tune_grid(
+    rf_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+
+save(rf_res, file = 'models/stacking/rf_res_early_VL_classif_60')
+# 
+
+
+library(discrim) # for engine = 'naivebayes' or 'klaR'
+library(agua) # for engine = 'h2o'
+
+# define nb model using parsnip
+nb_spec <- 
+  naive_Bayes(
+    mode = 'classification',
+    smoothness = tune(),
+    Laplace = tune(),
+    engine = 'naivebayes'
+  )
+
+
+
+# add it to a workflow
+nb_wflow <- 
+  data_wflow %>%
+  add_model(nb_spec)
+
+# tune smoothness and Laplace
+nb_res <-
+  tune_grid(
+    nb_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+save(nb_res, file = 'models/stacking/nb_res_early_VL_classif_60')
+
+load(file = 'models/stacking/svm_res_early_VL_classif_60')
+load(file = 'models/stacking/xgb_res_early_VL_classif_60')
+load(file = 'models/stacking/rf_res_early_VL_classif_60')
+load(file = 'models/stacking/nb_res_early_VL_classif_60')
+
+
+data_st_60 <- 
+  stacks() %>% 
+  add_candidates(xgb_res) %>% 
+  add_candidates(rf_res) %>% 
+  add_candidates(svm_res) %>% 
+  add_candidates(nb_res)
+
+
+save(data_st_60, file = 'models/stacking/data_st_early_VL_classif_60')
+
+# creating a model stack
+## ready to evaluate how it is that we need to combine predictions from
+## each candidate ensembe member
+
+model_st_60 <-
+  data_st_60 %>% 
+  blend_predictions()
+
+model_st_60 <-
+  model_st_60 %>% 
+  fit_members()
+
+save(data_st_60, file = 'models/stacking/model_st_early_VL_classif_60')
+
+set.seed(123)
+data_test_60 <- testing(split)
+
+data_test_60 <-
+  data_test_60 %>%
+  bind_cols(predict(model_st_60, .))
+
+save(data_test_60, file = 'models/stacking/data_test_early_VL_classif_60')
+
+
+# confusion matrix for stacks
+conf_mat_early_VL_classif_60 <- caret::confusionMatrix(data = data_test_60$.pred_class, 
+                                                       reference = data_test_60$Visceral.Leishmaniasis,
+                                                       positive = '1')
+
+save(conf_mat_early_VL_classif_60, file = 'models/stacking/conf_mat_early_VL_classif_60')
+
+# confusion matrix for base models
+
+member_preds <- 
+  data_test_60 %>% 
+  dplyr::select(Visceral.Leishmaniasis) %>% 
+  bind_cols(
+    predict(
+      model_st_60,
+      data_test_60,
+      members = TRUE
+    )
+  )
+
+
+
+colnames(member_preds) %>% 
+  map_dfr(
+    .f = recall,
+    truth = as.factor(Visceral.Leishmaniasis),
+    data = member_preds
+  ) %>% 
+  mutate(member = colnames(member_preds))
+```
+
+
+## 70th percentile 
+
+```{r}
+# helper packages
+library(tidyverse)
+library(tidymodels)
+library(stacks)
+
+
+# load and split the early data using imputed data
+load('./data/imp')
+
+
+quantile_data <- data %>% 
+  filter(!is.na(Visceral.Leishmaniasis)) %>% 
+  filter(Visceral.Leishmaniasis > 0) %>% 
+  dplyr::select(Visceral.Leishmaniasis)
+
+quantile <- (quantile_data$Visceral.Leishmaniasis %>% 
+  quantile(0.7))[[1]] # PARAMETER
+
+data <- data %>%
+  filter(Year < 2014) %>%
+  filter(!is.na(Visceral.Leishmaniasis)) %>% 
+  filter(Visceral.Leishmaniasis > 0) %>%
+  dplyr::select(c('Visceral.Leishmaniasis', 'LST_Day', # include LST_Night?
+                  'NDVI', 'EVI', 'Precip', 
+                  'StableLights', 'SWOccurrence', 'pland_forest',
+                  'te_forest', 'enn_mn_forest','Population'))
+
+
+data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
+data$te_forest <- ifelse(is.na(data$te_forest), 0, data$te_forest)
+data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
+
+data$Visceral.Leishmaniasis <- as.factor(ifelse(data$Visceral.Leishmaniasis < quantile, 0, 1))
+
+set.seed(123) # for reproducibility
+
+split <- initial_split(data)
+
+data_train <- training(split)
+data_test_70 <- testing(split)
+
+# use a 5-fold cross-validation
+folds <- rsample::vfold_cv(data_train, 
+                           v = 5, 
+                           strata = Visceral.Leishmaniasis)
+
+# set up a basic recipe
+data_rec <-
+  recipe(Visceral.Leishmaniasis ~ LST_Day + NDVI + 
+           EVI + Precip + StableLights + SWOccurrence + pland_forest + 
+           te_forest + enn_mn_forest + Population, data = data_train) %>%
+  step_dummy(all_nominal() - all_outcomes()) %>% 
+  step_zv(all_predictors()) %>% 
+  step_normalize(all_numeric())
+
+# define a minimal workflow
+data_wflow <-
+  workflow() %>% 
+  add_recipe(data_rec)
+
+# add metric rmse (same as malaria)
+metric <- metric_set(sensitivity, accuracy)
+
+# save assessment set predictions and workflow used to fit the resamples
+ctrl_grid <- control_stack_grid()
+ctrl_res <- control_stack_resamples()
+
+# models: SVM, XGBoost, RF
+## models to try: logistic regression 
+
+# toy model
+log_reg_spec <-
+  logistic_reg() %>%
+  set_engine('glm')
+
+log_reg_wflow <- 
+  data_wflow %>%
+  add_model(log_reg_spec)
+
+set.seed(123)
+log_reg_res <-
+  fit_resamples(
+    log_reg_wflow,
+    resamples = folds,
+    metrics = metric,
+    control = ctrl_res
+  )
+
+# define svm model using parsnip
+svm_spec <- 
+  svm_rbf(
+    cost = parsnip::tune(),
+    rbf_sigma = parsnip::tune(),
+    engine = 'kernlab',
+    mode = 'classification'
+  ) 
+
+# add it to a workflow
+svm_wflow <- 
+  data_wflow %>% 
+  add_model(svm_spec)
+
+# tune cost and rbf_sigma and fit to the 5-fold cv
+set.seed(123)
+svm_res <-
+  tune_grid(
+    svm_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+save(svm_res, file = 'models/stacking/svm_res_early_VL_classif_70')
+
+# define xgboost model using parsnip
+
+set.seed(123)
+xgb_spec <- 
+  boost_tree(
+    mtry = tune(),
+    trees = tune(),
+    min_n = tune(),
+    tree_depth = tune(),
+    learn_rate = tune(),
+    loss_reduction = tune()
+  ) %>% 
+  set_engine('xgboost') %>% 
+  set_mode('classification')
+
+# add it to a workflow
+xgb_wflow <- 
+  data_wflow %>%
+  add_model(xgb_spec)
+
+# tune mtry, trees, min_n, tree_depth, etc.
+xgb_res <-
+  tune_grid(
+    xgb_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+save(xgb_res, file = 'models/stacking/xgb_res_early_VL_classif_70')
+# 
+
+# define rf model using parsnip
+
+set.seed(123)
+rf_spec <- 
+  rand_forest(
+    mtry = tune(),
+    trees = tune(),
+    min_n = tune()
+  ) %>% 
+  set_engine('ranger') %>% 
+  set_mode('classification')
+
+# add it to a workflow
+rf_wflow <- 
+  data_wflow %>%
+  add_model(rf_spec)
+
+# tune mtry, trees, min_n
+rf_res <-
+  tune_grid(
+    rf_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+
+save(rf_res, file = 'models/stacking/rf_res_early_VL_classif_70')
+# 
+
+
+library(discrim) # for engine = 'naivebayes' or 'klaR'
+library(agua) # for engine = 'h2o'
+
+# define nb model using parsnip
+nb_spec <- 
+  naive_Bayes(
+    mode = 'classification',
+    smoothness = tune(),
+    Laplace = tune(),
+    engine = 'naivebayes'
+  )
+
+
+
+# add it to a workflow
+nb_wflow <- 
+  data_wflow %>%
+  add_model(nb_spec)
+
+# tune smoothness and Laplace
+nb_res <-
+  tune_grid(
+    nb_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+save(nb_res, file = 'models/stacking/nb_res_early_VL_classif_70')
+
+load(file = 'models/stacking/svm_res_early_VL_classif_70')
+load(file = 'models/stacking/xgb_res_early_VL_classif_70')
+load(file = 'models/stacking/rf_res_early_VL_classif_70')
+load(file = 'models/stacking/nb_res_early_VL_classif_70')
+
+
+data_st_70 <- 
+  stacks() %>% 
+  add_candidates(xgb_res) %>% 
+  add_candidates(rf_res) %>% 
+  add_candidates(svm_res) %>% 
+  add_candidates(nb_res)
+
+
+save(data_st_70, file = 'models/stacking/data_st_early_VL_classif_70')
+
+# creating a model stack
+## ready to evaluate how it is that we need to combine predictions from
+## each candidate ensembe member
+
+model_st_70 <-
+  data_st_70 %>% 
+  blend_predictions()
+
+model_st_70 <-
+  model_st_70 %>% 
+  fit_members()
+
+save(data_st_70, file = 'models/stacking/model_st_early_VL_classif_70')
+
+set.seed(123)
+data_test_70 <- testing(split)
+
+data_test_70 <-
+  data_test_70 %>%
+  bind_cols(predict(model_st_70, .))
+
+save(data_test_70, file = 'models/stacking/data_test_early_VL_classif_70')
+
+
+# confusion matrix for stacks
+conf_mat_early_VL_classif_70 <- caret::confusionMatrix(data = data_test_70$.pred_class, 
+                                                       reference = data_test_70$Visceral.Leishmaniasis,
+                                                       positive = '1')
+
+save(conf_mat_early_VL_classif_70, file = 'models/stacking/conf_mat_early_VL_classif_70')
+
+# confusion matrix for base models
+
+member_preds <- 
+  data_test_70 %>% 
+  dplyr::select(Visceral.Leishmaniasis) %>% 
+  bind_cols(
+    predict(
+      model_st_70,
+      data_test_70,
+      members = TRUE
+    )
+  )
+
+
+
+colnames(member_preds) %>% 
+  map_dfr(
+    .f = recall,
+    truth = as.factor(Visceral.Leishmaniasis),
+    data = member_preds
+  ) %>% 
+  mutate(member = colnames(member_preds))
+```
+
+## All Confusion Matrices
+
+```{r, eval=T}
+load(file = 'models/stacking/conf_mat_early_VL_classif_30')
+load(file = 'models/stacking/conf_mat_early_VL_classif_40')
+load(file = 'models/stacking/conf_mat_early_VL_classif_50')
+load(file = 'models/stacking/conf_mat_early_VL_classif_60')
+load(file = 'models/stacking/conf_mat_early_VL_classif_70')
+```
+
+### 30th Percentile
+
+```{r, eval=T}
+conf_mat_early_VL_classif_30
+```
+
+### 40th Percentile
+
+```{r, eval=T}
+conf_mat_early_VL_classif_40
+```
+
+
+### 50th Percentile
+
+```{r, eval=T}
+conf_mat_early_VL_classif_50
+```
+
+
+### 60th Percentile
+
+```{r, eval=T}
+conf_mat_early_VL_classif_60
+```
+
+
+### 70th Percentile
+
+```{r, eval=T}
+conf_mat_early_VL_classif_70
+```
+
+
+## ROC AUC Graphs
+
+Now, we show the ROC AUC graphs
+
+```{r roc auc graphs, eval=T}
+library(tidyverse)
+library(pROC)
+library(dplyr)
+library(ggplot2)
+library(plotROC)
+
+load(file = 'models/stacking/data_test_early_VL_classif_30')
+load(file = 'models/stacking/data_test_early_VL_classif_40')
+load(file = 'models/stacking/data_test_early_VL_classif_50')
+load(file = 'models/stacking/data_test_early_VL_classif_60')
+load(file = 'models/stacking/data_test_early_VL_classif_70')
+
+roc_30 <- roc(data_test_30$Visceral.Leishmaniasis,
+    data_test_30$.pred_class %>% as.numeric(),
+    print.auc = T)
+roc_40 <- roc(data_test_40$Visceral.Leishmaniasis,
+    data_test_40$.pred_class %>% as.ordered(),
+    print.auc = T)
+roc_50 <- roc(data_test_50$Visceral.Leishmaniasis,
+    data_test_50$.pred_class %>% as.ordered(),
+    print.auc = T)
+roc_60 <- roc(data_test_60$Visceral.Leishmaniasis,
+    data_test_60$.pred_class %>% as.ordered())
+roc_70 <- roc(data_test_70$Visceral.Leishmaniasis,
+    data_test_70$.pred_class %>% as.ordered())
+
+
+roc_list <- list('30th percentile' = roc_30,
+           '40th percentile' = roc_40,
+           '50th percentile' = roc_50,
+           '60th percentile' = roc_60,
+           '70th percentile' = roc_70)
+
+# extract AUC
+data.auc <- roc_list %>% 
+  map(~tibble(AUC = .x$auc)) %>% 
+  bind_rows(.id = 'name')
+
+# generate labels
+data.labels <- data.auc %>% 
+  mutate(label_long = paste0(name, ' , AUC = ',
+                             paste(round(AUC,2))),
+         label_AUC = paste0('AUC = ',
+                            paste(round(AUC,2))))
+
+pROC::ggroc(roc_list,
+           legacy.axes = F) +
+  scale_color_discrete(labels = data.labels$label_long)
+```
+
+Our best model is the one split at the 40th percentile, as it is the best at minimizing false negatives and has a high enough accuracy.
+
+## Misclassifications
+
+Now we look at the observations in which our model wrongly classified observations. Perhaps we can develop a second model trained on the misclassified cases to further improve our model.
+
+```{r, eval=T}
+# to get true levels of CL again
+
+load('./data/imp')
+quantile_data <- data %>% 
+  filter(!is.na(Visceral.Leishmaniasis)) %>% 
+  filter(Visceral.Leishmaniasis > 0) %>% 
+  dplyr::select(Visceral.Leishmaniasis)
+
+quantile <- (quantile_data$Visceral.Leishmaniasis %>% 
+  quantile(0.4))[[1]] # PARAMETER
+
+data <- data %>%
+  filter(Year < 2014) %>%
+  filter(!is.na(Visceral.Leishmaniasis)) %>% 
+  filter(Visceral.Leishmaniasis > 0) %>%
+  dplyr::select(c('Visceral.Leishmaniasis', 'LST_Day', # include LST_Night?
+                  'NDVI', 'EVI', 'Precip', 
+                  'StableLights', 'SWOccurrence', 'pland_forest',
+                  'te_forest', 'enn_mn_forest','Population'))
+
+
+data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
+data$te_forest <- ifelse(is.na(data$te_forest), 0, data$te_forest)
+data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
+
+set.seed(123)
+split_t <- initial_split(data)
+training_t <- training(split_t)
+testing_t <- testing(split_t)
+
+
+mis_40 <- data_test_40 %>%
+  mutate(VL = testing_t$Visceral.Leishmaniasis) %>% 
+  filter((data_test_40$Visceral.Leishmaniasis != data_test_40$.pred_class)) %>% 
+  mutate(Case = which((data_test_40$.pred_class != data_test_40$Visceral.Leishmaniasis)))
+
+
+
+# heat maps for both original (imputed) data and misclassified data
+cormat_data <- cor(data %>% 
+                     select(-c(Visceral.Leishmaniasis)) %>% 
+                     mutate(Visceral.Leishmaniasis = data$Visceral.Leishmaniasis)) %>% round(2)
+melted_cormat_data <- melt(cormat_data)
+ggplot(data = melted_cormat_data,
+       aes(x = Var1,
+           y = Var2,
+           fill = value)) + 
+  geom_tile(color = 'white') +
+  scale_fill_gradient2(low = 'blue', high = 'red', mid = 'white',
+                       midpoint = 0, limit = c(-1,1), space = 'Lab',
+                       name = 'Pearson\nCorrelation') + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1,
+                                   size = 12, hjust = 1)) +
+  coord_fixed() + 
+  ggtitle('Original data heatmap')
+
+
+cormat_mis_40 <- round(cor(mis_40 %>% 
+                             select(-c(Visceral.Leishmaniasis,Case,.pred_class, VL)) %>% 
+                             mutate(Visceral.Leishmaniasis = mis_40$VL)), 2)
+melted_cormat_mis_40 <- melt(cormat_mis_40)
+ggplot(data = melted_cormat_mis_40,
+       aes(x = Var1,
+           y = Var2,
+           fill = value)) + 
+  geom_tile(color = 'white') +
+  scale_fill_gradient2(low = 'blue', high = 'red', mid = 'white',
+                       midpoint = 0, limit = c(-1,1), space = 'Lab',
+                       name = 'Pearson\nCorrelation') + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1,
+                                   size = 12, hjust = 1)) +
+  coord_fixed() +
+  ggtitle('Misclassified data heatmap')
+
+correct_40 <- data_test_40 %>%
+  mutate(VL = testing_t$Visceral.Leishmaniasis) %>% 
+  filter((data_test_40$Visceral.Leishmaniasis == data_test_40$.pred_class)) %>% 
+  mutate(Case = which((data_test_40$.pred_class == data_test_40$Visceral.Leishmaniasis)))
+
+cormat_correct_40 <- round(cor(correct_40 %>% 
+                             select(-c(Visceral.Leishmaniasis,Case,.pred_class, CL)) %>% 
+                             mutate(Visceral.Leishmaniasis = correct_40$CL)), 2)
+melted_cormat_correct_40 <- melt(cormat_correct_40)
+ggplot(data = melted_cormat_correct_40,
+       aes(x = Var1,
+           y = Var2,
+           fill = value)) + 
+  geom_tile(color = 'white') +
+  scale_fill_gradient2(low = 'blue', high = 'red', mid = 'white',
+                       midpoint = 0, limit = c(-1,1), space = 'Lab',
+                       name = 'Pearson\nCorrelation') + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1,
+                                   size = 12, hjust = 1)) +
+  coord_fixed() +
+  ggtitle('Correctly classified data heatmap')
+```
+
+```{r, eval=T, fig.height=10, fig.width=10}
+mis_40_2 <- mis_40 %>% 
+  select(-c(Visceral.Leishmaniasis,Case,.pred_class, VL)) %>% 
+  mutate(Visceral.Leishmaniasis = mis_40$VL)
+
+mis_40_long <- mis_40_2 %>% 
+  pivot_longer(colnames(mis_40_2)) %>% 
+  as.data.frame()
+
+correct_40_2 <- correct_40 %>% 
+  select(-c(Visceral.Leishmaniasis)) %>% 
+  mutate(Visceral.Leishmaniasis = VL) %>% 
+  select(-c(.pred_class, VL, Case))
+
+correct_40_long <- correct_40_2 %>% 
+  pivot_longer(colnames(correct_40_2)) %>% 
+  as.data.frame()
+
+# Density plots of misclassified vs correctly classified
+
+ggplot(mis_40_long, 
+       aes(x = value,
+           fill = 'Misclassified')) +
+  geom_density(alpha = 0.5) +
+  geom_density(data = correct_40_long, 
+               aes(x = value,
+                   fill = 'Correctly Classified'),
+               alpha = 0.5) +
+  facet_wrap(~ name, scales = 'free') 
+  
+```
