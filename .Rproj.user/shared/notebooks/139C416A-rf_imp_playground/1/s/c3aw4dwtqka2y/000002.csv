@@ -1,0 +1,20 @@
+"0","```r
+library(PRROC) # ROC curves in data frames
+library(tidyverse) # everything
+library(visdat) # missingness plots
+library(doParallel) # parallel missForest
+library(doRNG) # reproducible parallel results
+library(gridExtra) # combining graphs
+library(randomForest) # random forests
+library(missForest) # ...
+library(kableExtra) # pretty tables
+library(ggplot2)
+library(ggfortify)
+library(forecast)
+
+theme_set(theme_light()) # ggplot theme
+
+aad <- read_csv('../models/data/aad.csv')
+load('../data/imp')
+
+```"

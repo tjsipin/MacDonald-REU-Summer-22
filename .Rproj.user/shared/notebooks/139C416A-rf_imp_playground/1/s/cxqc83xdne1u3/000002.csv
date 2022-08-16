@@ -1,0 +1,40 @@
+"0","```r
+h = 10 # param
+test_data_2 <- data_1 %>% 
+  filter(Code < 5002)
+
+test_rwf_df_2 <- data.frame(matrix(ncol = ncol(data_1),
+                            nrow = 0))
+
+for (i in 1:(unique(test_data_2[,'Code']) %>% length)){ # 1:8554
+  for(j in 1:h) { # 1:10
+    for (k in 3:(colnames(test_data_2) %>% length)) { # 1:10
+      test_rwf_df_2[(i-1)*h + j, k] = rwf(test_data_2 %>% 
+                                            filter(Code == unique(test_data_2[,'Code'])[i]) %>% 
+                                            select(c(colnames(test_data_2)[k])) %>%
+                                            ts(start = 2000), 
+                                          lambda='auto',
+                                          h=10,
+                                          level=80,
+                                          drift=T,
+                                          bootstrap=T)$mean[j]
+      rwf(test_data_2 %>% 
+                                            filter(Code == unique(test_data_2[,'Code'])[i]) %>% 
+                                            select(c(colnames(test_data_2)[k])) %>%
+                                            ts(start = 2000), 
+                                          lambda='auto',
+                                          h=10,
+                                          level=80,
+                                          drift=T,
+                                          bootstrap=T) %>% print
+    }
+    test_rwf_df_2[(i-1)*h + j, 1] = unique(test_data_2[,'Code'])[i]
+    test_rwf_df_2[(i-1)*h + j, 2] = 2019 + j
+  }
+}
+
+
+colnames(test_rwf_df_2) <- data_1 %>% colnames
+
+test_data_2 %>% dim
+```"

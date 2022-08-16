@@ -1,0 +1,17 @@
+"0","```r
+h = 10 # param
+test_data_4 <- data_1 %>% 
+  filter(Code < 5002)
+
+test_rwf_df_4 <- data.frame(matrix(ncol = ncol(data_1),
+                            nrow = 0))
+
+
+
+
+colnames(test_rwf_df_4) <- data_1 %>% colnames
+
+test_data_4 %>% dim
+
+getwd()
+```"
