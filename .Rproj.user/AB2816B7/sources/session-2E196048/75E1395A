@@ -3,7 +3,7 @@
     "path": "~/Documents/Work/MacDonald_REU/MacDonald-REU-Summer-22-1/extrapolation/rf_imp_playground.Rmd",
     "project_path": "extrapolation/rf_imp_playground.Rmd",
     "type": "r_markdown",
-    "hash": "330158362",
+    "hash": "0",
     "contents": "",
     "dirty": false,
     "created": 1660607506155.0,
@@ -13,8 +13,8 @@
         "chunk_output_type": "inline",
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "395,0",
-        "scrollLine": "360"
+        "cursorPosition": "94,0",
+        "scrollLine": "85"
     },
     "folds": "",
     "lastKnownWriteTime": 1660619784,

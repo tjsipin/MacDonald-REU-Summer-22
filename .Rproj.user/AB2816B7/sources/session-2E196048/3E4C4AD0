@@ -3,9 +3,9 @@
     "path": "~/Documents/MacDonald-REU-Summer-22-1(COPY)/in-case-i-mess-up/rf_imp_playground.Rmd",
     "project_path": null,
     "type": "r_markdown",
-    "hash": "893590455",
+    "hash": "729255782",
     "contents": "",
-    "dirty": false,
+    "dirty": true,
     "created": 1660605454066.0,
     "source_on_save": false,
     "relative_order": 1,
@@ -13,15 +13,15 @@
         "chunk_output_type": "inline",
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "426,0",
-        "scrollLine": "401"
+        "cursorPosition": "425,0",
+        "scrollLine": "408"
     },
     "folds": "",
     "lastKnownWriteTime": 1660607495,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1660607495056,
+    "last_content_update": 1660620307388,
     "read_only": false,
     "read_only_alternatives": []
 }
