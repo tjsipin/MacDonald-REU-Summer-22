@@ -1,3 +1,99 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:e77e77f28173c61e1975ef50ca8384c1d27fd811e2ec6093fcd24667e7b3ec24
-size 2595
+---
+title: "Linear Regression on Percentage Change"
+author: "Lyndsey Umsted"
+date: '2022-07-13'
+output: html_document
+---
+
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+```
+
+```{r}
+library(dplyr)
+early_data <- aad %>%
+  filter(Year < 2014)
+later_data <- aad %>%
+  filter(Year > 2013)
+
+early_data <- early_data %>%
+  select(-c("AvgRad"))
+later_data <- later_data %>%
+  select(-c("StableLights"))
+```
+
+Reducing columns to desired Predicitive Variables: Population, LAST_Day, Precip, AvgRad, SWOccurrence, NDVI, EVI, pland_forest, te_forest, enn_mn_forest.
+```{r}
+later_data_small <- later_data %>%
+  select(c("Population", "Cutaneous.Leishmaniasis", "LST_Day", "Precip", "AvgRad", "SWOccurrence", "NDVI", "EVI", "pland_forest", "te_forest", "enn_mn_forest"))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$LST_Day))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$SWOccurrence))
+```
+
+
+```{r}
+later_data_small$pland_forest <- ifelse(is.na(later_data_small$pland_forest), 
+                                        0, later_data_small$pland_forest)
+later_data_small$te_forest <- ifelse(is.na(later_data_small$te_forest), 
+                                     0, later_data_small$te_forest)
+later_data_small$enn_mn_forest <- ifelse(is.na(later_data_small$enn_mn_forest), 
+                                         0, later_data_small$enn_mn_forest)
+```
+
+```{r}
+library(MASS)
+y <- later_data_small$Cutaneous.Leishmaniasis
+x1 <- as.numeric(later_data_small$Population)
+x2 <- later_data_small$LST_Day
+x3 <- later_data_small$Precip
+x4 <- later_data_small$AvgRad
+x5 <- later_data_small$SWOccurrence
+x6 <- later_data_small$NDVI
+x7 <- later_data_small$EVI
+x8 <- later_data_small$pland_forest
+x9 <- later_data_small$te_forest
+x10 <- later_data_small$enn_mn_forest
+
+fit <- glm.nb(y ~ x1+x2+x3+x4+x5+x6+x7+x8+x9+x10, data = later_data_small)
+
+summary(fit)
+
+plot(fit)
+
+# library(ggplot2)
+# 
+# ggplot(small_data, x = x5) +
+#   geom_bar(data = small_data, aes(y), col = "red")
+```
+
+
+BoxCox:
+```{r}
+library(MASS)
+boxcox(fit, plotit = T, lambda = seq(0,.1,len = 100))
+```
+
+```{r}
+y2 <- y^0.03
+
+fit2 <- lm(y2 ~ x1+x2+x3+x4, data = small_data)
+
+summary(fit2)
+
+plot(fit2)
+```
+
+
+```{r}
+y3 <- log(y)
+
+plot(x8, y3)
+
+fit3 <- lm(y3 ~ x1+x2+x3+x4)
+
+summary(fit3)
+
+plot(fit3)
+```

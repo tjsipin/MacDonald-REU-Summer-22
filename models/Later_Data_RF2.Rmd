@@ -1,3 +1,119 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:a12a724b2853ee666346370a6b326846c53d998b19c3b2a41677b7ac3a948493
-size 3585
+---
+title: "Later Data Random Forest Implementation 2"
+author: "Lyndsey Umsted"
+date: '2022-06-30'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+install.packages("randomForest")
+library(randomForest)
+```
+
+```{r}
+getwd()
+aad <- read.csv("data/aad.csv")
+aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <-subset(aad, aad$Year < 2019)
+```
+
+```{r}
+aad <-subset(aad, aad$Population < 4000000)
+aad <-subset(aad, aad$Precip < 6000)
+aad <-subset(aad, aad$LST_Day < 37)
+aad <-subset(aad, aad$LST_Day > 17)
+aad <-subset(aad, aad$AvgRad < 50)
+aad <-subset(aad, aad$NDVI > 0.2)
+aad <-subset(aad, aad$EVI > 0.1)
+aad <-subset(aad, aad$pland_forest > 0)
+aad <-subset(aad, aad$te_forest > 0)
+aad <-subset(aad, aad$enn_mn_forest > 0)
+aad <-subset(aad, aad$enn_mn_forest < 3000)
+```
+
+
+Extracting Later Data and Tidying it:
+```{r}
+## splitting the data into a before 2014 set and an after 2014 set
+library(dplyr)
+early_data <- aad %>%
+  filter(Year < 2014)
+later_data <- aad %>%
+  filter(Year > 2013)
+#names(early_data)
+
+## removing unnecessary variables
+
+early_data <- early_data %>%
+  select(-c("AvgRad"))
+later_data <- later_data %>%
+  select(-c("StableLights"))
+
+# later_data$OptTemp_Obs <- as.numeric(later_data$OptTemp_Obs)
+# later_data$Year <- as.numeric(later_data$Year)
+# later_data$Population <- as.numeric(later_data$Population)
+
+later_data_small <- later_data %>%
+  select(c("Population", "Cutaneous.Leishmaniasis", "LST_Day", "OptTemp_Obs", "NDVI", "EVI", "Precip", "AvgRad", "SWOccurrence", "pland_forest", "te_forest", "enn_mn_forest"))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$LST_Day))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$SWOccurrence))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$pland_forest))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$te_forest))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$enn_mn_forest))
+```
+
+```{r}
+library(dplyr)
+summary(later_data_small$Cutaneous.Leishmaniasis)
+cat_df <- later_data_small
+cat_df$Cutaneous.Leishmaniasis <- cut(later_data_small$Cutaneous.Leishmaniasis, breaks = c(0, 0.54770, 10^3), labels = c("low","high")) #50th percentile
+
+# cat_df$label <- NA
+# cat_df$label[cat_df$Cutaneous.Leishmaniasis == "low"] <- 0
+# cat_df$label[cat_df$Cutaneous.Leishmaniasis == "moderate"] <- 1
+# cat_df$label[cat_df$Cutaneous.Leishmaniasis == "high"] <- 2
+
+# cat_df$Year <- as.numeric(cat_df$Year)
+# cat_df$Population <- as.numeric(cat_df$Population)
+# cat_df$OptTemp_Obs <- as.numeric(cat_df$OptTemp_Obs)
+```
+
+```{r}
+skimr::skim(cat_df)
+round(prop.table(table(cat_df$Cutaneous.Leishmaniasis)), 2)
+```
+
+split the data into train and test sets
+```{r}
+library(rsample)
+set.seed(220)
+data_set_size = floor(nrow(cat_df)*0.8)
+index <- sample(1:nrow(cat_df), size = data_set_size)
+
+training <- cat_df[index,]
+testing <- cat_df[-index,]
+
+rf <- randomForest(Cutaneous.Leishmaniasis ~ ., data = training, mtry = 4, ntree = 3001, importance = TRUE)
+
+rf
+plot(rf)
+
+result <- data.frame(testing$Cutaneous.Leishmaniasis, predict(rf, testing[,1:12], type = "response"))
+
+result
+
+plot(result)
+
+
+cat_df2 <- cat_df %>%
+  mutate(pland_forest = pland_forest + 2)
+ 
+p <- predict(rf, cat_df2[,-2], type = "response")
+
+plot(p)
+```

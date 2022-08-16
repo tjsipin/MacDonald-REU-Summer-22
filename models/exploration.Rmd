@@ -1,3 +1,144 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:a7d315e7de209e80af64caad77b9b080f5526a3cae6b85a16198119a9a0a801b
-size 3911
+---
+title: "exploration"
+author: "Lyndsey Umsted"
+date: '2022-07-12'
+output:
+  pdf_document: default
+  html_document: default
+---
+
+Tidying dataset and removing outliers for each variable
+```{r}
+getwd()
+aad <- read.csv("data/aad.csv")
+aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <-subset(aad, aad$Year < 2019)
+```
+
+```{r}
+monthly_df <- read.csv("data/monthly_df.csv")
+monthly_df <- subset(monthly_df, !is.na(monthly_df$Cutaneous.Leishmaniasis))
+monthly_df <-subset(monthly_df, monthly_df$Cutaneous.Leishmaniasis > 0)
+monthly_df <- subset(monthly_df, !is.na(monthly_df$Year))
+```
+
+
+
+```{r}
+aad <-subset(aad, aad$Population < 4000000)
+aad <-subset(aad, aad$Precip < 6000)
+aad <-subset(aad, aad$LST_Day < 37)
+aad <-subset(aad, aad$LST_Day > 17)
+aad <-subset(aad, aad$AvgRad < 50)
+aad <-subset(aad, aad$NDVI > 0.2)
+aad <-subset(aad, aad$EVI > 0.1)
+aad <-subset(aad, aad$pland_forest > 0)
+aad <-subset(aad, aad$te_forest > 0)
+aad <-subset(aad, aad$enn_mn_forest > 0)
+aad <-subset(aad, aad$enn_mn_forest < 3000)
+```
+
+Removing NAs:
+```{r}
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <- subset(aad, !is.na(aad$Precip))
+aad <- subset(aad, !is.na(aad$LST_Day))
+aad <- subset(aad, !is.na(aad$SWOccurrence))
+aad <- subset(aad, !is.na(aad$AvgRad))
+aad <- subset(aad, !is.na(aad$Population))
+aad <- subset(aad, !is.na(aad$EVI))
+aad <- subset(aad, !is.na(aad$pland_forest))
+aad <- subset(aad, !is.na(aad$te_forest))
+aad <- subset(aad, !is.na(aad$enn_mn_forest))
+```
+
+
+
+```{r}
+plot(aad$Year, aad$Precip)
+boxplot(aad$te_forest[aad$Year == 2001])
+```
+
+
+```{r}
+library(dplyr)
+mean_Cutaneous <- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(Cutaneous.Leishmaniasis), list(name = mean))
+mean_Cutaneous
+plot(mean_Cutaneous, main = "Cutaneous Cases between 2001 and 2019", xlab = "Year", ylab = "Cases")
+
+# mean_te_forest <- aad %>%
+#   group_by(Year) %>%
+#   summarise_at(vars(NDVI), list(name = mean))
+# mean_te_forest
+# plot(mean_te_forest)
+
+fit <- lm(aad$Cutaneous.Leishmaniasis~ aad$Year, data = aad)
+summary(fit)
+abline(fit, col = "red")
+```
+```{r}
+ggplot(mean_Cutaneous, aes(x=Year, y = name)) + geom_line()
+```
+
+
+```{r}
+monthly_df$Year <- monthly_df$Year - 2006
+monthly_df$Month <- monthly_df$Month + monthly_df$Year*12
+```
+
+
+```{r}
+library(dplyr)
+mean_Cutaneous <- monthly_df %>%
+  group_by(Month) %>%
+  summarise_at(vars(Cutaneous.Leishmaniasis), list(name = mean))
+mean_Cutaneous
+plot(mean_Cutaneous, main = "Cutaneous Cases between 2007 and 2019", xlab = "Month", ylab = "Cases", cex = 0.1)
+
+fit <- glm(monthly_df$Cutaneous.Leishmaniasis ~ monthly_df$Month, data = monthly_df)
+summary(fit)
+abline(fit, col = "red")
+```
+
+
+```{r}
+mean_Cutaneous <- monthly_df %>%
+  group_by(Month) %>%
+  summarise_at(vars(Cutaneous.Leishmaniasis), list(name = mean))
+mean_Cutaneous
+ggplot(mean_Cutaneous, aes(x=Month/12 + 2006, y = name)) + geom_line()
+```
+
+
+
+```{r}
+set.seed(2)
+sample <- sample_n(aad, 500)
+
+fit <- lm(sample$Cutaneous.Leishmaniasis ~ sample$EVI, data = sample)
+summary(fit)
+
+confint(fit)
+plot(sample$EVI, sample$Cutaneous.Leishmaniasis, main = "Enhanced Vegetation Index vs Cutaneous Leishmaniasis Cases", xlab = "EVI", ylab = "Cases per Thousand")
+abline(fit, col = "red")
+# 
+# library(MASS)
+# boxcox(fit, lambda =seq(-0.1,0.1, 1), plotit = TRUE)
+```
+
+
+Diagnostic PlotS:
+```{r}
+# par(mfrow = c(2,2), mgp = c(2,1,0), mar = c(3,3,3,1) + 0.1)
+# plot(fitted(fit), residuals(fit), xlab = "fitted", ylab = "residuals")
+# abline(h=0)
+# title("Residuals vs Fitted")
+# qqnorm(residuals(fit), ylab = "residuals", main = "QQ plot")
+# qqline(residuals(fit))
+# plot(sample$human_footprint, residuals(fit), xlab = "time", ylab = "resdisuals")
+# abline(h=0)
+# title("Residuals vs human_footprint")
+```
+

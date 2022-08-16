@@ -1,3 +1,260 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:f438b3892c0aacf706129facae7bcc45e6cd451bafcd3f3fa95b595ad1011db6
-size 7188
+# helper packages
+library(tidyverse)
+library(tidymodels)
+library(stacks)
+library(dplyr)
+
+# load and split imputed data
+getwd()
+load("./data/imp")
+
+median_data <- data %>%
+  filter(!is.na(Yellow.Fever)) %>%
+  filter(Yellow.Fever > 0) %>%
+  dplyr :: select(Yellow.Fever)
+
+median <- median_data$Yellow.Fever %>%
+  median()
+
+data <- data %>%
+  filter(Year > 2013) %>%
+  filter(!is.na(Yellow.Fever)) %>%
+  filter(Yellow.Fever > 0) %>%
+  dplyr::select(c("Population", "Yellow.Fever", "LST_Day", "Precip", "AvgRad", "SWOccurrence", "NDVI", "EVI", "pland_forest", "te_forest", "enn_mn_forest"))
+
+data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
+data$te_forest <- ifelse(is.na(data$te_forest), 0, data$te_forest)
+data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
+
+data$Yellow.Fever <- as.factor(ifelse(data$Yellow.Fever < median, 0, 1))
+
+
+skimr::skim(cat_df)
+round(prop.table(table(cat_df$Yellow.Fever)), 2)
+
+set.seed(123) # for reproducibility
+
+split <- initial_split(data)
+
+data_train <- training(split)
+data_test <- testing(split)
+
+# use a 5-fold cross-validation
+folds <- rsample::vfold_cv(data_train, v = 5)
+
+# set up a basic recipe
+data_rec <-
+  recipe(Yellow.Fever ~ Population + LST_Day + NDVI + 
+           EVI + Precip + AvgRad + SWOccurrence + pland_forest + 
+           te_forest + enn_mn_forest, data = data_train) %>%
+  step_dummy(all_nominal() - all_outcomes()) %>% 
+  step_zv(all_predictors())
+
+# define a minimal workflow
+data_wflow <-
+  workflow() %>% 
+  add_recipe(data_rec)
+
+# add metric rmse (same as Yellow.Fever)
+metric <- metric_set(f_meas) #.784 for roc_auc
+
+library(stacks)
+
+# save assessment set predictions and workflow used to fit the resamples
+ctrl_grid <- control_stack_grid()
+ctrl_res <- control_stack_resamples()
+
+# models: SVM, XGBoost, RF
+## models to try: logistic regression 
+
+# toy model
+log_reg_spec <-
+  logistic_reg() %>%
+  set_engine('glm')
+
+log_reg_wflow <- 
+  data_wflow %>%
+  add_model(log_reg_spec)
+
+set.seed(123)
+log_reg_res <-
+  fit_resamples(
+    log_reg_wflow,
+    resamples = folds,
+    metrics = metric,
+    control = ctrl_res
+  )
+
+
+
+# define svm model using parsnip
+svm_spec <- 
+  svm_rbf(
+    cost = tune(),
+    rbf_sigma = tune()
+  ) %>% 
+  set_engine('kernlab') %>% 
+  set_mode('classification')
+
+
+# add it to a workflow
+svm_wflow <- 
+  data_wflow %>% 
+  add_model(svm_spec)
+
+# tune cost and rbf_sigma and fit to the 10-fold cv
+set.seed(123)
+svm_res <-
+  tune_grid(
+    svm_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+save(svm_res, file = 'models/stacking/svm_res_later_classif_2')
+# load(file = 'models/stacking/svm_res_later_classif_2')
+
+
+
+# define xgboost model using parsnip
+
+set.seed(123)
+xgb_spec <- 
+  boost_tree(
+    mtry = tune(),
+    trees = tune(),
+    min_n = tune(),
+    tree_depth = tune(),
+    learn_rate = tune(),
+    loss_reduction = tune()
+  ) %>% 
+  set_engine('xgboost') %>% 
+  set_mode('classification')
+
+# add it to a workflow
+xgb_wflow <- 
+  data_wflow %>%
+  add_model(xgb_spec)
+
+# tune mtry, trees, min_n, tree_depth, etc.
+xgb_res <-
+  tune_grid(
+    xgb_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+save(xgb_res, file = 'models/stacking/xgb_res_later_classif_2')
+
+# load(file = 'models/stacking/xgb_res_later_classif_2')
+
+# define rf model using parsnip
+
+set.seed(123)
+rf_spec <- 
+  rand_forest(
+    mtry = tune(),
+    trees = tune(),
+    min_n = tune()
+  ) %>% 
+  set_engine('ranger') %>% 
+  set_mode('classification')
+
+# add it to a workflow
+rf_wflow <- 
+  data_wflow %>%
+  add_model(rf_spec)
+
+# tune mtry, trees, min_n
+rf_res <-
+  tune_grid(
+    rf_wflow,
+    resamples = folds,
+    grid = 5,
+    control = ctrl_grid
+  )
+
+save(rf_res, file = 'models/stacking/rf_res_later_classif_2')
+
+load(file = 'models/stacking/rf_res_later_classif_2')
+
+data_st <- 
+  stacks() %>% 
+  add_candidates(svm_res) %>% 
+  add_candidates(xgb_res) %>% 
+  add_candidates(rf_res) 
+
+data_st
+
+as_tibble(data_st)
+
+# # A tibble: 10,807 × 31
+# Cutaneous…¹ .pred…² .pred…³ .pred…⁴ .pred…⁵ .pred…⁶ .pred…⁷ .pred…⁸ .pred…⁹ .pred…˟ .pred…˟ .pred…˟
+# <fct>         <dbl>   <dbl>   <dbl>   <dbl>   <dbl>   <dbl>   <dbl>   <dbl>   <dbl>   <dbl>   <dbl>
+#   1 1             0.816   0.744   0.489   0.218   0.752   0.184   0.256   0.511   0.782   0.248   0.313
+# 2 1             0.737   0.705   0.495   0.284   0.734   0.263   0.295   0.505   0.716   0.266   0.507
+# 3 0             0.897   0.839   0.489   0.666   0.828   0.103   0.161   0.511   0.334   0.172   0.642
+# 4 1             0.867   0.870   0.491   0.752   0.855   0.133   0.130   0.509   0.248   0.145   0.754
+# 5 0             0.822   0.835   0.495   0.701   0.836   0.178   0.165   0.505   0.299   0.164   0.651
+# 6 0             0.846   0.747   0.489   0.556   0.742   0.154   0.253   0.511   0.444   0.258   0.686
+# 7 1             0.833   0.705   0.489   0.338   0.722   0.167   0.295   0.511   0.662   0.278   0.543
+# 8 0             0.859   0.810   0.491   0.328   0.847   0.141   0.190   0.509   0.672   0.153   0.932
+# 9 1             0.359   0.227   0.491   0.237   0.252   0.641   0.773   0.509   0.763   0.748   0.410
+# 10 1             0.465   0.293   0.489   0.109   0.331   0.535   0.707   0.511   0.891   0.669   0.108
+# # … with 10,797 more rows, 19 more variables: .pred_0_xgb_res_1_2 <dbl>, .pred_0_xgb_res_1_3 <dbl>,
+# #   .pred_0_xgb_res_1_4 <dbl>, .pred_0_xgb_res_1_5 <dbl>, .pred_1_xgb_res_1_1 <dbl>,
+# #   .pred_1_xgb_res_1_2 <dbl>, .pred_1_xgb_res_1_3 <dbl>, .pred_1_xgb_res_1_4 <dbl>,
+# #   .pred_1_xgb_res_1_5 <dbl>, .pred_0_rf_res_1_4 <dbl>, .pred_0_rf_res_1_5 <dbl>,
+# #   .pred_0_rf_res_1_1 <dbl>, .pred_0_rf_res_1_3 <dbl>, .pred_0_rf_res_1_2 <dbl>,
+# #   .pred_1_rf_res_1_4 <dbl>, .pred_1_rf_res_1_5 <dbl>, .pred_1_rf_res_1_1 <dbl>,
+# #   .pred_1_rf_res_1_3 <dbl>, .pred_1_rf_res_1_2 <dbl>, and abbreviated variable names …
+# # ℹ Use `print(n = ...)` to see more rows, and `colnames()` to see all variable names
+
+model_st <-
+  data_st %>% 
+  blend_predictions()
+
+model_st <- 
+  model_st %>% 
+  fit_members()
+
+data_test <- 
+  data_test %>% 
+  bind_cols(predict(model_st, .))
+
+# confusion matrix for stacks
+caret::confusionMatrix(data_test$Yellow.Fever, 
+                       data_test$.pred_class,
+                       positive = 'high')
+
+
+# confusion matrix for base models
+
+member_preds <- 
+  data_test %>% 
+  select(Yellow.Fever) %>% 
+  bind_cols(
+    predict(
+      model_st,
+      data_test,
+      members = TRUE
+    )
+  )
+
+colnames(member_preds) %>% 
+  map_dfr(
+    .f = accuracy,
+    truth = Yellow.Fever,
+    data = member_preds
+  ) %>% 
+  mutate(member = colnames(member_preds))
+
+
+# # A tibble: 3 × 4
+# .metric  .estimator .estimate member                
+# <chr>    <chr>          <dbl> <chr>                 
+#   1 accuracy binary         1     Yellow.Fever          
+# 2 accuracy binary         0.727 .pred_class           
+# 3 accuracy binary         1     .pred_class_rf_res_1_2

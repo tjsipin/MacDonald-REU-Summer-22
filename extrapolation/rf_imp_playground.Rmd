@@ -36,7 +36,7 @@ later <- aad %>%
   dplyr::select(c('Year', 'LST_Day', # include LST_Night?
                   'NDVI', 'EVI', 'Precip', 
                   'AvgRad', 'SWOccurrence', 'pland_forest',
-                  'te_forest', 'enn_mn_forest','Population')) %>% 
+                  'te_forest', 'enn_mn_forest','Population', 'AvgRad')) %>% 
   subset(!is.na(LST_Day)) %>%
   subset(!is.na(SWOccurrence)) 
 

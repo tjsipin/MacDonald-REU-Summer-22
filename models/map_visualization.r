@@ -1,3 +1,32 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:b624aa563e6c01bbec016cf632f3998d59edf969a71b7c9c74c504708831f31a
-size 629
+# libraries
+
+library(tidyverse)
+install.packages("maps")
+library(maps)
+install.packages("mapproj")
+library(mapproj)
+
+
+
+world_tbl <- map_data("world") %>%
+  as_tibble()
+
+world_tbl
+
+# world base
+map_data("world") %>%
+  ggplot() + 
+  geom_polygon(
+    aes(long, lat, group = group))
+
+
+map_data("world") %>%
+  ggplot() +
+  borders(fill = "gray")
+
+
+
+# Ortho Projection
+
+world_base +
+  coord_map("ortho", orientation = c(-14, -52, 0))

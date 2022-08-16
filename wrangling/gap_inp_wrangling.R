@@ -1,3 +1,15 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:5c74372eb435c013746d1ce966263404e67052115de10db85d317c47ea5f9f0b
-size 557
+load(file = './models/data/gap_inp')
+
+gap_inp <- gap.inp$ximp
+aad <- read.csv('./models/data/aad.csv')
+
+data <- gap_inp %>%
+  dplyr::select(-c('Chikungunya':'Zika',28:67))
+
+data <- cbind(data, aad %>% select(c(1,4,'Chikungunya':'Zika',28:69)))
+
+data <- data %>%
+  relocate(Code, .after = 1) %>% 
+  relocate(Name, .after = 2)
+
+save(data, file = './data/imp')
