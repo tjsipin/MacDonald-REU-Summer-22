@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Predicting Disease Rates in the Amazon Basin on Climate, Land-Use, and Socioeconomic Variables [WIP]
 ### By TJ Sipin and Lyndsey Umsted
 
@@ -62,3 +63,8 @@ To predict future trends of each of our predictor variables we have implemented 
 Our random walk time series forecast for cutaneous leishmaniasis cases would then be compared to this stacked model result from the forecast data set. The reason for finding these values for each municipality is then to create a map indicating the locations of areas with low risk and high risk with each passing year.
 
 ### Using our Model on New Data
+=======
+version https://git-lfs.github.com/spec/v1
+oid sha256:61a876b6c7dfad5ad98b9fcfbe56c18c96817a4c45880d6ba4941c1f4b0b2106
+size 6380
+>>>>>>> parent of 7f6884b... new_main readme
