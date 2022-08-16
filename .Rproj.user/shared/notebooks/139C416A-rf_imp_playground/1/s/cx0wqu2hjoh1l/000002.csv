@@ -1,6 +1,0 @@
-"0","```r
-test_data_y <- data %>% 
-  filter(Code == 10609) %>% 
-  ts(start = 2000)
-rwf(test_data_y, h = 20, drift = T)
-```"
