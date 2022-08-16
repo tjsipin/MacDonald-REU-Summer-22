@@ -1,3 +1,292 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:8042b66881163a645b969f3f95aac94cd80a08894a0e80140e20c0df3c64d84d
-size 9047
+---
+title: "Early Data XGBoost"
+author: "Lyndsey Umsted"
+date: '2022-06-24'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+---
+title: "XGBoost_1"
+author: "TJ Sipin"
+date: '2022-06-24'
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE, warning = F)
+```
+
+## The Data Set
+
+The dataset was provided to our group by Dr. Andrew MacDonald, one of
+the supervisors of a NSF EEID funded project (DEB-2011147). There are
+various sources for the data, depending on the variable. The case data
+are derived from reported cases from the population of municipalities
+and their hospitals and clinics. The rest are outlined in the Peru Data
+Column Key, but are the following:
+
+-   MODIS satellite imagery
+
+-   Landsat satellite imagery
+
+-   DMSP-OLS nighttime lights satellite imagery
+
+-   JRC Global Surface Water Mapping Data: Jean-Francois Pekel, Andrew
+    Cottam, Noel Gorelick, Alan S. Belward, High-resolution mapping of
+    global surface water and its long- term changes. Nature 540,
+    418-422(2016). <doi:10.1038/nature20584>
+
+-   MapBiomas land use and land cover mapping project
+
+The data consists of disease estimates sampled from different
+year-municipality combinations, where each combination acts as its own
+observation and has different land-use properties. The municipalities
+are from Colombia, Peru, and Brazil and the years span from 2000-2019.
+The data itself was collected from reported cases of disease incidences
+from the population of these municipalities and their hospitals and
+clinics.
+
+```{r libraries, include = F}
+library(tidyverse)
+library(dplyr)
+library(glmnet)
+library(xgboost)
+library(ranger)
+library(lsr)
+library(corrr)
+library(tidyr)
+library(car)
+library(moments)
+library(ggpubr)
+library(BBmisc)
+library(rsample)
+library(recipes)
+library(randomForest)
+library(parsnip)
+library(workflows)
+library(tune)
+library(dials)
+library(yardstick)
+require(xgboost)
+require(data.table)
+require(Matrix)
+library(caret)
+library(data.table)
+library(mlr)
+```
+
+## Importing and Wrangling the Data Set
+
+We import the data set and split the data into two sets: one for years 2001-2013 and one for all other years 2014-2019. The recorded data for each subset seemed to have different methods of collection. For example, the earlier years called the human settlement light emission measurements `StableLights`, while the later years called it `AvgRad`. Additionally, `Zika` and `Chikungunya` are all NA for the earlier years, so we remove those for the earlier years since XGBoost does not work with NA values.
+
+```{r pressure, include = F}
+data = read.csv("Annual_Amazon_Data.csv")
+
+new_df <- subset(data, !is.na(data$Cutaneous.Leishmaniasis))
+
+# split missing data
+
+early_data <- new_df %>%
+  filter(Year < 2014) %>%
+  select(-c(29:69)) %>%
+  select(-c("AvgRad", "Zika", "Chikungunya"))
+
+later_data <- new_df %>%
+  filter(Year >= 2014) %>%
+  select(-c(29:69)) %>%
+  select(-c("StableLights"))
+```
+
+## Set up XGBoost
+
+We remove `Code`, `Country`, `Name`, and `Year` as these shouldn't be taken into account when implementing into GIS programs. We also remove all other diseases since intuitively, we would not have that data on hand when predicting.
+
+```{r set-up, echo = F}
+# set seed for reproducibility
+set.seed(321)
+
+# split data into training and testing
+data_split <- initial_split(early_data %>% select(-c('Code', 
+                                                     'Country', 
+                                                     'Name', 
+                                                     'Mucosal.Leishmaniasis',
+                                                     'Visceral.Leishmaniasis',
+                                                     'Year',
+                                                     'Dengue',
+                                                     'Yellow.Fever',
+                                                     'Malaria')),
+                            strata = Cutaneous.Leishmaniasis,
+                            prop = 0.9)
+data_train <- training(data_split)
+data_test <- testing(data_split)
+
+data_train <- data.table(data_train)
+
+# split training into predictors and labels
+x_train <- as.matrix(data_train %>%
+  select(-c("Cutaneous.Leishmaniasis")))
+
+x_train[,1:15] = as.numeric(x_train[,1:15])
+
+y_train <- as.matrix(data_train %>%
+  select(Cutaneous.Leishmaniasis))
+
+x_test <- as.matrix(data_test %>%
+                       select(-c("Cutaneous.Leishmaniasis")))
+
+x_test[,1:15] = as.numeric(x_test[,1:15])
+
+y_test <- as.matrix(data_test %>%
+                       select(Cutaneous.Leishmaniasis))
+
+dtrain <- xgb.DMatrix(data = x_train, label = y_train)
+dtest <- xgb.DMatrix(data = x_test, label = y_test)
+```
+
+
+## Basic Tuning
+
+```{r}
+## Parameters
+params <- list(booster = "gbtree", 
+               objective = "reg:squarederror",
+               eta = 0.3,
+               gamma = 100,
+               max.depth = 1, 
+               min_child_weight = 2,
+               subsample = 1,
+               colsample_bytree = 1,
+               lambda = 0
+               )
+
+xgbcv <- xgb.cv(params = params,
+                data = x_train, 
+                label = y_train, 
+                nrounds = 1000,
+                nfold = 5,
+                showsd = T,
+                stratified = T,
+                print_every_n = 10,
+                early_stopping_rounds = 20,
+                maximize = F,
+                verbose = 2)  # eta = 1: train-rmse:0.000601 @ [41]
+                              # eta = 0.3: train-rsme:0.001090 @ [132]
+                              # min_child_weight = 1: 0.530765
+xgbcv$best_iteration
+
+# first default - model training
+xgb1 <- xgb.train (params = params, 
+                   data = dtrain, 
+                   nrounds = xgbcv$best_iteration, 
+                   watchlist = list(val=dtest,train=dtrain), 
+                   print.every.n = 10, 
+                   early.stop.round = 10, 
+                   maximize = F , 
+                   eval_metric = "error")
+
+# model prediction
+xgbpred <- predict(xgb1, dtest)
+```
+
+```{r var imp plot, echo=TRUE}
+# var imp plot
+mat <- xgb.importance(feature_names = colnames(x_train),
+                      model = xgb1)
+xgb.plot.importance(importance_matrix = mat[1:ncol(x_train)])
+```
+
+
+## Random Search Procedure
+```{r}
+# Create tasks
+traintask <- makeRegrTask(data = data_train, target = "Cutaneous.Leishmaniasis")
+testtask <- makeRegrTask(data = data_test, target = "Cutaneous.Leishmaniasis")
+
+# Create learner
+lrn <- makeLearner("regr.xgboost", predict.type = "response")
+lrn$par.vals <- list(objective = 'reg:squarederror',
+                     eval_metric = 'error',
+                     nrounds = 200L,
+                     eta = 0.9)
+
+# Set parameter space
+params <- makeParamSet(makeDiscreteParam('booster',
+                                         values = c('gbtree', 'gblinear')),
+                       makeIntegerParam('max_depth',
+                                        lower = 1,
+                                        upper = 6),
+                       makeNumericParam('min_child_weight',
+                                        lower = 0L,
+                                        upper = 1),
+                       makeNumericParam('subsample',
+                                        lower = 0,
+                                        upper = 1),
+                       makeNumericParam('colsample_bytree',
+                                        lower = 0,
+                                        upper = 1),
+                       makeIntegerParam('gamma',
+                                        lower = 0,
+                                        upper = 2.5))
+
+
+# Set resampling strategy
+rdesc <- makeResampleDesc('CV',
+                          stratify = F,
+                          iters = 5L)
+
+# Search Strategy
+ctrl <- makeTuneControlRandom(maxit = 10L)
+```
+
+## Faster Computation
+
+Note: Make sure not to open too many applications in the backend. This procedure makes use of all cores in our machine.
+```{r}
+# Set parallel backend
+library(parallel)
+library(parallelMap)
+parallelStartSocket(cpus = detectCores())
+```
+
+```{r}
+mytune <- tuneParams(learner = lrn, 
+                     task = traintask,
+                     resampling = rdesc,
+                     measures = getDefaultMeasure('regr'),
+                     par.set = params,
+                     control = ctrl,
+                     show.info = T)
+```
+
+```{r}
+# Set hyperparameters
+lrn_tune <- setHyperPars(lrn, par.vals = mytune$x)
+
+# Train model
+xgmodel <- train(learner = lrn_tune, task = traintask)
+
+# Predict model
+xgpred <- predict(xgmodel, testtask)
+```
+## Visualize performance
+
+```{r}
+x = 1:length(y_test)
+
+ggplot() + 
+  geom_line(aes(x = xgpred$data$id,
+                y = xgpred$data$truth),
+            color = 'red') + 
+  geom_line(aes(x = xgpred$data$id,
+                y = xgpred$data$response),
+            color = 'blue') + 
+  labs(color = "Truth vs. Response")
+```
+

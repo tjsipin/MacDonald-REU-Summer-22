@@ -1,3 +1,145 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:6037f109743d5295e5e1deef61592b25239b4e7c1604cac5370c153c5459ffd2
-size 4088
+---
+title: "Support Vector Machine Learning on Later Data"
+author: "Lyndsey Umsted"
+date: '2022-07-01'
+output: html_document
+---
+
+
+```{r}
+getwd()
+aad <- read.csv("data/aad.csv")
+aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <-subset(aad, aad$Year < 2019)
+```
+
+```{r}
+aad <-subset(aad, aad$Population < 4000000)
+aad <-subset(aad, aad$Precip < 6000)
+aad <-subset(aad, aad$LST_Day < 37)
+aad <-subset(aad, aad$LST_Day > 17)
+aad <-subset(aad, aad$AvgRad < 50)
+aad <-subset(aad, aad$NDVI > 0.2)
+aad <-subset(aad, aad$EVI > 0.1)
+aad <-subset(aad, aad$pland_forest > 0)
+aad <-subset(aad, aad$te_forest > 0)
+aad <-subset(aad, aad$enn_mn_forest > 0)
+aad <-subset(aad, aad$enn_mn_forest < 3000)
+```
+
+
+```{r}
+install.packages("caret")
+```
+
+```{r}
+library(caret)
+```
+
+
+
+Extracting Later Data and Tidying it:
+```{r}
+## splitting the data into a before 2014 set and an after 2014 set
+library(dplyr)
+early_data <- aad %>%
+  filter(Year < 2014)
+later_data <- aad %>%
+  filter(Year > 2013)
+
+#names(early_data)
+
+## removing unnecessary variables
+
+early_data <- early_data %>%
+  select(-c("AvgRad"))
+later_data <- later_data %>%
+  select(-c("StableLights"))
+
+# later_data$OptTemp_Obs <- as.numeric(later_data$OptTemp_Obs)
+# later_data$Year <- as.numeric(later_data$Year)
+# later_data$Population <- as.numeric(later_data$Population)
+
+later_data_small <- later_data %>%
+  select(c("Population", "Cutaneous.Leishmaniasis", "LST_Day", "OptTemp_Obs", "NDVI", "EVI", "Precip", "AvgRad", "SWOccurrence", "pland_forest", "te_forest", "enn_mn_forest"))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$LST_Day))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$SWOccurrence))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$pland_forest))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$te_forest))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$enn_mn_forest))
+
+```
+
+```{r}
+library(dplyr)
+summary(later_data_small$Cutaneous.Leishmaniasis)
+cat_df <- later_data_small
+cat_df$Cutaneous.Leishmaniasis <- cut(later_data_small$Cutaneous.Leishmaniasis, breaks = c(0, 0.54770, 10^3), labels = c("low", "high")) # 50th percentile
+
+# cat_df$label <- NA
+# cat_df$label[cat_df$Cutaneous.Leishmaniasis == "low"] <- 0
+# cat_df$label[cat_df$Cutaneous.Leishmaniasis == "moderate"] <- 1
+# cat_df$label[cat_df$Cutaneous.Leishmaniasis == "high"] <- 2
+
+# cat_df$Year <- as.numeric(cat_df$Year)
+# cat_df$Population <- as.numeric(cat_df$Population)
+# cat_df$OptTemp_Obs <- as.numeric(cat_df$OptTemp_Obs)
+```
+
+```{r}
+skimr::skim(cat_df)
+round(prop.table(table(cat_df$Cutaneous.Leishmaniasis)), 2)
+```
+
+Partitioning Data into Training and Test Sets
+```{r}
+set.seed(22)
+library(rsample)
+
+intrain <- createDataPartition(y = cat_df$Cutaneous.Leishmaniasis, p = 0.7, list = FALSE)
+
+training <- cat_df[intrain,]
+testing <- cat_df[-intrain,]
+
+dim(training)
+dim(testing)
+
+training[["Cutaneous.Leishmaniasis"]] = factor(training[["Cutaneous.Leishmaniasis"]])
+
+trctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+
+svm.Radial <- train(Cutaneous.Leishmaniasis ~ ., data = training, method = "svmRadial", trControl = trctrl, preProcess = c("center", "scale"), tuneLength = 10)
+
+svm.Radial
+
+```
+
+```{r}
+test_pred <- predict(svm.Radial, newdata = testing)
+test_pred
+
+confusionMatrix(table(test_pred, testing$Cutaneous.Leishmaniasis))
+```
+
+
+```{r}
+grid <- expand.grid(C = c(0.01,0.05,0.1,0.25,0.5,0.75,1,1.25,1.5,1.75,2,5), sigma = c(0, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 2, 5))
+
+svm_Radial_Grid <- train(Cutaneous.Leishmaniasis ~ ., data = training, method = "svmRadial", trControl = trctrl, preProcess = c("center", "scale"), tuneGrid = grid, tuneLength = 10)
+
+svm_Radial_Grid
+plot(svm_Radial_Grid)
+```
+
+```{r}
+# test_pred_grid <- predict(svm_Radial_Grid, newdata = testing)
+# test_pred_grid
+
+test_pred_grid <- predict(svm_Radial_Grid, newdata = testing)
+test_pred_grid
+
+confusionMatrix(table(test_pred_grid, testing$Cutaneous.Leishmaniasis), positive = 'high')
+```
+
+

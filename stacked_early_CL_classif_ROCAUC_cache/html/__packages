@@ -1,3 +1,23 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:e2196d6284c739806923f8e47ad1b823c9cf7c5f78c8006dfa6fea4950b90be9
-size 180
+tidyverse
+ggplot2
+tibble
+tidyr
+readr
+purrr
+dplyr
+stringr
+forcats
+tidymodels
+broom
+scales
+dials
+infer
+modeldata
+parsnip
+recipes
+rsample
+tune
+workflows
+workflowsets
+yardstick
+stacks

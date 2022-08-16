@@ -1,3 +1,341 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:aea864caab6ab6922ef9a1758094a6658d4d640a0a7fe135567c7b498da2b929
-size 10921
+---
+title: "Support Vector Machine Learning on Later Data"
+author: "Lyndsey Umsted and TJ Sipin"
+date: '2022-07-01'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F)
+```
+
+
+
+```{r}
+library(caret)
+library(kernlab)
+library(ROCR)
+library(e1071)
+library(dplyr)
+library(rsample)
+```
+
+
+Importing File into R:
+```{r}
+aad <- read.csv("data/aad.csv")
+
+cutaneous <- aad$Cutaneous.Leishmaniasis
+mucosal <- aad$Mucosal.Leishmaniasis
+visceral <- aad$Visceral.Leishmaniasis
+new_data <- subset(aad, !is.na(cutaneous))
+
+```
+
+
+Extracting Later Data and Tidying it:
+```{r}
+# splitting the data into a before 2014 set and an after 2014 set
+# 
+# early_data <- new_data %>%
+#   filter(Year < 2014)%>%
+#   select(-c(29:69))
+later_data <- new_data %>%
+  filter(Year > 2013) %>%
+  select(-c(29:69))
+
+
+
+# removing unnecessary variables
+
+early_data <- read.csv('data/gap_inp_early_2.csv') # use imputed data
+
+later_data <- later_data %>%
+  select(-c("StableLights"))
+
+# later_data$OptTemp_Obs <- as.numeric(later_data$OptTemp_Obs)
+# later_data$Year <- as.numeric(later_data$Year)
+# later_data$Population <- as.numeric(later_data$Population)
+
+later_data_small <- later_data %>%
+  select(c("Cutaneous.Leishmaniasis", 
+           "Dengue_Alb_OptTemp", 
+           "Dengue_Aeg_OptTemp", 
+           "Chik_Alb_OptTemp", 
+           "Chik_Aeg_OptTemp", 
+           "Zika_OptTemp", 
+           "Malaria_OptTemp", 
+           "LST_Day", 
+           "LST_Night", 
+           "OptTemp_Obs", 
+           "NDVI", 
+           "EVI", 
+           "Precip", 
+           "AvgRad", 
+           "SWOccurrence")) %>%
+  na.omit(later_data_small) 
+later_data_t <- later_data_small %>%
+  mutate(Cutaneous.Leishmaniasis = (Cutaneous.Leishmaniasis))
+```
+
+```{r}
+cat_df <- subset(early_data, early_data$Cutaneous.Leishmaniasis > 0)
+cat_df$Cutaneous.Leishmaniasis <- cut(early_data$Cutaneous.Leishmaniasis[early_data$Cutaneous.Leishmaniasis > 0], breaks = c(0, 0.09154 , 0.86616, 100), labels = c("low", "moderate", "high")) # 25%, 75%, 100%
+
+cat_df <- cat_df %>%
+  select(c("Cutaneous.Leishmaniasis", 
+           "Dengue_Alb_OptTemp", 
+           "Dengue_Aeg_OptTemp", 
+           "Chik_Alb_OptTemp", 
+           "Chik_Aeg_OptTemp", 
+           "Zika_OptTemp", 
+           "Malaria_OptTemp", 
+           "LST_Day", 
+           "LST_Night", 
+           "OptTemp_Obs", 
+           "NDVI", 
+           "EVI", 
+           "Precip", 
+           "StableLights", 
+           "SWOccurrence"))
+
+# cat_df$label <- NA
+# cat_df$label[cat_df$Cutaneous.Leishmaniasis == "low"] <- 0
+# cat_df$label[cat_df$Cutaneous.Leishmaniasis == "moderate"] <- 1
+# cat_df$label[cat_df$Cutaneous.Leishmaniasis == "high"] <- 2
+
+# cat_df$Year <- as.numeric(cat_df$Year)
+# cat_df$Population <- as.numeric(cat_df$Population)
+# cat_df$OptTemp_Obs <- as.numeric(cat_df$OptTemp_Obs)
+```
+
+```{r}
+skimr::skim(cat_df)
+```
+
+Partitioning Data into Training and Test Sets
+```{r}
+set.seed(1)
+
+data_split <- initial_split(cat_df, strata = "Cutaneous.Leishmaniasis", prop = 0.8)
+
+training <- training(data_split) %>%
+  group_by(Cutaneous.Leishmaniasis) %>%
+  sample_n(size = 6377)
+testing <- testing(data_split) 
+
+x_train <- as.matrix(training[,-1])
+x_test <- as.matrix(testing[,-1])
+
+y_train <- as.vector(as.numeric(training$Cutaneous.Leishmaniasis) - 1)
+y_test <- as.vector(as.numeric(testing$Cutaneous.Leishmaniasis) - 1)
+ 
+# training <- subset(training, select = -Cutaneous.Leishmaniasis)
+# testing <- subset(testing, select = -Cutaneous.Leishmaniasis)
+
+```
+
+```{r, eval=F}
+summary(cat_df)
+```
+
+Factorize our target variable
+```{r}
+training[["Cutaneous.Leishmaniasis"]] = factor(training[["Cutaneous.Leishmaniasis"]])
+```
+
+traincontrol() method:
+```{r, eval = FALSE}
+# 
+set.seed(2022)
+trctrl <- trainControl(method = "cv", number = 2, classProbs = TRUE)
+# 
+trctrl_1 <- trainControl(method = 'cv', number = 1)
+
+# grid search to fine tune
+grid <- expand.grid(C = c(0,0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2,5))
+
+# train SVM
+svm_Radial <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmRadial",
+                    trControl=trctrl,
+                    preProcess = c("center", "scale"),
+                    tuneLength = 10)
+
+svm_Linear <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmLinear",
+                    trControl=trctrl,
+                    preProcess = c("center", "scale"),
+                    tuneLength = 10)
+# svm_Poly <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmPoly",
+#                     trControl=trctrl_1,
+#                     preProcess = c("center", "scale"),
+#                     tuneLength = 10)
+# system("say Just finished!")
+# alarm()
+# save(svm_Linear, file = 'svm_models/early_svm_Linear')
+# save(svm_Radial, file = 'svm_models/early_svm_Radial')
+```
+
+```{r, eval=FALSE}
+# 
+# svmfit_poly = svm(Cutaneous.Leishmaniasis ~ ., data = training, kernel = 'radial', gamma = 1, cost = 1)
+# save(svmfit_poly, file = 'svm_models/models/svmfit_poly')
+```
+
+```{r}
+# set.seed(1)
+# tune.out = tune(svm, Cutaneous.Leishmaniasis ~ .,
+#                 data = training, kernel = 'radial',
+#                 ranges = list(cost = c(0.1, 0.5, 1, 8, 16),
+#                               gamma = c(0.5, 1, 2, 3, 4)))
+# save(tune.out, file = 'svm_models/early_tune_out')
+```
+
+```{r, echo=F}
+load(file = 'svm_models/early_svm_Linear')
+load(file = 'svm_models/early_svm_Radial')
+# load(file = 'svm_models/early_tune_out')
+
+
+# 
+# confusionMatrix(table(true = testing$Cutaneous.Leishmaniasis,
+#       pred = predict(tune.out$best.model, newdata = testing %>%
+#                        dplyr::select(-c('Cutaneous.Leishmaniasis')))))
+```
+
+
+```{r}
+# table(true = testing$Cutaneous.Leishmaniasis,
+#       pred = predict(tune.out$best.model, newdata = testing %>%
+#                        dplyr::select(-c('Cutaneous.Leishmaniasis'))))
+# plot(tune.out)
+
+```
+
+```{r}
+# # Do not run anymore!!! Long runtime
+# tune.out.2 = tune(svm, Cutaneous.Leishmaniasis ~ .,
+#                   data = training, kernel = 'radial',
+#                   ranges = list(cost = c(1, 2, 4, 7, 10, 11, 12, 14, 16),
+#                                 sigma = c(0.01, 0.02, 0.04, 0.06,
+#                                          0.08, 0.1, 0.2, 0.3),
+#                                 gamma = c(0.01, 0.25, 0.5, 0.75)))
+# 
+# save(tune.out.2, file = 'svm_models/early_tune_out_2')
+
+```
+
+
+
+
+```{r}
+test_pred_linear <- predict(svm_Linear, newdata = testing)
+test_pred_radial <- predict(svm_Radial, newdata = testing)
+```
+
+Predicting Accuracy with Confusion Matrix
+```{r}
+confusionMatrix(table(test_pred_linear, testing$Cutaneous.Leishmaniasis))
+confusionMatrix(table(test_pred_radial, testing$Cutaneous.Leishmaniasis))
+```
+
+We are going to put some values of C using expand.grid() into “grid” dataframe. Next step is to use this dataframe for testing our classifier at specific C values. It needs to be put in train() method with tuneGrid parameter.
+
+```{r}
+grid <- expand.grid(C = c(10, 11, 12, 13, 14, 15, 16, 17),
+                    sigma = c(0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1))
+grid_Linear <- expand.grid(C = c(10, 11, 12, 13, 14, 15, 16, 17))
+
+new_grid_Radial <- expand.grid(C = c(0.1, 1, 10, 100),
+                               sigma = c(0.0001, 0.001, 0.01, 0.1, 1))
+ctrl_3 <- trainControl(method = "CV", number = 3)
+# svm_Linear_Grid <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmLinear",
+#                          trControl=trctrl,
+#                          preProcess = c("center", "scale"),
+#                          tuneGrid = grid_Linear,
+#                          tuneLength = 10)
+svm_Radial_Grid <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmRadial",
+                         trControl=ctrl_3,
+                         preProcess = c("center", "scale"),
+                         tuneGrid = new_grid_Radial)
+
+svm_Radial <- train(Cutaneous.Leishmaniasis ~., data = training, method = "svmRadial",
+                    trControl=trctrl,
+                    preProcess = c("center", "scale"),
+                    tuneLength = 10)
+svm_Radial_Grid
+# 
+# 
+# save(svm_Linear_Grid, file = 'svm_models/early_svm_Linear_Grid_imp_2')
+# save(svm_Radial_Grid, file = 'svm_models/early_svm_Radial_Grid_imp_3')
+
+load(file = 'svm_models/early_svm_Linear_Grid_imp_2')
+load(file = 'svm_models/early_svm_Radial_Grid_imp_2')
+```
+
+```{r}
+svm_Radial_Grid$finalModel
+```
+
+
+Let’s try to make predictions using this model for our test set.
+```{r}
+test_pred_grid_linear <- predict(svm_Linear_Grid, newdata = testing)
+test_pred_grid_radial <- predict(svm_Radial_Grid, newdata = testing)
+
+plot(svm_Linear_Grid)
+plot(svm_Radial_Grid)
+```
+
+Confusion Matrix:
+```{r}
+confusionMatrix(table(test_pred_grid_linear, testing$Cutaneous.Leishmaniasis))
+confusionMatrix(table(test_pred_grid_radial, testing$Cutaneous.Leishmaniasis))
+# confusionMatrix(table(true = testing$Cutaneous.Leishmaniasis,
+#       pred = predict(tune.out.2$best.model, newdata = testing %>%
+#                        dplyr::select(-c('Cutaneous.Leishmaniasis')))))
+```
+
+
+
+
+```{r}
+load(file = 'svm_models/early_svm_Linear')
+load(file = 'svm_models/early_svm_Radial')
+# load(file = 'svm_models/early_svmfit_poly')
+# load(file = 'svm_models/early_tune_out')
+# load(file = 'svm_models/early_tune_out_2')
+load(file = 'svm_models/early_svm_Linear_Grid_imp_2')
+load(file = 'svm_models/early_svm_Radial_Grid_imp_2')
+
+
+summary(svm_Linear)
+confusionMatrix(table(true = testing$Cutaneous.Leishmaniasis,
+                      pred = predict(svm_Linear, newdata = testing %>%
+                                       dplyr::select(-c('Cutaneous.Leishmaniasis')))))
+summary(svm_Radial)
+confusionMatrix(table(true = testing$Cutaneous.Leishmaniasis,
+                      pred = predict(svm_Radial, newdata = testing %>%
+                                       dplyr::select(-c('Cutaneous.Leishmaniasis')))))
+# summary(tune.out)
+# confusionMatrix(table(true = testing$Cutaneous.Leishmaniasis,
+#                       pred = predict(tune.out$best.model, newdata = testing %>%
+#                                        dplyr::select(-c('Cutaneous.Leishmaniasis')))))
+# summary(tune.out.2)
+# confusionMatrix(table(true = testing$Cutaneous.Leishmaniasis,
+#                       pred = predict(tune.out.2$best.model, newdata = testing %>%
+#                                        dplyr::select(-c('Cutaneous.Leishmaniasis')))))
+summary(svm_Linear_Grid)
+confusionMatrix(table(true = testing$Cutaneous.Leishmaniasis,
+                      pred = predict(svm_Linear_Grid, newdata = testing %>%
+                                       dplyr::select(-c('Cutaneous.Leishmaniasis')))))
+summary(svm_Radial_Grid)
+confusionMatrix(table(true = testing$Cutaneous.Leishmaniasis,
+                      pred = predict(svm_Radial_Grid, newdata = testing %>%
+                                       dplyr::select(-c('Cutaneous.Leishmaniasis')))))
+
+
+```
+
+
+
+
