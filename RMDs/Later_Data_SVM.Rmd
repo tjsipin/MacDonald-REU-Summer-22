@@ -311,7 +311,6 @@ confusionMatrix(table(true = testing$Cutaneous.Leishmaniasis,
 
 
 
-
 ```{r}
 # load(file = 'models/svm_Linear')
 # load(file = 'models/svm_Radial')

@@ -1,0 +1,70 @@
+```{r}
+library(dplyr)
+library(forecast)
+library(ggplot2)
+library(seasonal)
+library(urca)
+
+monthly <- read_csv('../data/monthly_df.csv')
+```
+
+# Set up `monthly_short`
+
+```{r}
+monthly_short <- monthly %>% 
+  filter(Year > 2013) %>% 
+  filter(!is.na(LST_Day)) %>% 
+  filter(!is.na(AvgRad)) %>% 
+  filter(!is.na(EVI)) %>% 
+  filter(!is.na(NDVI)) %>% 
+  filter(!is.na(Precip)) %>% 
+  filter(!is.na(SWOccurrence)) %>% 
+  mutate(Month = (Year - 2015)*12 + Month) %>% 
+  select(c(Name, Code, Year, Month,
+           Population, LST_Day,
+           NDVI, EVI, Precip,
+           AvgRad, SWOccurrence,
+           pland_forest, area_mn_forest,
+           te_forest)) %>% 
+  mutate(pland_forest = ifelse(is.na(pland_forest), 0,
+                               pland_forest)) %>% 
+  mutate(area_mn_forest = ifelse(is.na(area_mn_forest), 0,
+                                 area_mn_forest)) %>% 
+  mutate(te_forest = ifelse(is.na(te_forest), 0,
+                            te_forest)) %>% 
+  mutate(Code = sub("^0+", "", Code))
+
+monthly_short %>% summary
+
+
+```
+```{r}
+monthly_short_ts <- monthly_short %>% ts(start = 1)
+
+# forecast
+monthly_short %>% 
+  filter(monthly_short$Code == 10101) %>% 
+  select(LST_Day) %>% 
+  ts(start = 1) %>% 
+  window(start = 1) %>% 
+  rwf(h = 60,
+      drift = T)
+
+# autoplot
+monthly_short %>% 
+  filter(monthly_short$Code == 10101) %>% 
+  select(LST_Day) %>% 
+  ts(start = 1) -> monthly_short_10101_LST
+
+# autoplot 2
+
+autoplot(monthly_short_10101_LST, series="Data") + 
+  autolayer(ma(monthly_short_10101_LST, 6), series="6-MA") +
+  scale_color_manual(values=c("Data"="grey", "6-MA"="red"),
+                     breaks=c("Data","6-MA"))
+
+monthly_short_10101_LST %>% ur.kpss() %>% summary()
+```
+
+
+
