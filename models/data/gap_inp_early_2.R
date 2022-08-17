@@ -1,3 +1,4 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:66e901af7e57f5545dd5b96fd8786cbf3f7a39cb9644356410155bd4144e4278
-size 126
+
+load(file = 'models/data/gap_inp_early_2')
+
+write.csv(gap.inp.early.2$ximp, 'models/data/gap_inp_early_2.csv', row.names = F)

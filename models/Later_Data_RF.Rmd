@@ -1,3 +1,282 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:9c9b4379c95f4b830c3ddfb70f9cb5111fe59727812412941fc5dc2d09c47d92
-size 9787
+---
+title: "Later Data Random Forest"
+author: "Lyndsey Umsted"
+date: '2022-06-29'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# install.packages("tidymodels")
+# install.packages("tictoc")
+# install.packages("skimr")
+```
+
+
+
+Libraries
+```{r}
+library(tidymodels)   # packages for modeling and statistical analysis
+library(tune)         # For hyperparemeter tuning
+library(workflows)    # streamline process
+library(tictoc)       # for timing
+```
+
+
+Importing File into R:
+```{r}
+aad <- read.csv("Annual_Amazon_Data.csv")
+#view(aad)
+
+cutaneous <- aad$Cutaneous.Leishmaniasis
+mucosal <- aad$Mucosal.Leishmaniasis
+visceral <- aad$Visceral.Leishmaniasis
+new_data <- subset(aad, !is.na(cutaneous))
+#View(new_data)
+#names(new_data)
+```
+
+
+Extracting Later Data and Tidying it:
+```{r}
+## splitting the data into a before 2014 set and an after 2014 set
+
+early_data <- new_data %>%
+  filter(Year < 2014)%>%
+  select(-c(29:69))
+later_data <- new_data %>%
+  filter(Year > 2013) %>%
+  select(-c(29:69))
+
+#names(early_data)
+
+## removing unnecessary variables
+
+early_data <- early_data %>%
+  select(-c("AvgRad"))
+later_data <- later_data %>%
+  select(-c("StableLights"))
+
+# later_data$OptTemp_Obs <- as.numeric(later_data$OptTemp_Obs)
+# later_data$Year <- as.numeric(later_data$Year)
+# later_data$Population <- as.numeric(later_data$Population)
+
+later_data_small <- later_data %>%
+  select(c("Year", "Population", "Cutaneous.Leishmaniasis", "LST_Day", "LST_Night", "OptTemp_Obs", "NDVI", "EVI", "Precip", "AvgRad", "SWOccurrence")) %>%
+  na.omit(later_data_small)
+later_data_t <- later_data_small %>%
+  mutate(Cutaneous.Leishmaniasis = (Cutaneous.Leishmaniasis))
+```
+
+```{r}
+library(dplyr)
+summary(later_data_small$Cutaneous.Leishmaniasis[later_data_small$Cutaneous.Leishmaniasis > 0])
+cat_df <- later_data_small
+cat_df$Cutaneous.Leishmaniasis <- cut(later_data_small$Cutaneous.Leishmaniasis, breaks = c(-0.00000001,0.0000000001, 0.1364544408, 0.5728645265, 10^3), labels = c("none", "low", "moderate", "high")) # 67.86%, 78.57%, 89.29%, 100%
+
+# cat_df$label <- NA
+# cat_df$label[cat_df$Cutaneous.Leishmaniasis == "low"] <- 0
+# cat_df$label[cat_df$Cutaneous.Leishmaniasis == "moderate"] <- 1
+# cat_df$label[cat_df$Cutaneous.Leishmaniasis == "high"] <- 2
+
+cat_df$Year <- as.numeric(cat_df$Year)
+cat_df$Population <- as.numeric(cat_df$Population)
+cat_df$OptTemp_Obs <- as.numeric(cat_df$OptTemp_Obs)
+```
+
+
+Explore Data:
+```{r}
+skimr::skim(cat_df)
+```
+
+Check severity of class imbalance.
+```{r}
+round(prop.table(table(cat_df$Cutaneous.Leishmaniasis)), 2)
+```
+
+Splitting the Data into Training and Testing Sets
+```{r}
+# Split data into train and test data and create resamples for tuning
+set.seed(2022)
+train_test_split_data <- initial_split(cat_df)
+training <- training(train_test_split_data)
+testing <-  testing(train_test_split_data)
+# create resammples
+folds <- vfold_cv(training, v = 5, repeats = 2)
+```
+
+Processing the Data
+
+creating the recipe and assigning the steps for processing the data
+```{r}
+#  Pre-Processing the data with{recipes}
+set.seed(2020)
+rec <- recipe(Cutaneous.Leishmaniasis ~., 
+  data = training) %>%   # Formula
+  step_dummy(all_nominal(), -Cutaneous.Leishmaniasis) %>%          # convert nominal data into one or more numeric.
+  step_corr(all_predictors()) %>%                 # remove variables that have large absolute 
+                                                     # correlations with other variables.
+  step_center(all_numeric(), -all_outcomes())%>%  # normalize numeric data to have a mean of zero.
+  step_scale(all_numeric(), -all_outcomes())         # normalize numeric data to have a standard deviation of one.
+  # %>%step_downsample(Target)                    # all classes should have the same frequency as the minority 
+                                                     # class(not needed in our case)
+```
+
+Training the recipe data
+```{r}
+trained_rec<-  prep(rec, training = training, retain = TRUE)
+# create the train and test set 
+train_data <- as.data.frame(juice(trained_rec))
+test_data  <- as.data.frame( bake(trained_rec, new_data = testing))
+```
+
+The Model
+
+We will use the {parsnip} function rand_forest() to create a random forest model and add the r-package “ranger” as the computational engine.
+```{r}
+# Build the model (generate the specifications of the model) 
+model_spec_default <- rand_forest(mode = "classification")%>%set_engine("ranger", verbose = TRUE)
+```
+
+Fit the model on the training data (train_data prepared above)
+```{r}
+set.seed(2022)
+tic()
+# fit the model
+model_fit_default <- model_spec_default %>%
+  fit(Cutaneous.Leishmaniasis ~ .,train_data)
+toc()
+## 27.85 sec elapsed
+
+# show the configuration of the fitted model
+model_fit_default
+```
+
+Predict on the testing data (test_data) and extract the model performance. How does this model perform against the holdout data (test_data, not seen before)?
+```{r}
+# Performance and statistics: 
+set.seed(2022)
+test_results_default <- test_data %>%
+   select(Cutaneous.Leishmaniasis) %>%
+   as_tibble() %>%
+   mutate(model_class_default = predict(model_fit_default, new_data = test_data) %>% 
+            pull(.pred_class),
+   model_prob_default  = predict(model_fit_default, new_data = test_data, type = "prob") %>%
+     pull(.pred_none))
+```
+
+Computing AUC
+```{r}
+# Compute the AUC value
+auc_default <- test_results_default %>% roc_auc(truth = Cutaneous.Leishmaniasis, model_prob_default) 
+cat("The default model scores", auc_default$.estimate, " AUC on the testing data")
+## The default model scores 0.8235755  AUC on the testing data
+# Here we can also compute the confusion matrix 
+conf_matrix <- test_results_default%>%conf_mat(truth = Cutaneous.Leishmaniasis, model_class_default)
+conf_matrix
+```
+
+Hyperparameter Tuning Using {tune}
+```{r}
+# Build the model to tune and leave the tuning parameters empty (Placeholder with the tune() function)
+model_def_to_tune <- rand_forest(mode = "classification", 
+                                 mtry = tune(),         # mtry is the number of predictors that will be randomly 
+                                                        #sampled at each split when creating the tree models.
+                                 trees = tune(),        # trees is the number of trees contained in the ensemble.
+                                 min_n =  tune())%>% # min_n is the minimum number of data points in a node 
+                                                        #that are required for the node to be split further. 
+                                 set_engine("ranger") #  computational engine
+```
+
+Building the Workflow Package
+```{r}
+# Build the workflow object
+model_wflow <-workflow() %>%
+  add_model(model_def_to_tune) %>%
+  add_recipe(rec)
+```
+
+Get information on all possible tunable arguments in the defined workflow(model_wflow) and check whether or not they are actually tunable.
+```{r}
+tune_args(model_wflow)
+```
+
+Finalize the hyperparameter set to be tuned.
+Parameters update will be done via the finalize {dials} function.
+```{r}
+# Which parameters have been collected ?
+HP_set <- parameters(model_wflow)
+HP_set
+```
+```{r}
+# Update the parameters which denpends on the data (in our case mtry)
+without_output <- select(training, -Cutaneous.Leishmaniasis)
+HP_set <- finalize(HP_set, without_output)
+HP_set
+```
+
+
+```{r}
+# Function to finalliaze the recip and the model and returne the AUC value and the ROC curve of the tuned model.  
+my_finalize_func <- function(result_tuning, my_recipe, my_model) {
+# Accessing the tuning results
+  bestParameters <- select_best(result_tuning, metric = "roc_auc", maximize = TRUE)
+# Finalize recipe
+  final_rec <- 
+    rec %>%
+    finalize_recipe(bestParameters) %>%
+    prep()
+# Attach the best HP combination to the model and fit the model to the complete training data(data_in_scope_train) 
+  final_model <-
+    my_model %>%
+    finalize_model(bestParameters) %>%
+    fit(Cutaneous.Leishmaniasis ~ ., data = juice(final_rec))
+# Prepare the finale trained data to use for performing model validation. 
+  df_train_after_tuning <- as.data.frame(juice(final_rec)) 
+  df_test_after_tuning <- as.data.frame(bake(final_rec, new_data = testing))
+  # Predict on the testing data 
+set.seed(2022)
+  results_ <- 
+    df_test_after_tuning%>%
+    select(Cutaneous.Leishmaniasis) %>%
+    as_tibble()%>%
+    mutate(
+      model_class = predict(final_model, new_data = df_test_after_tuning) %>% 
+        pull(.pred_class),
+      model_prob  = predict(final_model, new_data = df_test_after_tuning, type = "prob") %>% 
+        pull(.pred_none))
+# Compute the AUC  
+  auc <-  results_%>% roc_auc(truth = Cutaneous.Leishmaniasis, model_prob)
+# Compute the confusion matrix
+  confusion_matrix <- conf_mat(results_, truth= Cutaneous.Leishmaniasis, model_class)
+# Plot the ROC curve
+  rocCurve <- roc_curve(results_, truth = Cutaneous.Leishmaniasis, model_prob)%>%
+    ggplot(aes(x = 1 - specificity, y = sensitivity)) +
+    geom_path(colour = "darkgreen", size = 1.5) +
+    geom_abline(lty = 3, size= 1, colour = "darkred") +
+    coord_equal()+
+    theme_light()
+    new_list <- list(auc, confusion_matrix, rocCurve)  
+return(new_list)
+}
+```
+
+Hyperparameter tuning via Grid Search
+```{r}
+# Perform Grid Search 
+set.seed(2022)
+tic() 
+results_grid_search <- tune_grid(
+  model_wflow,                       # Model workflow defined above
+  resamples = folds,                 # Resamples defined obove
+  param_info = HP_set,               # HP Parmeter to be tuned (defined above) 
+  grid = 10,                         # number of candidate parameter sets to be created automatically
+  metrics = metric_set(roc_auc),     # metric
+  control = control_grid(save_pred = TRUE, verbose = TRUE) # controle the tuning process
+)
+results_grid_search
+```

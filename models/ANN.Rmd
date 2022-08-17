@@ -1,3 +1,142 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:07d3ae309281c15d48c0712e5640de587d5f1e0fcfbc750be150a1e1dda8d364
-size 3774
+---
+title: "Artificial Neural Network"
+author: "Lyndsey Umsted"
+date: '2022-07-12'
+output: html_document
+---
+
+```{r}
+library(keras)
+library(lime)
+library(tidyquant)
+library(rsample)
+library(recipes)
+library(yardstick)
+library(corrr)
+# #install.packages("tensorflow")
+# library(tensorflow)
+# install_tensorflow()
+#install.packages("caret")
+library(caret)
+library(neuralnet)
+```
+
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+```
+
+
+
+
+Extracting Later Data and Tidying it:
+```{r}
+## splitting the data into a before 2014 set and an after 2014 set
+library(dplyr)
+early_data <- aad %>%
+  filter(Year < 2014)
+later_data <- aad %>%
+  filter(Year > 2013)
+
+#names(early_data)
+
+## removing unnecessary variables
+
+early_data <- early_data %>%
+  select(-c("AvgRad"))
+later_data <- later_data %>%
+  select(-c("StableLights"))
+
+# later_data$OptTemp_Obs <- as.numeric(later_data$OptTemp_Obs)
+# later_data$Year <- as.numeric(later_data$Year)
+# later_data$Population <- as.numeric(later_data$Population)
+
+later_data_small <- later_data %>%
+  select(c("Population", "Cutaneous.Leishmaniasis", "LST_Day", "OptTemp_Obs", "NDVI", "EVI", "Precip", "AvgRad", "SWOccurrence", "pland_forest", "te_forest", "enn_mn_forest"))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$LST_Day))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$SWOccurrence))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$pland_forest))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$te_forest))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$enn_mn_forest))
+
+```
+
+```{r}
+library(dplyr)
+summary(later_data_small$Cutaneous.Leishmaniasis)
+cat_df <- later_data_small
+cat_df$Cutaneous.Leishmaniasis <- cut(later_data_small$Cutaneous.Leishmaniasis, breaks = c(0, 0.54770, 10^3), labels = c("low", "high")) # 50th percentile
+
+# cat_df$label <- NA
+# cat_df$label[cat_df$Cutaneous.Leishmaniasis == "low"] <- 0
+# cat_df$label[cat_df$Cutaneous.Leishmaniasis == "moderate"] <- 1
+# cat_df$label[cat_df$Cutaneous.Leishmaniasis == "high"] <- 2
+
+# cat_df$Year <- as.numeric(cat_df$Year)
+# cat_df$Population <- as.numeric(cat_df$Population)
+# cat_df$OptTemp_Obs <- as.numeric(cat_df$OptTemp_Obs)
+```
+
+```{r}
+skimr::skim(cat_df)
+round(prop.table(table(cat_df$Cutaneous.Leishmaniasis)), 2)
+str(cat_df)
+```
+
+
+
+
+split the data into train and test sets
+```{r}
+library(rsample)
+
+set.seed(2022)
+ind <- sample(2, nrow(cat_df), replace = TRUE, prob = c(0.7,0.3))
+
+training <- cat_df[ind==1,]
+testing <- cat_df[ind==2,]
+
+training$Cutaneous.Leishmaniasis <- as.numeric(training$Cutaneous.Leishmaniasis) - 1
+testing$Cutaneous.Leishmaniasis <- as.numeric(testing$Cutaneous.Leishmaniasis) - 1
+```
+
+Loading Neural Net Library:
+```{r}
+library(neuralnet)
+set.seed(123)
+
+nn <- neuralnet(Cutaneous.Leishmaniasis ~ Population + LST_Day + OptTemp_Obs + NDVI + EVI + Precip + AvgRad + SWOccurrence + pland_forest + te_forest + enn_mn_forest, data = training, hidden = c(2,3), linear.output = FALSE, err.fct = 'ce', likelihood = TRUE)
+
+plot(nn)
+```
+
+Prediction:
+```{r}
+output <- compute(nn, training[,-2])
+head(output$net.result)
+head(training[1,])
+```
+
+Confusion Matrix and Missclassification Error - training data
+```{r}
+output <- compute(nn, training[,-2])
+p1 <- output$net.result
+pred1 <- ifelse(p1 > 0.5, 1, 0)
+tab1 <- table(pred1, training$Cutaneous.Leishmaniasis)
+tab1
+sum(diag(tab1))/sum(tab1)
+```
+
+Confusion Matrix and Missclassification Error - testing data
+```{r}
+output <- compute(nn, testing[,-2])
+p2 <- output$net.result
+pred2 <- ifelse(p2 > 0.5, 1, 0)
+tab2 <- table(pred2, testing$Cutaneous.Leishmaniasis)
+tab2
+sum(diag(tab2))/sum(tab2)
+```
+
+
+

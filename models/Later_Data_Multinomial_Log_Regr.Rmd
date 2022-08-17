@@ -1,3 +1,215 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:91f4ed89720efd32e2dbbc8740d7796998d866edee1163b9de1640bf427d8550
-size 6129
+---
+title: "Later Data Multinomial Logistic Regression"
+author: "Lyndsey Umsted"
+date: '2022-06-29'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Install Package
+```{r}
+# install.packages("packagename")
+```
+
+Libraries
+```{r}
+require(foreign)
+require(nnet)
+require(ggplot2)
+require(reshape2)
+library(dplyr)
+```
+
+Importing File into R:
+```{r}
+aad <- read.csv("Annual_Amazon_Data.csv")
+#view(aad)
+
+cutaneous <- aad$Cutaneous.Leishmaniasis
+mucosal <- aad$Mucosal.Leishmaniasis
+visceral <- aad$Visceral.Leishmaniasis
+new_data <- subset(aad, !is.na(cutaneous))
+#View(new_data)
+#names(new_data)
+```
+
+
+Extracting Later Data and Tidying it:
+```{r}
+## splitting the data into a before 2014 set and an after 2014 set
+library(dplyr)
+early_data <- new_data %>%
+  filter(Year < 2014)%>%
+  select(-c(29:69))
+later_data <- new_data %>%
+  filter(Year > 2013) %>%
+  select(-c(29:69))
+
+#names(early_data)
+
+## removing unnecessary variables
+
+early_data <- early_data %>%
+  select(-c("AvgRad"))
+later_data <- later_data %>%
+  select(-c("StableLights"))
+
+# later_data$OptTemp_Obs <- as.numeric(later_data$OptTemp_Obs)
+# later_data$Year <- as.numeric(later_data$Year)
+# later_data$Population <- as.numeric(later_data$Population)
+
+later_data_small <- later_data %>%
+  select(c("Year", "Population", "Cutaneous.Leishmaniasis", "Dengue_Alb_OptTemp", "Dengue_Aeg_OptTemp", "Chik_Alb_OptTemp", "Chik_Aeg_OptTemp", "Zika_OptTemp", "Malaria_OptTemp", "LST_Day", "LST_Night", "OptTemp_Obs", "NDVI", "EVI", "Precip", "AvgRad", "SWOccurrence")) %>%
+  na.omit(later_data_small) 
+later_data_t <- later_data_small %>%
+  mutate(Cutaneous.Leishmaniasis = (Cutaneous.Leishmaniasis))
+```
+
+```{r}
+library(dplyr)
+summary(later_data_small$Cutaneous.Leishmaniasis[later_data_small$Cutaneous.Leishmaniasis > 0])
+cat_df <- subset(later_data_small, later_data_small$Cutaneous.Leishmaniasis > 0)
+cat_df$Cutaneous.Leishmaniasis <- cut(later_data_small$Cutaneous.Leishmaniasis[later_data_small$Cutaneous.Leishmaniasis > 0], breaks = c(0, 0.090114445 , 0.876904527, 10^3), labels = c("low", "moderate", "high")) # 25% 75% 100%
+
+# cat_df$label <- NA
+# cat_df$label[cat_df$Cutaneous.Leishmaniasis == "low"] <- 0
+# cat_df$label[cat_df$Cutaneous.Leishmaniasis == "moderate"] <- 1
+# cat_df$label[cat_df$Cutaneous.Leishmaniasis == "high"] <- 2
+
+cat_df$Year <- as.numeric(cat_df$Year)
+cat_df$Population <- as.numeric(cat_df$Population)
+cat_df$OptTemp_Obs <- as.numeric(cat_df$OptTemp_Obs)
+```
+
+```{r}
+skimr::skim(cat_df)
+round(prop.table(table(cat_df$Cutaneous.Leishmaniasis)), 2)
+```
+
+Multinomial Logistic Regression:
+```{r}
+summary(cat_df)
+str(cat_df)
+```
+
+Descriptive Analysis
+```{r}
+library(jmv)
+
+# Use the descritptives function to get the descritptive data
+descriptives(cat_df, vars = vars(Year, Population, Cutaneous.Leishmaniasis, LST_Day, LST_Night, OptTemp_Obs, NDVI, EVI, Precip, AvgRad, SWOccurrence), freq = TRUE)
+```
+
+```{r}
+# To see the crosstable, we need CrossTable function from gmodels package
+library(gmodels)
+# Build a crosstable between precip and risk level
+# CrossTable(cat_df$Precip, cat_df$Cutaneous.Leishmaniasis)
+```
+
+
+
+
+
+
+
+Splitting Data into Train and Test Sets:
+```{r}
+library(caret)
+
+data_split <- createDataPartition(cat_df$Cutaneous.Leishmaniasis, p = 0.75, list = FALSE)
+training <- cat_df[data_split,] %>%
+  group_by(Cutaneous.Leishmaniasis) %>%
+  sample_n(size = 2253)
+testing <- cat_df[-data_split,]
+```
+
+Setting the reference level
+```{r}
+# making the reference level "none"
+training$Cutaneous.Leishmaniasis <- relevel(training$Cutaneous.Leishmaniasis, ref = "low")
+```
+
+Training the Multinomial Classification Model
+* To train the model, we will be using multinom function from nnet package. Once the model is trained, then we will use the summary() function to check the model coefficients.
+
+```{r}
+require(nnet)
+# training the multinomail model
+multinom_model <- multinom(Cutaneous.Leishmaniasis ~ ., data = cat_df)
+
+# checking the model
+summary(multinom_model)
+```
+
+Just like binary logistic regression, we need to convert the coefficients to odds by taking the exponential of the coefficients.
+```{r}
+exp(coef(multinom_model))
+```
+
+The predicted values are saved as fitted.values in the model object. Let’s see the top 6 observations.
+```{r}
+head(round(fitted(multinom_model), 2))
+```
+
+```{r}
+# Check the predicted probability for each program
+head(multinom_model$fitted.values,20)
+head(predict(multinom_model),30)
+```
+
+Test the goodness of fit
+```{r}
+chisq.test(cat_df$Cutaneous.Leishmaniasis,predict(multinom_model))
+```
+
+Calculate the Pseudo R-squared
+```{r}
+# Please takeout the "#" Sign to run the code
+# Load the DescTools package for calculate the R square
+library(DescTools)
+# Calculate the R Square
+PseudoR2(multinom_model, which = c("CoxSnell","Nagelkerke","McFadden"))
+```
+Build a Classification Table
+```{r}
+# Load the summarytools package to use the classification function
+library(summarytools)
+# Build a classification table by using the ctable function
+ctable <- table(cat_df$Cutaneous.Leishmaniasis,predict(multinom_model))
+ctable
+```
+
+
+
+
+Predicting and Validating the Model
+* To validate the model, we will be looking at the accuracy of the model. This accuracy can be calculated from the classification table.
+```{r}
+# predicting the values for the train dataset
+training$cut.pred <- predict(multinom_model, newdata = training, "class")
+
+# building classifaction table
+tab <- table(training$Cutaneous.Leishmaniasis, training$cut.pred)
+
+# calculating accuracy - sum of diagonal elements divided by total obs
+round((sum(diag(tab))/sum(tab))*100,2)
+```
+Our model accuracy is 76.44% on the training dataset
+
+Predicting the risk level on the Test Dataset
+```{r}
+# predicting the risk level for the test dataset
+testing$cut.pred <- predict(multinom_model, newdata = testing, "class")
+
+# building classifciation table
+tab <- table(testing$Cutaneous.Leishmaniasis, testing$cut.pred)
+tab
+
+# calculating accuracy - sum of diagonal elements divided by total obs
+round((sum(diag(tab))/sum(tab))*100,2)
+```
+Our model accuracy is 76.65% on the testing dataset.

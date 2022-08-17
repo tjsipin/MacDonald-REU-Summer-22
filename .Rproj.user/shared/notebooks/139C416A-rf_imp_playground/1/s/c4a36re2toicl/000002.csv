@@ -1,6 +1,0 @@
-"0","```r
-lst_lag_1 <- window((test_data %>% ts(start = 2000))[, 'LST_Day'], start = 2000) 
-lst_lag_1 %>% gglagplot()
-lst_lag_1 %>% autoplot()
-ggAcf(lst_lag_1)
-```"
