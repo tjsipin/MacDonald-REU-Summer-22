@@ -4,6 +4,7 @@ library(forecast)
 library(ggplot2)
 library(seasonal)
 library(urca)
+library(tidyverse)
 
 monthly <- read_csv('../data/monthly_df.csv')
 ```
@@ -19,7 +20,7 @@ monthly_short <- monthly %>%
   filter(!is.na(NDVI)) %>% 
   filter(!is.na(Precip)) %>% 
   filter(!is.na(SWOccurrence)) %>% 
-  mutate(Month = (Year - 2015)*12 + Month) %>% 
+  mutate(Month = (Year - 2014)*12 + Month) %>% 
   select(c(Name, Code, Year, Month,
            Population, LST_Day,
            NDVI, EVI, Precip,
@@ -38,6 +39,7 @@ monthly_short %>% summary
 
 
 ```
+
 ```{r}
 monthly_short_ts <- monthly_short %>% ts(start = 1)
 
@@ -66,5 +68,48 @@ autoplot(monthly_short_10101_LST, series="Data") +
 monthly_short_10101_LST %>% ur.kpss() %>% summary()
 ```
 
+```{r}
+monthly_adj <- monthly_short %>% 
+  select(c(Month, LST_Day)) %>% 
+  stl(s.window = 'periodic') %>% 
+  seasadj()
 
+```
+
+```{r}
+
+fit <- auto.arima((monthly_short %>% filter(Code == sample(monthly_short$Code %>% unique(), 1)))[,'LST_Day'], seasonal=F)
+fit %>% forecast(h=120) %>% autoplot(include=80)
+```
+
+
+```{r}
+aad <- read_csv('../models/data/aad.csv')
+```
+
+```{r}
+aad_short <- aad %>% 
+  filter(Year > 2013) %>% 
+  filter(!is.na(LST_Day)) %>% 
+  filter(!is.na(AvgRad)) %>% 
+  filter(!is.na(EVI)) %>% 
+  filter(!is.na(NDVI)) %>% 
+  filter(!is.na(Precip)) %>% 
+  filter(!is.na(SWOccurrence)) %>% 
+  select(c(Name, Code, Year,
+           Population, LST_Day,
+           NDVI, EVI, Precip,
+           AvgRad, SWOccurrence,
+           pland_forest, area_mn_forest,
+           te_forest)) %>% 
+  mutate(pland_forest = ifelse(is.na(pland_forest), 0,
+                               pland_forest)) %>% 
+  mutate(area_mn_forest = ifelse(is.na(area_mn_forest), 0,
+                                 area_mn_forest)) %>% 
+  mutate(te_forest = ifelse(is.na(te_forest), 0,
+                            te_forest)) 
+
+fit <- auto.arima((aad_short %>% filter(Code == sample(aad_short$Code %>% unique(), 1)))[,'Precip'], seasonal=T)
+fit %>% forecast(h=60) %>% autoplot(include=80)
+```
 

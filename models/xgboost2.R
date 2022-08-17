@@ -25,7 +25,7 @@ library(caret)
 library(mlr)
 
 
-data = read.csv('data/Amazon_Data_Annual_for_TJ_5_22.csv')
+data = read.csv('models/data/aad.csv')
 
 new_df <- subset(data, !is.na(data$Cutaneous.Leishmaniasis))
 
@@ -160,8 +160,8 @@ library(caret)
 confusionMatrix(xgbpred, y_test)
 
 # # view var imp plot
-# mat <- xgb.importance(feature_names = colnames(x_train), model = xgb2)
-# xgb.plot.importance(importance_matrix = mat[1:nrow(mat)])
+mat <- xgb.importance(feature_names = colnames(x_train), model = xgb2)
+xgb.plot.importance(importance_matrix = mat[1:nrow(mat)])
 
 # Create tasks
 data_train$Cutaneous.Leishmaniasis <- as.factor(data_train$Cutaneous.Leishmaniasis)
