@@ -77,8 +77,9 @@ monthly_adj <- monthly_short %>%
 ```
 
 ```{r}
-
-fit <- auto.arima((monthly_short %>% filter(Code == sample(monthly_short$Code %>% unique(), 1)))[,'LST_Day'], seasonal=F)
+fit <- auto.arima((monthly_short %>% 
+                     filter(Code == sample(monthly_short$Code %>% unique(),
+                                           1)))[,'LST_Day'], seasonal=F)
 fit %>% forecast(h=120) %>% autoplot(include=80)
 ```
 

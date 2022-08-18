@@ -1,0 +1,69 @@
+---
+title: "Ahead_playground"
+author: "TJ Sipin"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(ahead)
+library(datasets)
+library(randomForest)
+library(e1071)
+library(tidyverse)
+
+monthly <- read_csv('../data/monthly_df.csv')
+```
+
+## Set up Monthly Data Frame
+
+```{r}
+monthly_short <- monthly %>% 
+  filter(Year > 2013) %>% 
+  filter(!is.na(LST_Day)) %>% 
+  filter(!is.na(AvgRad)) %>% 
+  filter(!is.na(EVI)) %>% 
+  filter(!is.na(NDVI)) %>% 
+  filter(!is.na(Precip)) %>% 
+  filter(!is.na(SWOccurrence)) %>% 
+  mutate(Month = (Year - 2014)*12 + Month) %>% 
+  select(c(Name, Code, Year, Month,
+           Population, LST_Day,
+           NDVI, EVI, Precip,
+           AvgRad, SWOccurrence,
+           pland_forest, area_mn_forest,
+           te_forest)) %>% 
+  mutate(pland_forest = ifelse(is.na(pland_forest), 0,
+                               pland_forest)) %>% 
+  mutate(area_mn_forest = ifelse(is.na(area_mn_forest), 0,
+                                 area_mn_forest)) %>% 
+  mutate(te_forest = ifelse(is.na(te_forest), 0,
+                            te_forest)) %>% 
+  mutate(Code = sub("^0+", "", Code))
+```
+
+
+```{r multivariate ts}
+fit_obj_ridge2 <- dynrmf(monthly_short %>% 
+                           filter(Code == sample(monthly_short$Code %>% 
+                                                   unique(), 1)) %>% 
+                           select(LST_Day), 
+                         fit_func = randomForest,
+                         fit_params = list(ntree = 50),
+                         predict_func = predict,
+                         h = 100, level = 95)
+
+plot(fit_obj_ridge2)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
