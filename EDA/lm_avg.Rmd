@@ -1,0 +1,107 @@
+---
+title: "lm avg"
+author: "TJ Sipin"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      warnings = FALSE)
+library(dplyr)
+library(ggplot2)
+```
+
+## R Markdown
+
+```{r cars}
+aad <- read.csv("../models/data/aad.csv") %>% 
+  filter(!is.na(Cutaneous.Leishmaniasis))
+data <- aad %>% 
+  filter(Year < 2018) %>% 
+  group_by(Year) %>% 
+  summarise_at(vars(c(Cutaneous.Leishmaniasis, EVI, NDVI,
+                      Population, LST_Day, LST_Night,
+                      Precip, StableLights, AvgRad,
+                      SWOccurrence, Muni_TotalArea, 
+                      pland_forest, te_forest, enn_mn_forest)), 
+               mean,
+               na.rm = T) %>% 
+  ungroup()
+
+
+early_data <- data %>% 
+  filter(Year < 2014)
+later_data <- data %>% 
+  filter(Year >= 2014)
+
+
+```
+
+```{r}
+early_fit <- glm(Cutaneous.Leishmaniasis ~ Year + EVI + NDVI + 
+                  Population + LST_Day + 
+                  Precip + StableLights + SWOccurrence + 
+                  Muni_TotalArea + pland_forest + te_forest + 
+                  enn_mn_forest, data = aad %>% filter(Year < 2014),
+                 family = poisson(link = 'log'))
+early_fit %>% summary()
+
+early_fit %>% plot()
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+aad_muni <- aad %>% 
+  filter(Year < 2018) %>% 
+  group_by(Name) %>% 
+  filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
+  filter(Cutaneous.Leishmaniasis > 0.3) %>% 
+  dplyr::select(c(Cutaneous.Leishmaniasis, Year, EVI, 
+                  NDVI, Population, 
+                  LST_Day, LST_Night, Precip, 
+                  StableLights, AvgRad, SWOccurrence,
+                  Muni_TotalArea, pland_forest, 
+                  te_forest, enn_mn_forest))
+
+aad_muni
+```
+
+## Plots
+```{r}
+ggplot(aad_muni,
+       aes(x = Year,
+           y = Cutaneous.Leishmaniasis,
+           color = Name)) + 
+  geom_point() + 
+  geom_smooth(method = 'lm',
+              alpha = 0.1) +
+  theme(legend.position = 'none')
+```
+
+```{r}
+ggplot(aad_muni,
+       aes(x = te_forest,
+           y = Cutaneous.Leishmaniasis,
+           color = Name)) + 
+  geom_point() + 
+  geom_smooth(method = 'lm',
+              alpha = 0.1) +
+  theme(legend.position = 'none')
+```
+
+```{r}
+ggplot(aad_muni,
+       aes(x = AvgRad,
+           y = Cutaneous.Leishmaniasis, 
+           color = Name)) + 
+  geom_point() + 
+  geom_smooth(method = 'lm',
+              alpha = 0.1) +
+  theme(legend.position = 'none')
+```
+
