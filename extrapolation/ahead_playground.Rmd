@@ -17,6 +17,9 @@ library(svMisc)
 library(xgboost)
 library(useful)
 
+sessionInfo() 
+
+
 monthly <- read_csv('../data/monthly_df.csv')
 ```
 
@@ -57,15 +60,21 @@ test <- monthly_short %>%
 
 
 ```{r multivariate ts}
+
 set.seed(123)
 fit_dynrmf_1 <- dynrmf(monthly_short %>% 
                            filter(Code == sample(monthly_short$Code %>% 
                                                    unique(), 1)) %>% 
                            select(Precip), 
+                       h = 2, level = 95)
+
+fit_dynrmf <- dynrmf(monthly_short %>% 
+                           filter(Code == 10101) %>% 
+                           select(LST_Day), 
                          fit_func = randomForest,
                          fit_params = list(ntree = 5),
                          predict_func = predict,
-                         h = 10, level = 95)
+                     h = 10, level = 95)
 
 
 fit_dynrmf_2 <- dynrmf(monthly_short %>% 
@@ -76,6 +85,21 @@ fit_dynrmf_2 <- dynrmf(monthly_short %>%
                          fit_params = list(kernel = 'radial'),
                          predict_func = predict,
                          h = 10, level = 95)
+
+                         
+
+fit_dynrmf$mean
+
+dynrmf(monthly_short %>% 
+         filter(Code == 10101) %>% 
+         select(SWOccurrence), 
+       fit_func = svm,
+       fit_params = list(kernel = 'linear'),
+       predict_func = predict,
+       h = 2, level = 95)
+
+fit_dynrmf$mean
+
 ```
 
 ```{r}
@@ -158,6 +182,7 @@ abline(h = 0,
 
 code <- sample(monthly_short$Code %>% 
                  unique(), 1)
+
 
 
 fit_dynrmf_test <- dynrmf(test %>% 
@@ -248,3 +273,69 @@ plot(ahead::dynrmf(train %>%
                    level = 95))
 ```
 
+
+```{r pressure, echo=FALSE}
+h = 3
+# param
+
+forecasted_dynrmf <- data.frame(matrix(ncol = ncol(monthly_short),
+                            nrow = 0))
+
+for (i in 1:(unique(monthly_short[,'Code']) %>% nrow)){ # 1:8554
+  for(j in 1:h) { # 1:10
+    for (k in 5:(colnames(monthly_short) %>% length)) { # 5:14
+      skip <- FALSE
+      
+      forecasted_dynrmf[(i-1)*h + j, k] = dynrmf(monthly_short %>% 
+                                                   filter(Code == unique(monthly_short[,'Code'])[i,] %>% as.integer()) %>%
+                                                   select(colnames(monthly_short)[k]),  
+                                                 fit_func = randomForest,
+                                                 fit_params = list(ntree = 50),
+                                                 predict_func = predict,
+                                                 h = h, level = 95)$mean[j] %>% 
+        tryCatch(error = function(e){ skip <- TRUE })
+      if(skip) {
+        forecasted_dynrmf[(i-1)*h + j, k] = mean(monthly_short %>% 
+                                                   filter(Code == unique(monthly_short[,'Code'])[i,] %>% as.integer()) %>%
+                                                   select(colnames(monthly_short)[k]))
+      }
+
+    }
+    forecasted_dynrmf[(i-1)*h + j, 1] = unique(monthly_short[,'Name'])[i,]
+    forecasted_dynrmf[(i-1)*h + j, 2] = unique(monthly_short[,'Code'])[i,]
+    forecasted_dynrmf[(i-1)*h + j, 3] = 2020 + j%/%12
+    forecasted_dynrmf[(i-1)*h + j, 3] = j
+  }
+}
+
+
+colnames(forecasted_dynrmf) <- monthly_short %>% colnames
+
+save(forecasted_dynrmf, file = 'forecasted_dynrmf')
+```
+
+
+```{r}
+for (i in 1:(unique(monthly_short[,'Code']) %>% nrow)){ # 1:8554
+  for(j in 1:h) { # 1:10
+    forecasted_dynrmf[(i-1)*h + j, 1] = unique(monthly_short[,'Name'])[i,]
+    forecasted_dynrmf[(i-1)*h + j, 2] = unique(monthly_short[,'Code'])[i,]
+    forecasted_dynrmf[(i-1)*h + j, 3] = 2020 + j%/%12
+    forecasted_dynrmf[(i-1)*h + j, 3] = j
+  }
+}
+```
+
+```{r}
+monthly_short %>% 
+  filter(Code == unique(monthly_short[,'Code'])[1,] %>% as.integer()) %>% 
+  select(colnames(monthly_short)[6])
+
+monthly_short %>% 
+  filter(Code == unique(monthly_short[,'Code'])[1,] %>% as.integer()) %>% 
+  select(colnames(monthly_short)[k])
+
+```
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
