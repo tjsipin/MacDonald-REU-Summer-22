@@ -1,3 +1,443 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:bb736dc8f7a5d42f9a016e53bc2a1e27af85d397eac310330894ff4627459a99
-size 10600
+---
+title: "Variable exprapolation splines"
+author: "Lyndsey Umsted"
+date: "2022-08-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+library(tidyverse)
+library('ggplot2')
+library('tibble')
+library('tidyr')
+library('dplyr')
+library('mgcv')
+install.packages('gratia')
+library('gratia')
+library('patchwork')
+remotes::install_github("clauswilke/colorblindr")
+library('colorblindr')
+remotes::install_github("clauswilke/relayer")
+library('relayer')
+
+install.packages("vars")
+library(vars)
+install.packages("mFilter")
+library(mFilter)
+library(tseries)
+install.packages("TSstudio")
+library(TSstudio)
+library(forecast)
+install.packages("fpp")
+library(fpp)
+
+```
+
+Average measurement of each variable per year:
+
+Cutaneous.Leishmaniasis
+
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <-subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, aad$Year < 2018)
+
+library(dplyr)
+mean_Cutaneous.Leishmaniasis <- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(Cutaneous.Leishmaniasis), list(name = mean))
+mean_Cutaneous.Leishmaniasis <- data.frame(mean_Cutaneous.Leishmaniasis)
+annual_Cutaneous.Leishmaniasis <- ts(mean_Cutaneous.Leishmaniasis$name, start = 2001)
+mean_Cutaneous.Leishmaniasis
+plot(mean_Cutaneous.Leishmaniasis, main = "Cutaneous Cases between 2001 and 2017", xlab = "Year", ylab = "Cases per Thousand", pch = 16)
+
+
+
+
+# knots <- quantile(aad$Year, p = c(0.25, 0.5, 0.75))
+# 
+# fit <- lm(mean_LST_Day$name ~ splines::bs(mean_LST_Day$Year, df = 4), data = aad)
+
+# fit <- lm(mean_LST_Day$name ~ poly(mean_LST_Day$Year, 3, raw = "TRUE"), data = mean_LST_Day)
+
+
+
+fit <-lm(aad$Cutaneous.Leishmaniasis ~ splines::bs(aad$Year, df = 4), data = aad)
+
+lines(aad$Year, fit$fitted.values)
+
+summary(fit)
+abline(fit, col = "red")
+
+anova(fit)
+
+ggplot(mean_Cutaneous.Leishmaniasis, aes(Year, name) ) +
+  geom_point() +
+  stat_smooth(method = lm, formula = y ~ splines::bs(x, df = 4))
+
+# yr <- data.frame('Year' = c(2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035))
+# yr$name <- -1.577e+05 + (1.566e+02)*(yr$Year) + (-3.888e-02)*(yr$Year^2)
+# yr$name
+# 
+# preds <- predict(fit, yr, type = "response")
+# 
+# fcast <- forecast(fit, yr)
+
+```
+
+LST_Day
+
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <-subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <-subset(aad, aad$Year < 2018)
+aad <-subset(aad, !is.na(aad$LST_Day))
+
+library(dplyr)
+mean_LST_Day <- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(LST_Day), list(name = mean))
+mean_LST_Day <- data.frame(mean_LST_Day)
+annual_LST <- ts(mean_LST_Day$name, start = 2001)
+mean_LST_Day
+plot(mean_LST_Day, main = "LST_Day between 2001 and 2017", xlab = "Year", ylab = "temperature", pch = 16)
+
+
+ggplot(mean_LST_Day, mapping = aes(Year, name)) + geom_point()
+
+# knots <- quantile(aad$Year, p = c(0.25, 0.5, 0.75))
+# 
+# fit <- lm(mean_LST_Day$name ~ splines::bs(mean_LST_Day$Year, df = 4), data = aad)
+
+# fit <- lm(mean_LST_Day$name ~ poly(mean_LST_Day$Year, 3, raw = "TRUE"), data = mean_LST_Day)
+
+
+
+fit <- lm(aad$LST_Day ~ splines::bs(aad$Year, df = 3), data = aad)
+
+lines(aad$Year, fit$fitted.values)
+
+summary(fit)
+abline(fit, col = "red")
+
+anova(fit)
+
+ggplot(mean_LST_Day, aes(Year, name) ) +
+  geom_point() +
+  stat_smooth(method = lm, formula = y ~ splines::bs(x, df = 3))
+
+# yr <- data.frame('Year' = c(2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035))
+# yr$name <- -1.577e+05 + (1.566e+02)*(yr$Year) + (-3.888e-02)*(yr$Year^2)
+# yr$name
+# 
+# preds <- predict(fit, yr, type = "response")
+# 
+# fcast <- forecast(fit, yr)
+
+```
+
+NDVI
+
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <-subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <-subset(aad, aad$Year < 2018)
+aad <-subset(aad, !is.na(aad$NDVI))
+
+library(dplyr)
+mean_NDVI <- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(NDVI), list(name = mean))
+mean_NDVI
+plot(mean_NDVI, main = "NDVI between 2001 and 2017", xlab = "Year", ylab = "NDVI", pch = 16)
+
+knots <- quantile(aad$Year, p = c(0.25, 0.5, 0.75))
+
+fit <- lm(aad$NDVI ~ splines::bs(aad$Year, df = 3), data = aad)
+summary(fit)
+lines(aad$Year, fit$fitted.values)
+
+anova(fit)
+
+ggplot(mean_NDVI, aes(Year, name) ) +
+  geom_point() +
+  stat_smooth(method = lm, formula = y ~ splines::bs(x, df = 3))
+```
+
+EVI
+
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <-subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <-subset(aad, aad$Year < 2018)
+aad <-subset(aad, !is.na(aad$EVI))
+
+library(dplyr)
+mean_EVI <- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(EVI), list(name = mean))
+mean_EVI
+plot(mean_EVI, main = "EVI between 2001 and 2017", xlab = "Year", ylab = "EVI", pch = 16)
+
+knots <- quantile(aad$Year, p = c(0.25, 0.5, 0.75))
+
+fit <- lm(aad$EVI ~ splines::bs(aad$Year, df = 3), data = aad)
+summary(fit)
+lines(aad$Year, fit$fitted.values)
+
+anova(fit)
+
+ggplot(mean_EVI, aes(Year, name) ) +
+  geom_point() +
+  stat_smooth(method = lm, formula = y ~ splines::bs(x, df = 3))
+```
+
+Precip
+
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <-subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <-subset(aad, aad$Year < 2018)
+aad <-subset(aad, !is.na(aad$Precip))
+
+library(dplyr)
+mean_Precip <- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(Precip), list(name = mean))
+mean_Precip
+plot(mean_Precip, main = "Precipitation between 2001 and 2017", xlab = "Year", ylab = "millimeters", pch = 16)
+
+knots <- quantile(aad$Year, p = c(0.25, 0.5, 0.75))
+
+fit <- lm(aad$Precip ~ splines::bs(aad$Year, df = 4), data = aad)
+summary(fit)
+lines(aad$Year, fit$fitted.values)
+
+anova(fit)
+
+ggplot(mean_Precip, aes(Year, name) ) +
+  geom_point() +
+  stat_smooth(method = lm, formula = y ~ splines::bs(x, df = 4))
+```
+
+
+StableLights
+
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <-subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <-subset(aad, aad$Year < 2018)
+aad <-subset(aad, !is.na(aad$StableLights))
+
+library(dplyr)
+mean_StableLights <- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(StableLights), list(name = mean))
+mean_StableLights
+plot(mean_StableLights, main = "StableLights between 2001 and 2013", xlab = "Year", ylab = "Average Radiance", pch = 16)
+
+knots <- quantile(aad$Year, p = c(0.25, 0.5, 0.75))
+
+fit <- lm(aad$StableLights ~ splines::bs(aad$Year, df = 3), data = aad)
+summary(fit)
+lines(aad$Year, fit$fitted.values)
+
+anova(fit)
+
+ggplot(mean_StableLights, aes(Year, name) ) +
+  geom_point() +
+  stat_smooth(method = lm, formula = y ~ splines::bs(x, df = 3))
+```
+
+
+
+
+
+
+AvgRad
+
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <-subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <-subset(aad, aad$Year < 2018)
+aad <-subset(aad, !is.na(aad$AvgRad))
+
+library(dplyr)
+mean_AvgRad <- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(AvgRad), list(name = mean))
+mean_AvgRad
+plot(mean_AvgRad, main = "AvgRad between 2014 and 2017", xlab = "Year", ylab = "Average Radiance")
+
+knots <- quantile(aad$Year, p = c(0.25, 0.5, 0.75))
+
+fit <- lm(aad$AvgRad ~ splines::bs(aad$Year, df = 3), data = aad)
+summary(fit)
+lines(aad$Year, fit$fitted.values)
+
+anova(fit)
+
+ggplot(mean_AvgRad, aes(Year, name) ) +
+  geom_point() +
+  stat_smooth(method = lm, formula = y ~ splines::bs(x, df = 3))
+```
+
+SWOccurrence
+
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <-subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <-subset(aad, aad$Year < 2018)
+aad <-subset(aad, !is.na(aad$SWOccurrence))
+
+library(dplyr)
+mean_SWOccurrence <- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(SWOccurrence), list(name = mean))
+mean_SWOccurrence
+plot(mean_SWOccurrence, main = "SWOccurrence between 2001 and 2017", xlab = "Year", ylab = "Standing Water", pch = 16)
+
+knots <- quantile(aad$Year, p = c(0.25, 0.5, 0.75))
+
+fit <- lm(aad$SWOccurrence ~ splines::bs(aad$Year, df = 3), data = aad)
+summary(fit)
+lines(aad$Year, fit$fitted.values)
+
+anova(fit)
+
+ggplot(mean_SWOccurrence, aes(Year, name) ) +
+  geom_point() +
+  stat_smooth(method = lm, formula = y ~ splines::bs(x, df = 3))
+```
+
+pland_forest
+
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <-subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <-subset(aad, aad$Year < 2018)
+aad$pland_forest <- ifelse(is.na(aad$pland_forest), 0, aad$pland_forest)
+
+library(dplyr)
+mean_pland_forest <- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(pland_forest), list(name = mean))
+mean_pland_forest
+plot(mean_pland_forest, main = "pland_forest between 2001 and 2017", xlab = "Year", ylab = "%", pch = 16)
+
+knots <- quantile(aad$Year, p = c(0.25, 0.5, 0.75))
+
+fit <- lm(aad$pland_forest ~ splines::bs(aad$Year, df = 3), data = aad)
+summary(fit)
+lines(aad$Year, fit$fitted.values)
+
+anova(fit)
+
+ggplot(mean_pland_forest, aes(Year, name) ) +
+  geom_point() +
+  stat_smooth(method = lm, formula = y ~ splines::bs(x, df = 3))
+
+```
+
+te_forest
+
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <-subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <-subset(aad, aad$Year < 2018)
+aad$te_forest <- ifelse(is.na(aad$te_forest), 0, aad$te_forest)
+
+library(dplyr)
+mean_te_forest <- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(te_forest), list(name = mean))
+mean_te_forest
+plot(mean_te_forest, main = "te_forest between 2001 and 2017", xlab = "Year", ylab = "te_forest", pch = 16)
+
+knots <- quantile(aad$Year, p = c(0.25, 0.5, 0.75))
+
+fit <- lm(aad$te_forest ~ splines::bs(aad$Year, df = 3), data = aad)
+summary(fit)
+lines(aad$Year, fit$fitted.values)
+
+anova(fit)
+
+ggplot(mean_te_forest, aes(Year, name) ) +
+  geom_point() +
+  stat_smooth(method = lm, formula = y ~ splines::bs(x, df = 3))
+```
+
+enn_mn_forest
+
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <-subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <-subset(aad, aad$Year < 2018)
+aad$enn_mn_forest <- ifelse(is.na(aad$enn_mn_forest), 0, aad$enn_mn_forest)
+
+library(dplyr)
+mean_enn_mn_forest <- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(enn_mn_forest), list(name = mean))
+mean_enn_mn_forest
+plot(mean_enn_mn_forest, main = "enn_mn_forest between 2001 and 2017", xlab = "Year", ylab = "enn_mn_forest", pch = 16)
+
+knots <- quantile(aad$Year, p = c(0.25, 0.5, 0.75))
+
+fit <- lm(aad$enn_mn_forest ~ splines::bs(aad$Year, df = 3), data = aad)
+summary(fit)
+lines(aad$Year, fit$fitted.values)
+
+anova(fit)
+
+ggplot(mean_enn_mn_forest, aes(Year, name) ) +
+  geom_point() +
+  stat_smooth(method = lm, formula = y ~ splines::bs(x, df = 3))
+```
+
+Population
+
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <-subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <-subset(aad, aad$Year < 2018)
+aad <-subset(aad, !is.na(aad$Population))
+
+library(dplyr)
+mean_Population <- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(Population), list(name = mean))
+mean_Population
+plot(mean_Population, main = "Population between 2001 and 2017", xlab = "Year", ylab = "Population", pch = 16)
+
+knots <- quantile(aad$Year, p = c(0.25, 0.5, 0.75))
+
+fit <- lm(aad$Population ~ splines::bs(aad$Year, df = 3), data = aad)
+summary(fit)
+lines(aad$Year, fit$fitted.values)
+
+anova(fit)
+
+ggplot(mean_Population, aes(Year, name) ) +
+  geom_point() +
+  stat_smooth(method = lm, formula = y ~ splines::bs(x, df = 4))
+```
+o = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

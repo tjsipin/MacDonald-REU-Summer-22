@@ -23,20 +23,17 @@ library(tidymodels)   # packages for modeling and statistical analysis
 library(tune)         # For hyperparemeter tuning
 library(workflows)    # streamline process
 library(tictoc)       # for timing
+library(dplyr)
+library(randomForest)
 ```
 
 
 Importing File into R:
 ```{r}
-aad <- read.csv("Annual_Amazon_Data.csv")
-#view(aad)
-
-cutaneous <- aad$Cutaneous.Leishmaniasis
-mucosal <- aad$Mucosal.Leishmaniasis
-visceral <- aad$Visceral.Leishmaniasis
-new_data <- subset(aad, !is.na(cutaneous))
-#View(new_data)
-#names(new_data)
+aad <- read.csv("data/aad.csv")
+aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <-subset(aad, aad$Year < 2018)
 ```
 
 
@@ -44,47 +41,46 @@ Extracting Later Data and Tidying it:
 ```{r}
 ## splitting the data into a before 2014 set and an after 2014 set
 
-early_data <- new_data %>%
-  filter(Year < 2014)%>%
-  select(-c(29:69))
-later_data <- new_data %>%
-  filter(Year > 2013) %>%
-  select(-c(29:69))
+early_data <- aad %>%
+  filter(Year < 2014)
+later_data <- aad %>%
+  filter(Year > 2013)
 
 #names(early_data)
 
 ## removing unnecessary variables
 
 early_data <- early_data %>%
-  select(-c("AvgRad"))
+  dplyr::select(-c("AvgRad"))
 later_data <- later_data %>%
-  select(-c("StableLights"))
+  dplyr::select(-c("StableLights"))
 
 # later_data$OptTemp_Obs <- as.numeric(later_data$OptTemp_Obs)
 # later_data$Year <- as.numeric(later_data$Year)
 # later_data$Population <- as.numeric(later_data$Population)
 
 later_data_small <- later_data %>%
-  select(c("Year", "Population", "Cutaneous.Leishmaniasis", "LST_Day", "LST_Night", "OptTemp_Obs", "NDVI", "EVI", "Precip", "AvgRad", "SWOccurrence")) %>%
-  na.omit(later_data_small)
-later_data_t <- later_data_small %>%
-  mutate(Cutaneous.Leishmaniasis = (Cutaneous.Leishmaniasis))
+  dplyr::select(c("Year", "Population", "Cutaneous.Leishmaniasis", "LST_Day", "NDVI", "EVI", "Precip", "AvgRad", "SWOccurrence", "pland_forest", "te_forest", "enn_mn_forest"))
+
+later_data_small <- subset(later_data_small, !is.na(later_data_small$LST_Day))
+later_data_small <- subset(later_data_small, !is.na(later_data_small$SWOccurrence))
+later_data_small$pland_forest <- ifelse(is.na(later_data_small$pland_forest), 0, later_data_small$pland_forest)
+later_data_small$te_forest <- ifelse(is.na(later_data_small$te_forest), 0, later_data_small$te_forest)
+later_data_small$enn_mn_forest <- ifelse(is.na(later_data_small$enn_mn_forest), 0, later_data_small$enn_mn_forest)
+later_data_small$Year <- as.numeric(later_data_small$Year)
 ```
 
 ```{r}
 library(dplyr)
-summary(later_data_small$Cutaneous.Leishmaniasis[later_data_small$Cutaneous.Leishmaniasis > 0])
+summary(later_data_small$Cutaneous.Leishmaniasis)
 cat_df <- later_data_small
-cat_df$Cutaneous.Leishmaniasis <- cut(later_data_small$Cutaneous.Leishmaniasis, breaks = c(-0.00000001,0.0000000001, 0.1364544408, 0.5728645265, 10^3), labels = c("none", "low", "moderate", "high")) # 67.86%, 78.57%, 89.29%, 100%
+cat_df$Cutaneous.Leishmaniasis <- cut(later_data_small$Cutaneous.Leishmaniasis, breaks = c(0, 0.28177, 10^3), labels = c("low", "high")) # 50th percentile
 
 # cat_df$label <- NA
 # cat_df$label[cat_df$Cutaneous.Leishmaniasis == "low"] <- 0
 # cat_df$label[cat_df$Cutaneous.Leishmaniasis == "moderate"] <- 1
 # cat_df$label[cat_df$Cutaneous.Leishmaniasis == "high"] <- 2
 
-cat_df$Year <- as.numeric(cat_df$Year)
-cat_df$Population <- as.numeric(cat_df$Population)
-cat_df$OptTemp_Obs <- as.numeric(cat_df$OptTemp_Obs)
 ```
 
 
@@ -139,7 +135,10 @@ The Model
 We will use the {parsnip} function rand_forest() to create a random forest model and add the r-package “ranger” as the computational engine.
 ```{r}
 # Build the model (generate the specifications of the model) 
-model_spec_default <- rand_forest(mode = "classification")%>%set_engine("ranger", verbose = TRUE)
+model_spec_default <- randomForest(train_data$Cutaneous.Leishmaniasis ~ .,train_data[-11])
+
+plot(model_spec_default)
+varImpPlot(model_spec_default, cex = 1, pch = 16)
 ```
 
 Fit the model on the training data (train_data prepared above)
@@ -161,12 +160,12 @@ Predict on the testing data (test_data) and extract the model performance. How d
 # Performance and statistics: 
 set.seed(2022)
 test_results_default <- test_data %>%
-   select(Cutaneous.Leishmaniasis) %>%
+   dplyr::select(Cutaneous.Leishmaniasis) %>%
    as_tibble() %>%
    mutate(model_class_default = predict(model_fit_default, new_data = test_data) %>% 
             pull(.pred_class),
    model_prob_default  = predict(model_fit_default, new_data = test_data, type = "prob") %>%
-     pull(.pred_none))
+     pull(.pred_low))
 ```
 
 Computing AUC
@@ -179,6 +178,8 @@ cat("The default model scores", auc_default$.estimate, " AUC on the testing data
 conf_matrix <- test_results_default%>%conf_mat(truth = Cutaneous.Leishmaniasis, model_class_default)
 conf_matrix
 ```
+
+
 
 Hyperparameter Tuning Using {tune}
 ```{r}
@@ -214,7 +215,7 @@ HP_set
 ```
 ```{r}
 # Update the parameters which denpends on the data (in our case mtry)
-without_output <- select(training, -Cutaneous.Leishmaniasis)
+without_output <- dplyr::select(training, -Cutaneous.Leishmaniasis)
 HP_set <- finalize(HP_set, without_output)
 HP_set
 ```
@@ -224,7 +225,7 @@ HP_set
 # Function to finalliaze the recip and the model and returne the AUC value and the ROC curve of the tuned model.  
 my_finalize_func <- function(result_tuning, my_recipe, my_model) {
 # Accessing the tuning results
-  bestParameters <- select_best(result_tuning, metric = "roc_auc", maximize = TRUE)
+  bestParameters <- dplyr::select_best(result_tuning, metric = "roc_auc", maximize = TRUE)
 # Finalize recipe
   final_rec <- 
     rec %>%
@@ -242,7 +243,7 @@ my_finalize_func <- function(result_tuning, my_recipe, my_model) {
 set.seed(2022)
   results_ <- 
     df_test_after_tuning%>%
-    select(Cutaneous.Leishmaniasis) %>%
+    dplyr::select(Cutaneous.Leishmaniasis) %>%
     as_tibble()%>%
     mutate(
       model_class = predict(final_model, new_data = df_test_after_tuning) %>% 
