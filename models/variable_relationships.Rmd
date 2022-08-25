@@ -52,6 +52,13 @@ plot(small_df$Population, small_df$Cutaneous.Leishmaniasis)
 ggplot(data = small_df, mapping = aes(Population, Cutaneous.Leishmaniasis)) +
   geom_point() +
   theme(axis.text.x = element_text(angle = 90))
+
+small_df$interval <- seq(1, nrow(small_df))
+
+fit <- glm(small_df$Cutaneous.Leishmaniasis ~ small_df$interval)
+summary(fit)
+
+plot(small_df$interval, small_df$Cutaneous.Leishmaniasis)
 ```
 
 
@@ -396,6 +403,35 @@ plot(small_df$pland_forest, small_df$Cutaneous.Leishmaniasis)
 ggplot(data = small_df, mapping = aes(pland_forest, Cutaneous.Leishmaniasis)) +
   geom_point() +
   theme(axis.text.x = element_text(angle = 90))
+
+small_df$interval <- seq(1, nrow(small_df))
+
+fit <- lm(small_df$Cutaneous.Leishmaniasis ~ small_df$interval)
+summary(fit)
+
+
+par(mfrow=c(2,2)) # Change the panel layout to 2 x 2
+plot(small_df$interval, small_df$Cutaneous.Leishmaniasis)
+abline(fit)
+plot(fit$residuals, fit$fitted.values)
+qqnorm(residuals(fit), ylab = "residuals", main = "QQ plot")
+qqline(residuals(fit))
+plot(fit$residuals, small_df$interval)
+
+boxcox(fit, plotit = T, lambda = seq(-.5,.5,len = 100)) # suggestS a log transformation
+
+fit2 <- lm(log(small_df$Cutaneous.Leishmaniasis) ~ small_df$interval)
+summary(fit2)
+
+
+par(mfrow=c(2,2)) # Change the panel layout to 2 x 2
+plot(small_df$interval, log(small_df$Cutaneous.Leishmaniasis))
+abline(fit2)
+plot(fit2$residuals, fit2$fit2ted.values)
+qqnorm(residuals(fit2), ylab = "residuals", main = "QQ plot")
+qqline(residuals(fit2))
+plot(fit2$residuals, small_df$interval)
+
 ```
 
 
@@ -450,6 +486,35 @@ plot(small_df$te_forest, small_df$Cutaneous.Leishmaniasis)
 ggplot(data = small_df, mapping = aes(te_forest, Cutaneous.Leishmaniasis)) +
   geom_point() +
   theme(axis.text.x = element_text(angle = 90))
+
+small_df$interval <- seq(1, nrow(small_df))
+
+fit <- lm(small_df$Cutaneous.Leishmaniasis ~ small_df$interval)
+summary(fit)
+
+
+par(mfrow=c(2,2)) # Change the panel layout to 2 x 2
+plot(small_df$interval, small_df$Cutaneous.Leishmaniasis)
+abline(fit)
+plot(fit$residuals, fit$fitted.values)
+qqnorm(residuals(fit), ylab = "residuals", main = "QQ plot")
+qqline(residuals(fit))
+plot(fit$residuals, small_df$interval)
+
+par(mfrow=c(1,1))
+boxcox(fit, plotit = T, lambda = seq(-.5,.5,len = 100)) # suggests a transformation of y^0.3
+
+fit2 <- lm((small_df$Cutaneous.Leishmaniasis)^0.3 ~ small_df$interval)
+summary(fit2)
+
+
+par(mfrow=c(2,2)) # Change the panel layout to 2 x 2
+plot(small_df$interval, (small_df$Cutaneous.Leishmaniasis)^0.3)
+abline(fit2)
+plot(fit2$residuals, fit2$fit2ted.values)
+qqnorm(residuals(fit2), ylab = "residuals", main = "QQ plot")
+qqline(residuals(fit2))
+plot(fit2$residuals, small_df$interval)
 ```
 
 
@@ -500,6 +565,35 @@ plot(small_df$enn_mn_forest, small_df$Cutaneous.Leishmaniasis)
 ggplot(data = small_df, mapping = aes(enn_mn_forest, Cutaneous.Leishmaniasis)) +
   geom_point() +
   theme(axis.text.x = element_text(angle = 90))
+
+small_df$interval <- seq(1, nrow(small_df))
+
+fit <- lm(small_df$Cutaneous.Leishmaniasis ~ small_df$interval)
+summary(fit)
+
+
+par(mfrow=c(2,2)) # Change the panel layout to 2 x 2
+plot(small_df$interval, small_df$Cutaneous.Leishmaniasis)
+abline(fit)
+plot(fit$residuals, fit$fitted.values)
+qqnorm(residuals(fit), ylab = "residuals", main = "QQ plot")
+qqline(residuals(fit))
+plot(fit$residuals, small_df$interval)
+
+par(mfrow=c(1,1))
+boxcox(fit, plotit = T, lambda = seq(-.5,.5,len = 100)) # suggests a log transformation
+
+fit2 <- lm(log(small_df$Cutaneous.Leishmaniasis) ~ small_df$interval)
+summary(fit2)
+
+
+par(mfrow=c(2,2)) # Change the panel layout to 2 x 2
+plot(small_df$interval, log(small_df$Cutaneous.Leishmaniasis))
+abline(fit2)
+plot(fit2$residuals, fit2$fit2ted.values)
+qqnorm(residuals(fit2), ylab = "residuals", main = "QQ plot")
+qqline(residuals(fit2))
+plot(fit2$residuals, small_df$interval)
 ```
 
 
