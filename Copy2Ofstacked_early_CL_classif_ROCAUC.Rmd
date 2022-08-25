@@ -55,7 +55,7 @@ data <- data %>%
   dplyr::select(c('Cutaneous.Leishmaniasis', 'LST_Day', # include LST_Night?
                   'NDVI', 'EVI', 'Precip', 
                   'StableLights', 'SWOccurrence', 'pland_forest',
-                  'te_forest', 'enn_mn_forest','Population'))
+                  'te_forest', 'enn_mn_forest','Population','Year'))
 
 
 data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
@@ -88,7 +88,7 @@ Here, we set up the recipe and workflow using Tidyverse functions.
 data_rec <-
   recipe(Cutaneous.Leishmaniasis ~ LST_Day + NDVI + 
            EVI + Precip + StableLights + SWOccurrence + pland_forest + 
-           te_forest + enn_mn_forest + Population, data = data_train) %>%
+           te_forest + enn_mn_forest + Population + Year, data = data_train) %>%
   step_dummy(all_nominal() - all_outcomes()) %>% 
   step_zv(all_predictors()) %>% 
   step_normalize(all_numeric())
@@ -342,7 +342,7 @@ data <- data %>%
   dplyr::select(c('Cutaneous.Leishmaniasis', 'LST_Day', # include LST_Night?
                   'NDVI', 'EVI', 'Precip', 
                   'StableLights', 'SWOccurrence', 'pland_forest',
-                  'te_forest', 'enn_mn_forest','Population'))
+                  'te_forest', 'enn_mn_forest','Population','Year'))
 
 
 data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
@@ -367,7 +367,7 @@ folds <- rsample::vfold_cv(data_train,
 data_rec <-
   recipe(Cutaneous.Leishmaniasis ~ LST_Day + NDVI + 
            EVI + Precip + StableLights + SWOccurrence + pland_forest + 
-           te_forest + enn_mn_forest + Population, data = data_train) %>%
+           te_forest + enn_mn_forest + Population + Year, data = data_train) %>%
   step_dummy(all_nominal() - all_outcomes()) %>% 
   step_zv(all_predictors()) %>% 
   step_normalize(all_numeric())
@@ -617,7 +617,7 @@ data <- data %>%
   dplyr::select(c('Cutaneous.Leishmaniasis', 'LST_Day', # include LST_Night?
                   'NDVI', 'EVI', 'Precip', 
                   'StableLights', 'SWOccurrence', 'pland_forest',
-                  'te_forest', 'enn_mn_forest','Population'))
+                  'te_forest', 'enn_mn_forest','Population','Year'))
 
 
 data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
@@ -642,7 +642,7 @@ folds <- rsample::vfold_cv(data_train,
 data_rec <-
   recipe(Cutaneous.Leishmaniasis ~ LST_Day + NDVI + 
            EVI + Precip + StableLights + SWOccurrence + pland_forest + 
-           te_forest + enn_mn_forest + Population, data = data_train) %>%
+           te_forest + enn_mn_forest + Population + Year, data = data_train) %>%
   step_dummy(all_nominal() - all_outcomes()) %>% 
   step_zv(all_predictors()) %>% 
   step_normalize(all_numeric())
@@ -889,7 +889,7 @@ data <- data %>%
   dplyr::select(c('Cutaneous.Leishmaniasis', 'LST_Day', # include LST_Night?
                   'NDVI', 'EVI', 'Precip', 
                   'StableLights', 'SWOccurrence', 'pland_forest',
-                  'te_forest', 'enn_mn_forest','Population'))
+                  'te_forest', 'enn_mn_forest','Population','Year'))
 
 
 data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
@@ -914,7 +914,7 @@ folds <- rsample::vfold_cv(data_train,
 data_rec <-
   recipe(Cutaneous.Leishmaniasis ~ LST_Day + NDVI + 
            EVI + Precip + StableLights + SWOccurrence + pland_forest + 
-           te_forest + enn_mn_forest + Population, data = data_train) %>%
+           te_forest + enn_mn_forest + Population + Year, data = data_train) %>%
   step_dummy(all_nominal() - all_outcomes()) %>% 
   step_zv(all_predictors()) %>% 
   step_normalize(all_numeric())
@@ -1161,7 +1161,7 @@ data <- data %>%
   dplyr::select(c('Cutaneous.Leishmaniasis', 'LST_Day', # include LST_Night?
                   'NDVI', 'EVI', 'Precip', 
                   'StableLights', 'SWOccurrence', 'pland_forest',
-                  'te_forest', 'enn_mn_forest','Population'))
+                  'te_forest', 'enn_mn_forest','Population','Year'))
 
 
 data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
@@ -1186,7 +1186,7 @@ folds <- rsample::vfold_cv(data_train,
 data_rec <-
   recipe(Cutaneous.Leishmaniasis ~ LST_Day + NDVI + 
            EVI + Precip + StableLights + SWOccurrence + pland_forest + 
-           te_forest + enn_mn_forest + Population, data = data_train) %>%
+           te_forest + enn_mn_forest + Population + Year, data = data_train) %>%
   step_dummy(all_nominal() - all_outcomes()) %>% 
   step_zv(all_predictors()) %>% 
   step_normalize(all_numeric())
@@ -1524,7 +1524,7 @@ data <- data %>%
   dplyr::select(c('Cutaneous.Leishmaniasis', 'LST_Day', # include LST_Night?
                   'NDVI', 'EVI', 'Precip', 
                   'StableLights', 'SWOccurrence', 'pland_forest',
-                  'te_forest', 'enn_mn_forest','Population'))
+                  'te_forest', 'enn_mn_forest','Population','Year'))
 
 
 data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)

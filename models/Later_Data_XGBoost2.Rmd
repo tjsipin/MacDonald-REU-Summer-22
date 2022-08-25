@@ -81,22 +81,10 @@ getwd()
 aad <- read.csv("data/aad.csv")
 aad <-subset(aad, aad$Cutaneous.Leishmaniasis > 0)
 aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
-aad <-subset(aad, aad$Year < 2019)
+aad <-subset(aad, aad$Year < 2018)
 ```
 
-```{r}
-aad <-subset(aad, aad$Population < 4000000)
-aad <-subset(aad, aad$Precip < 6000)
-aad <-subset(aad, aad$LST_Day < 37)
-aad <-subset(aad, aad$LST_Day > 17)
-aad <-subset(aad, aad$AvgRad < 50)
-aad <-subset(aad, aad$NDVI > 0.2)
-aad <-subset(aad, aad$EVI > 0.1)
-aad <-subset(aad, aad$pland_forest > 0)
-aad <-subset(aad, aad$te_forest > 0)
-aad <-subset(aad, aad$enn_mn_forest > 0)
-aad <-subset(aad, aad$enn_mn_forest < 3000)
-```
+
 
 
 ```{r}
@@ -123,21 +111,22 @@ later_data <- aad %>%
 ## removing unnecessary variables
 
 early_data <- early_data %>%
-  select(-c("AvgRad"))
+  dplyr::select(-c("AvgRad"))
 later_data <- later_data %>%
-  select(-c("StableLights"))
+  dplyr::select(-c("StableLights"))
 
 # later_data$OptTemp_Obs <- as.numeric(later_data$OptTemp_Obs)
 # later_data$Year <- as.numeric(later_data$Year)
 # later_data$Population <- as.numeric(later_data$Population)
 
 later_data_small <- later_data %>%
-  select(c("Population", "Cutaneous.Leishmaniasis", "LST_Day", "Precip", "AvgRad", "SWOccurrence", "NDVI", "EVI", "pland_forest", "te_forest", "enn_mn_forest"))
+  dplyr::select(c("Population", "Year", "Cutaneous.Leishmaniasis", "LST_Day", "Precip", "AvgRad", "SWOccurrence", "NDVI", "EVI", "pland_forest", "te_forest", "enn_mn_forest"))
 later_data_small <- subset(later_data_small, !is.na(later_data_small$LST_Day))
 later_data_small <- subset(later_data_small, !is.na(later_data_small$SWOccurrence))
-later_data_small <- subset(later_data_small, !is.na(later_data_small$pland_forest))
-later_data_small <- subset(later_data_small, !is.na(later_data_small$te_forest))
-later_data_small <- subset(later_data_small, !is.na(later_data_small$enn_mn_forest))
+later_data_small$pland_forest <- ifelse(is.na(later_data_small$pland_forest), 0, later_data_small$pland_forest)
+later_data_small$te_forest <- ifelse(is.na(later_data_small$te_forest), 0, later_data_small$te_forest)
+later_data_small$enn_mn_forest <- ifelse(is.na(later_data_small$enn_mn_forest), 0, later_data_small$enn_mn_forest)
+later_data_small$Year <- as.numeric(later_data_small$Year)
 
 ```
 
@@ -173,8 +162,8 @@ data_split <- initial_split(cat_df, strata = "Cutaneous.Leishmaniasis", prop = 0
 training <- training(data_split)
 testing <- testing(data_split) 
 
-x_train <- as.matrix(training[,-2])
-x_test <- as.matrix(testing[,-2])
+x_train <- as.matrix(training[,-3])
+x_test <- as.matrix(testing[,-3])
 
 y_train <- (as.numeric(training$Cutaneous.Leishmaniasis) - 1)
 y_test <- (as.numeric(testing$Cutaneous.Leishmaniasis) - 1)
@@ -473,7 +462,7 @@ xgb.model <- xgb.train(params = params,
 cat_df2 <- cat_df %>%
   mutate(pland_forest = pland_forest + 2)
 
-x <- as.matrix(cat_df2[,-2])
+x <- as.matrix(cat_df2[,-3])
 
 y <- (as.numeric(cat_df2$Cutaneous.Leishmaniasis) - 1)
 

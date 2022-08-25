@@ -1,1 +1,5 @@
-.Rproj.user/**
+.RProj.user/**
+.Rproj.user
+.RData
+.RDataTmp1
+.RDataTmp2

@@ -1,0 +1,627 @@
+---
+title: "Response Curves"
+author: "Lyndsey Umsted"
+date: "2022-08-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load Data and Packages
+```{r}
+install.packages("drc")
+library(drc)
+setwd("C:/Users/18586/Desktop/Summer Disease Internship/MacDonald-REU-Summer-22")
+library(ggplot2)
+library(dplyr)
+library(MASS)
+```
+
+
+
+Population (Brazil)
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, aad$Country == "Brazil")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <- subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, !is.na(aad$Population))
+aad <- subset(aad, aad$Year < 2018)
+
+
+mean_Population<- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(Population), list(name = mean))
+mean_Population
+plot(mean_Population, main = "Population between 2001 and 2019", xlab = "Year", ylab = "Population")
+
+small_df <- aad %>%
+  dplyr::select("Cutaneous.Leishmaniasis", "Population")
+
+small_df <- small_df %>%
+  mutate(
+    Population = cut(Population, breaks = seq(min(Population), max(Population), by = 75000), include.lowest = TRUE)
+  ) %>%
+  group_by(Population) %>%
+  summarise(Cutaneous.Leishmaniasis = mean(Cutaneous.Leishmaniasis))
+
+plot(small_df$Population, small_df$Cutaneous.Leishmaniasis)
+
+ggplot(data = small_df, mapping = aes(Population, Cutaneous.Leishmaniasis)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+
+
+Population (Colombia):
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, aad$Country == "Colombia")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <- subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, !is.na(aad$Population))
+aad <- subset(aad, aad$Year < 2018)
+
+
+mean_Population<- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(Population), list(name = mean))
+mean_Population
+plot(mean_Population, main = "Population between 2001 and 2019", xlab = "Year", ylab = "Population")
+
+small_df <- aad %>%
+  dplyr::select("Cutaneous.Leishmaniasis", "Population")
+
+small_df <- small_df %>%
+  mutate(
+    Population = cut(Population, breaks = seq(min(Population), max(Population), by = 25000), include.lowest = TRUE)
+  ) %>%
+  group_by(Population) %>%
+  summarise(Cutaneous.Leishmaniasis = mean(Cutaneous.Leishmaniasis))
+
+plot(small_df$Population, small_df$Cutaneous.Leishmaniasis)
+
+ggplot(data = small_df, mapping = aes(Population, Cutaneous.Leishmaniasis)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+
+Population(Peru):
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, aad$Country == "Peru")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <- subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, !is.na(aad$Population))
+aad <- subset(aad, aad$Year < 2018)
+
+
+mean_Population<- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(Population), list(name = mean))
+mean_Population
+plot(mean_Population, main = "Population between 2001 and 2019", xlab = "Year", ylab = "Population")
+
+small_df <- aad %>%
+  dplyr::select("Cutaneous.Leishmaniasis", "Population")
+
+small_df <- small_df %>%
+  mutate(
+    Population = cut(Population, breaks = seq(min(Population), max(Population), by = 5000), include.lowest = TRUE)
+  ) %>%
+  group_by(Population) %>%
+  summarise(Cutaneous.Leishmaniasis = mean(Cutaneous.Leishmaniasis))
+
+plot(small_df$Population, small_df$Cutaneous.Leishmaniasis)
+
+ggplot(data = small_df, mapping = aes(Population, Cutaneous.Leishmaniasis)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+
+
+LST_Day:
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <- subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, !is.na(aad$LST_Day))
+aad <- subset(aad, aad$Year < 2018)
+
+mean_LST_Day<- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(LST_Day), list(name = mean))
+mean_LST_Day
+plot(mean_LST_Day, main = "LST_Day between 2001 and 2017", xlab = "Year", ylab = "LST_Day", pch = 16)
+
+small_df <- aad %>%
+  dplyr::select("Cutaneous.Leishmaniasis", "LST_Day")
+
+small_df <- small_df %>%
+  mutate(
+    LST_Day = cut(LST_Day, breaks = seq(min(LST_Day), max(LST_Day), by = 0.5), include.lowest = TRUE)
+  ) %>%
+  group_by(LST_Day) %>%
+  summarise(Cutaneous.Leishmaniasis = mean(Cutaneous.Leishmaniasis))
+
+plot(small_df$LST_Day, small_df$Cutaneous.Leishmaniasis)
+
+ggplot(data = small_df, mapping = aes(LST_Day, Cutaneous.Leishmaniasis)) +
+  geom_point() + 
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <- subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, !is.na(aad$LST_Day))
+
+library(dplyr)
+library(ggplot2)
+
+mean_LST_Day<- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(LST_Day), list(name = mean))
+mean_LST_Day
+plot(mean_LST_Day, main = "Cutaneous Cases between 2001 and 2019", xlab = "Year", ylab = "Cases")
+
+ggplot(data = aad, mapping = aes(LST_Day, Cutaneous.Leishmaniasis, xlab = "Land Surface Temperature", ylab = "Cases of Cutaenous Leishmaniasis per Thousand")) +
+  geom_point() 
+
+set.seed(22)
+sample <- sample_n(aad, 500)
+
+ggplot(data = sample, mapping = aes(LST_Day, Cutaneous.Leishmaniasis, xlab = "Land Surface Temperature", ylab = "Cases of Cutaenous Leishmaniasis per Thousand")) +
+  geom_point() 
+```
+
+
+
+Precip
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <- subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, !is.na(aad$Precip))
+aad <- subset(aad, aad$Year < 2018)
+
+mean_Precip<- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(Precip), list(name = mean))
+mean_Precip
+plot(mean_Precip, main = "Precip between 2001 and 2017", xlab = "Year", ylab = "Precip", cex = 1.5, pch = 16)
+
+small_df <- aad %>%
+  dplyr::select("Cutaneous.Leishmaniasis", "Precip")
+
+small_df <- small_df %>%
+  mutate(
+    Precip = cut(Precip, breaks = seq(min(Precip), max(Precip), by = 100), include.lowest = TRUE)
+  ) %>%
+  group_by(Precip) %>%
+  summarise(Cutaneous.Leishmaniasis = mean(Cutaneous.Leishmaniasis))
+
+plot(small_df$Precip, small_df$Cutaneous.Leishmaniasis)
+
+ggplot(data = small_df, mapping = aes(Precip, Cutaneous.Leishmaniasis)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90)) 
+```
+
+
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <- subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, !is.na(aad$Precip))
+
+ggplot(data = aad, mapping = aes(Precip, Cutaneous.Leishmaniasis, xlab = "Land Surface Temperature", ylab = "Cases of Cutaenous Leishmaniasis per Thousand")) +
+  geom_point() 
+
+set.seed(22)
+sample <- sample_n(aad, 500)
+
+ggplot(data = sample, mapping = aes(Precip, Cutaneous.Leishmaniasis, xlab = "Land Surface Temperature", ylab = "Cases of Cutaenous Leishmaniasis per Thousand")) +
+  geom_point() 
+```
+
+
+
+AvgRad:
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <- subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, !is.na(aad$AvgRad))
+aad <- subset(aad, aad$Year < 2018)
+
+mean_AvgRad<- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(AvgRad), list(name = mean))
+mean_AvgRad
+plot(mean_AvgRad, main = "AvgRad between 2001 and 2017", xlab = "Year", ylab = "AvgRad", pch = 16)
+
+small_df <- aad %>%
+  dplyr::select("Cutaneous.Leishmaniasis", "AvgRad")
+
+small_df <- small_df %>%
+  mutate(
+    AvgRad = cut(AvgRad, breaks = seq(min(AvgRad), max(AvgRad), by = 0.75), include.lowest = TRUE)
+  ) %>%
+  group_by(AvgRad) %>%
+  summarise(Cutaneous.Leishmaniasis = mean(Cutaneous.Leishmaniasis))
+
+plot(small_df$AvgRad, small_df$Cutaneous.Leishmaniasis)
+
+ggplot(data = small_df, mapping = aes(AvgRad, Cutaneous.Leishmaniasis)) +
+  geom_point() +
+  theme(axis.text = element_text(angle = 90))
+```
+
+
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <- subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, !is.na(aad$AvgRad))
+
+ggplot(data = aad, mapping = aes(AvgRad, Cutaneous.Leishmaniasis, xlab = "Land Surface Temperature", ylab = "Cases of Cutaenous Leishmaniasis per Thousand")) +
+  geom_point() 
+
+set.seed(22)
+sample <- sample_n(aad, 500)
+
+ggplot(data = sample, mapping = aes(AvgRad, Cutaneous.Leishmaniasis, xlab = "Land Surface Temperature", ylab = "Cases of Cutaenous Leishmaniasis per Thousand")) +
+  geom_point() 
+```
+
+Stable Lights
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <- subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, !is.na(aad$StableLights))
+aad <- subset(aad, aad$Year < 2018)
+
+mean_StableLights<- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(StableLights), list(name = mean))
+mean_StableLights
+plot(mean_StableLights, main = "StableLights between 2001 and 2013", xlab = "Year", ylab = "StableLights", pch = 16)
+
+small_df <- aad %>%
+  dplyr::select("Cutaneous.Leishmaniasis", "StableLights")
+
+small_df <- small_df %>%
+  mutate(
+    StableLights = cut(StableLights, breaks = seq(min(StableLights), max(StableLights), by = 1), include.lowest = TRUE)
+  ) %>%
+  group_by(StableLights) %>%
+  summarise(Cutaneous.Leishmaniasis = mean(Cutaneous.Leishmaniasis))
+
+plot(small_df$StableLights, small_df$Cutaneous.Leishmaniasis)
+
+ggplot(data = small_df, mapping = aes(StableLights, Cutaneous.Leishmaniasis)) +
+  geom_point() +
+  theme(axis.text = element_text(angle = 90))
+```
+
+
+SWOccurrence:
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <- subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, !is.na(aad$SWOccurrence))
+aad <- subset(aad, aad$Year < 2018)
+
+mean_SWOccurrence<- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(SWOccurrence), list(name = mean))
+mean_SWOccurrence
+plot(mean_SWOccurrence, main = "SWOccurrence between 2001 and 2019", xlab = "Year", ylab = "SWOccurrence")
+
+small_df <- aad %>%
+  dplyr::select("Cutaneous.Leishmaniasis", "SWOccurrence")
+
+small_df <- small_df %>%
+  mutate(
+    SWOccurrence = cut(SWOccurrence, breaks = seq(min(SWOccurrence), max(SWOccurrence), by = 1.5), include.lowest = TRUE)
+  ) %>%
+  group_by(SWOccurrence) %>%
+  summarise(Cutaneous.Leishmaniasis = mean(Cutaneous.Leishmaniasis))
+
+plot(small_df$SWOccurrence, small_df$Cutaneous.Leishmaniasis)
+
+ggplot(data = small_df, mapping = aes(SWOccurrence, Cutaneous.Leishmaniasis)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <- subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, !is.na(aad$SWOccurrence))
+
+ggplot(data = aad, mapping = aes(SWOccurrence, Cutaneous.Leishmaniasis, xlab = "Land Surface Temperature", ylab = "Cases of Cutaenous Leishmaniasis per Thousand")) +
+  geom_point() 
+
+set.seed(22)
+sample <- sample_n(aad, 500)
+
+ggplot(data = sample, mapping = aes(SWOccurrence, Cutaneous.Leishmaniasis, xlab = "Land Surface Temperature", ylab = "Cases of Cutaenous Leishmaniasis per Thousand")) +
+  geom_point() 
+```
+
+
+Note: for the years 2018 and 2019 the forest variables are entirely missing so we will remove these years from this part of the analysis
+
+
+pland_forest
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <- subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, aad$Year < 2018)
+aad$pland_forest <- ifelse(is.na(aad$pland_forest), 0, aad$pland_forest)
+
+
+mean_pland_forest<- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(pland_forest), list(name = mean))
+mean_pland_forest
+plot(mean_pland_forest, main = "pland_forest between 2001 and 2019", xlab = "Year", ylab = "pland_forest")
+
+small_df <- aad %>%
+  dplyr::select("Cutaneous.Leishmaniasis", "pland_forest")
+
+small_df <- small_df %>%
+  mutate(
+    pland_forest = cut(pland_forest, breaks = seq(min(pland_forest), max(pland_forest), by = 1.25), include.lowest = TRUE)
+  ) %>%
+  group_by(pland_forest) %>%
+  summarise(Cutaneous.Leishmaniasis = mean(Cutaneous.Leishmaniasis))
+
+plot(small_df$pland_forest, small_df$Cutaneous.Leishmaniasis)
+
+ggplot(data = small_df, mapping = aes(pland_forest, Cutaneous.Leishmaniasis)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+
+
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <- subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, !is.na(aad$pland_forest))
+
+ggplot(data = aad, mapping = aes(pland_forest, Cutaneous.Leishmaniasis, xlab = "Land Surface Temperature", ylab = "Cases of Cutaenous Leishmaniasis per Thousand")) +
+  geom_point() 
+
+set.seed(22)
+sample <- sample_n(aad, 500)
+
+ggplot(data = sample, mapping = aes(pland_forest, Cutaneous.Leishmaniasis, xlab = "Land Surface Temperature", ylab = "Cases of Cutaenous Leishmaniasis per Thousand")) +
+  geom_point() 
+```
+
+
+
+te_forest
+```{r}
+library(dplyr)
+
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <- subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, aad$Year < 2018)
+aad$te_forest <- ifelse(is.na(aad$te_forest), 0, aad$te_forest)
+
+
+mean_te_forest<- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(te_forest), list(name = mean))
+mean_te_forest
+plot(mean_te_forest, main = "te_forest between 2001 and 2019", xlab = "Year", ylab = "te_forest")
+
+small_df <- aad %>%
+  dplyr::select("Cutaneous.Leishmaniasis", "te_forest")
+
+small_df <- small_df %>%
+  mutate(
+    te_forest = cut(te_forest, breaks = seq(min(te_forest), max(te_forest), by = 2000000), include.lowest = TRUE)
+  ) %>%
+  group_by(te_forest) %>%
+  summarise(Cutaneous.Leishmaniasis = mean(Cutaneous.Leishmaniasis))
+
+plot(small_df$te_forest, small_df$Cutaneous.Leishmaniasis)
+
+ggplot(data = small_df, mapping = aes(te_forest, Cutaneous.Leishmaniasis)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <- subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, !is.na(aad$te_forest))
+
+ggplot(data = aad, mapping = aes(te_forest, Cutaneous.Leishmaniasis, xlab = "Land Surface Temperature", ylab = "Cases of Cutaenous Leishmaniasis per Thousand")) +
+  geom_point() 
+
+set.seed(22)
+sample <- sample_n(aad, 500)
+
+ggplot(data = sample, mapping = aes(te_forest, Cutaneous.Leishmaniasis, xlab = "Land Surface Temperature", ylab = "Cases of Cutaenous Leishmaniasis per Thousand")) +
+  geom_point() 
+```
+
+
+
+enn_mn_forest:
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <- subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, aad$Year < 2018)
+aad$enn_mn_forest <- ifelse(is.na(aad$enn_mn_forest), 0, aad$enn_mn_forest)
+
+mean_enn_mn_forest<- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(enn_mn_forest), list(name = mean))
+mean_enn_mn_forest
+plot(mean_enn_mn_forest, main = "enn_mn_forest between 2001 and 2019", xlab = "Year", ylab = "enn_mn_forest")
+
+small_df <- aad %>%
+  dplyr::select("Cutaneous.Leishmaniasis", "enn_mn_forest")
+
+small_df <- small_df %>%
+  mutate(
+    enn_mn_forest = cut(enn_mn_forest, breaks = seq(min(enn_mn_forest), max(enn_mn_forest), by = 25), include.lowest = TRUE)
+  ) %>%
+  group_by(enn_mn_forest) %>%
+  summarise(Cutaneous.Leishmaniasis = mean(Cutaneous.Leishmaniasis))
+
+plot(small_df$enn_mn_forest, small_df$Cutaneous.Leishmaniasis)
+
+ggplot(data = small_df, mapping = aes(enn_mn_forest, Cutaneous.Leishmaniasis)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <- subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, !is.na(aad$enn_mn_forest))
+
+ggplot(data = aad, mapping = aes(enn_mn_forest, Cutaneous.Leishmaniasis, xlab = "Land Surface Temperature", ylab = "Cases of Cutaenous Leishmaniasis per Thousand")) +
+  geom_point() 
+
+set.seed(22)
+sample <- sample_n(aad, 500)
+
+ggplot(data = sample, mapping = aes(enn_mn_forest, Cutaneous.Leishmaniasis, xlab = "Land Surface Temperature", ylab = "Cases of Cutaenous Leishmaniasis per Thousand")) +
+  geom_point() 
+```
+
+
+NDVI:
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <- subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, aad$Year < 2018)
+aad$NDVI <- ifelse(is.na(aad$NDVI), 0, aad$NDVI)
+
+mean_NDVI<- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(NDVI), list(name = mean))
+mean_NDVI
+plot(mean_NDVI, main = "NDVI between 2001 and 2019", xlab = "Year", ylab = "NDVI")
+
+small_df <- aad %>%
+  dplyr::select("Cutaneous.Leishmaniasis", "NDVI")
+
+small_df <- small_df %>%
+  mutate(
+    NDVI = cut(NDVI, breaks = seq(min(NDVI), max(NDVI), by = 0.01), include.lowest = TRUE)
+  ) %>%
+  group_by(NDVI) %>%
+  summarise(Cutaneous.Leishmaniasis = mean(Cutaneous.Leishmaniasis))
+
+plot(small_df$NDVI, small_df$Cutaneous.Leishmaniasis)
+
+ggplot(data = small_df, mapping = aes(NDVI, Cutaneous.Leishmaniasis)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+
+
+EVI:
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <- subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, aad$Year < 2018)
+aad$EVI <- ifelse(is.na(aad$EVI), 0, aad$EVI)
+
+mean_EVI<- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(EVI), list(name = mean))
+mean_EVI
+plot(mean_EVI, main = "EVI between 2001 and 2019", xlab = "Year", ylab = "EVI")
+
+small_df <- aad %>%
+  dplyr::select("Cutaneous.Leishmaniasis", "EVI")
+
+small_df <- small_df %>%
+  mutate(
+    EVI = cut(EVI, breaks = seq(min(EVI), max(EVI), by = 0.0075), include.lowest = TRUE)
+  ) %>%
+  group_by(EVI) %>%
+  summarise(Cutaneous.Leishmaniasis = mean(Cutaneous.Leishmaniasis))
+
+plot(small_df$EVI, small_df$Cutaneous.Leishmaniasis)
+
+ggplot(data = small_df, mapping = aes(EVI, Cutaneous.Leishmaniasis)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+
+
+Year:
+```{r}
+aad <- read.csv("data/aad.csv")
+aad <- subset(aad, !is.na(aad$Cutaneous.Leishmaniasis))
+aad <- subset(aad, aad$Cutaneous.Leishmaniasis > 0)
+aad <- subset(aad, aad$Year < 2018)
+aad$Year <- as.numeric(aad$Year)
+
+mean_Year<- aad %>%
+  group_by(Year) %>%
+  summarise_at(vars(Cutaneous.Leishmaniasis), list(name = mean))
+mean_Year
+plot(mean_Year, main = "Cutaneous Cases between 2001 and 2019", xlab = "Year", ylab = "Cases per Thousand")
+
+small_df <- aad %>%
+  dplyr::select("Cutaneous.Leishmaniasis", "Year")
+
+small_df <- small_df %>%
+  mutate(
+    Year = cut(Year, breaks = seq(min(Year), max(Year), by = 1), include.lowest = TRUE)
+  ) %>%
+  group_by(Year) %>%
+  summarise(Cutaneous.Leishmaniasis = mean(Cutaneous.Leishmaniasis))
+
+plot(small_df$Year, small_df$Cutaneous.Leishmaniasis)
+
+ggplot(data = small_df, mapping = aes(Year, Cutaneous.Leishmaniasis)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+
+
+
+
+
+
+
+
