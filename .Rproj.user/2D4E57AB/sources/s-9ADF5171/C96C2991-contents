@@ -1,0 +1,429 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Read in original data
+
+```{r}
+library(PRROC) # ROC curves in data frames
+library(tidyverse) # everything
+library(visdat) # missingness plots
+library(doParallel) # parallel missForest
+library(doRNG) # reproducible parallel results
+library(gridExtra) # combining graphs
+library(randomForest) # random forests
+library(missForest) # ...
+library(kableExtra) # pretty tables
+library(ggplot2)
+library(ggfortify)
+library(forecast)
+
+theme_set(theme_light()) # ggplot theme
+
+aad <- read_csv('../models/data/aad.csv')
+load('../data/imp')
+
+
+```
+
+# Prepare predictors for training
+
+```{r}
+later <- aad %>%
+  filter(Year > 2013) %>% 
+  filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
+  filter(Cutaneous.Leishmaniasis > 0) %>%
+  dplyr::select(c('Year', 'LST_Day', # include LST_Night?
+                  'NDVI', 'EVI', 'Precip', 
+                  'AvgRad', 'SWOccurrence', 'pland_forest',
+                  'te_forest', 'enn_mn_forest','Population')) %>% 
+  subset(!is.na(LST_Day)) %>%
+  subset(!is.na(SWOccurrence)) 
+
+later$pland_forest <- ifelse(is.na(later$pland_forest), 0, later$pland_forest)
+later$te_forest <- ifelse(is.na(later$te_forest), 0, later$te_forest)
+later$enn_mn_forest <- ifelse(is.na(later$enn_mn_forest), 0, later$enn_mn_forest)
+
+train_index <- sample(nrow(later), nrow(later) * 0.7)
+train <- later[train_index, ]
+train_X <- prodNA(train %>% 
+                    select(-Year), 0.2)
+
+test <- later[-train_index, ]
+test_X <- prodNA(test %>% 
+                   select(-Year), 0.2)
+vis_miss(rbind(train_X, test_X),
+         show_perc = T) + 
+  coord_flip()
+
+later %>% dim
+```
+
+
+```{r}
+doParallel::registerDoParallel(cores = 4) # set based on number of CPU cores
+doRNG::registerDoRNG(seed = 123)
+# v1
+missForest_v1 <- missForest(as.data.frame(train_X), 
+                    xtrue = as.data.frame(later),
+                    variablewise = T,
+                    maxiter = 3, 
+                    mtry = 9, 
+                    ntree = 1000,
+                    parallelize = 'forests')
+
+
+# v2
+missForest_v2 <- missForest(as.data.frame(train_X), 
+                    xtrue = as.data.frame(later),
+                    variablewise = T,
+                    parallelize = 'forests')
+
+
+# MSE
+data.frame(varname = 
+             names(missForest_v1$ximp), 
+           error_type = 
+             names(missForest_v1$OOBerror), 
+           error = 
+             missForest_v1$OOBerror) %>%
+  mutate(error_type = cell_spec(error_type, 
+                                color = "white",
+                                background = "deepskyblue")) %>%
+  kable(escape = F) %>% 
+  kable_styling(full_width = F)
+
+data.frame(varname = 
+             names(missForest_v2$ximp), 
+           error_type = 
+             names(missForest_v2$OOBerror), 
+           error = 
+             missForest_v2$OOBerror) %>%
+  mutate(error_type = cell_spec(error_type, 
+                                color = "white",
+                                background = "deepskyblue")) %>%
+  kable(escape = F) %>% 
+  kable_styling(full_width = F)
+
+
+missForest_v1$error; missForest_v2$error
+```
+
+# Time Series stuff
+
+### Toy data frame
+
+```{r}
+test_aad <- aad %>% 
+  filter(Code == 5001) %>% 
+  select(c(Year, LST_Day, # include LST_Night?
+                  NDVI, EVI, Precip, 
+                  AvgRad, SWOccurrence, pland_forest,
+                  te_forest, enn_mn_forest,Population))
+
+test_data <- data %>% 
+  filter(Code == 5001) %>% 
+  select(c(Code,Year, LST_Day, # include LST_Night?
+           NDVI, EVI, Precip, 
+           AvgRad, SWOccurrence, pland_forest,
+           te_forest, enn_mn_forest,Population))
+
+data_1 <- data %>% 
+  select(c(Code,Year, Population,
+           LST_Day, # include LST_Night?
+           NDVI, EVI, Precip, 
+           AvgRad, SWOccurrence, pland_forest,
+           te_forest, enn_mn_forest)) %>% 
+  mutate(pland_forest = ifelse(is.na(data$pland_forest), 
+                               0, data$pland_forest)) %>% 
+  mutate(te_forest = ifelse(is.na(data$te_forest), 
+                            0, data$te_forest)) %>% 
+  mutate(enn_mn_forest = ifelse(is.na(data$enn_mn_forest),
+                                0, data$enn_mn_forest))
+```
+
+### Turn into a `ts` object
+
+```{r}
+y <- ts(test_aad, start = 2000)
+
+for(i in colnames(test_aad)) {
+  (autoplot(test_aad %>% 
+             select(i) %>% 
+             ts(start = 2000)) +
+     ggtitle(str_interp('${i}')) +
+     xlab('Year')) %>% 
+    print()
+}
+```
+
+```{r}
+ts_plotter <- function(df){
+  for(i in df$Code %>% unique()){
+    print(data_1 %>% 
+            filter(Code == i))
+    for(j in colnames(df %>% select(-c(Year, Code)))){
+      (autoplot(df %>% 
+                  select(j) %>% 
+                  ts(start = 2000)) +
+         ggtitle(str_interp('${i}: ${j}')) +
+         xlab('Year')) %>% print()
+    }
+  } 
+}
+
+ts_plotter(data_1 %>% 
+             filter(Code == c(40313, 10609)))
+
+ts_plotter_2 <- function(df){
+  for(i in 1:length(df$Code %>% unique())){
+    print(df %>% 
+            filter(Code == (df$Code %>% unique())[i]))
+    for(j in 1:length(colnames(df %>% select(-c(Year, Code))))){
+      (forecast::autoplot(df %>% 
+                  filter(Code == (df$Code %>% unique())[i]) %>% 
+         select(
+           (colnames(df %>% 
+                       select(-c(Year, Code))
+           ))[j]) %>% 
+         ts(start = 2000), facets=T)  +
+        ggtitle(str_interp('${i}: ${j}')) +
+        xlab('Year')) %>% print()
+    }
+  } 
+}
+
+ts_plotter_2(test_data)
+
+ts_plotter_3 <- function(df){
+  for(i in 1:length(df$Code %>% unique())){
+    print(df %>% 
+            filter(Code == (df$Code %>% unique())[i]))
+    (forecast::autoplot(df %>% 
+                          filter(Code == (df$Code %>% unique())[i]) %>% 
+                          select(-c(Code,Year)) %>% 
+                          ts(start = 2000), facets=T)  +
+        ggtitle(str_interp('${i}')) +
+        xlab('Year')) %>% print()
+  } 
+}
+
+ts_plotter_3(data_1 %>% filter(Code == c(10608, 10609)))
+```
+
+
+```{r}
+lst_lag_1 <- window((test_data %>% ts(start = 2000))[, 'LST_Day'], start = 2000) 
+lst_lag_1 %>% gglagplot()
+lst_lag_1 %>% autoplot()
+ggAcf(lst_lag_1)
+```
+
+# RWF (FOCUS)
+
+```{r}
+fc <- rwf(test_data_y[,'LST_Day'], drift=T, lambda=0, h=50, level=80)
+fc2 <- rwf(test_data_y[,'LST_Day'], drift=T, lambda=0, h=50, level=10,
+           biasadj=T)
+autoplot(test_data_y[,'LST_Day']) + 
+  autolayer(fc, series='Simple back transformation') +
+  autolayer(fc2, series='Bias adjusted', PI=F) +
+  guides(color=guide_legend(title='Forecast'))
+
+res <- residuals(fc)
+
+autoplot(res) + 
+  xlab('Year')
+
+res2 <- residuals(fc2)
+
+autoplot(res2) + 
+  xlab('Year')
+
+rwf(test_data_y[,'EVI'], drift=T, lambda=0, h=50, level=80)
+rwf(test_data_y[,'EVI'], drift=T, lambda=0, h=50, level=80, bootstrap=T)
+
+rwf_df <- data.frame(matrix(ncol = ncol(data_1),
+                            nrow = 0))
+h = 10 # param
+
+for (i in 1:(unique(data_1[,'Code']) %>% length)){ # 1:8554
+  for(j in 1:h) { # 1:10
+    for (k in 1:(colnames(data_1 %>% 
+                       select(-c(Code, Year))) %>% length)) { # 1:10
+      rwf_df[(i-1)*h + j, k] = rwf(data_1 %>% 
+                                      filter(Code == unique(data_1[,'Code'])[i]) %>% 
+                                      select(c(colnames(data_1 %>% 
+                                                          select(-c(Code, Year)))[k])) %>%
+                                      ts(start = 2000), 
+                                   lambda=0,
+                                   h=10,
+                                   level=80)$mean[j]
+    }
+  }
+}
+
+colnames(rwf_df) <- data_1 %>% select(-c(Code,Year)) %>% colnames
+rwf_df
+```
+
+```{r}
+test_data_1 <- data_1 %>% 
+  filter(Code == c(5001, 5002, 5004, 5021))
+
+test_rwf_df_1 <- data.frame(matrix(ncol = ncol(data_1),
+                            nrow = 0))
+
+for (i in 1:(unique(test_data_1[,'Code']) %>% length)){ # 1:8554
+  for(j in 1:h) { # 1:10
+    for (k in 1:(colnames(test_data_1 %>% 
+                       select(-c(Code, Year))) %>% length)) { # 1:10
+      test_rwf_df_1[(i-1)*h + j, k] = rwf(test_data_1 %>% 
+                                      filter(Code == unique(test_data_1[,'Code'])[i]) %>% 
+                                      select(c(colnames(test_data_1 %>% 
+                                                          select(-c(Code, Year)))[k])) %>%
+                                      ts(start = 2000), 
+                                   lambda=0,
+                                   h=10,
+                                   level=80)$mean[j]
+    }
+  }
+}
+
+colnames(test_rwf_df_1) <- data_1 %>% select(-c(Code,Year)) %>% colnames
+```
+
+```{r}
+h = 10 # param
+test_data_2 <- data_1 %>% 
+  filter(Code < 5002)
+
+test_rwf_df_2 <- data.frame(matrix(ncol = ncol(data_1),
+                            nrow = 0))
+
+for (i in 1:(unique(test_data_2[,'Code']) %>% length)){ # 1:8554
+  for(j in 1:h) { # 1:10
+    for (k in 3:(colnames(test_data_2) %>% length)) { # 1:10
+      test_rwf_df_2[(i-1)*h + j, k] = rwf(test_data_2 %>% 
+                                            filter(Code == unique(test_data_2[,'Code'])[i]) %>% 
+                                            select(c(colnames(test_data_2)[k])) %>%
+                                            ts(start = 2000), 
+                                          lambda='auto',
+                                          h=10,
+                                          level=80,
+                                          drift=T,
+                                          bootstrap=T)$mean[j]
+      rwf(test_data_2 %>% 
+                                            filter(Code == unique(test_data_2[,'Code'])[i]) %>% 
+                                            select(c(colnames(test_data_2)[k])) %>%
+                                            ts(start = 2000), 
+                                          lambda='auto',
+                                          h=10,
+                                          level=80,
+                                          drift=T,
+                                          bootstrap=T) %>% print
+    }
+    test_rwf_df_2[(i-1)*h + j, 1] = unique(test_data_2[,'Code'])[i]
+    test_rwf_df_2[(i-1)*h + j, 2] = 2019 + j
+  }
+}
+
+
+colnames(test_rwf_df_2) <- data_1 %>% colnames
+
+test_data_2 %>% dim
+```
+
+
+```{r}
+rwf(test_data_2 %>% 
+                                      filter(Code == unique(test_data_2[,'Code'])[1]) %>% 
+                                      select(c(colnames(test_data_2)[5])) %>%
+                                      ts(start = 2000), 
+                                   lambda=0,
+                                   h=10,
+                                   level=80,
+    drift=T)
+```
+
+```{r}
+h = 10 # param
+test_data_3 <- data_1
+
+test_rwf_df_3 <- data.frame(matrix(ncol = ncol(data_1),
+                            nrow = 0))
+
+for (i in 1:(unique(test_data_3[,'Code']) %>% length)){ # 1:8554
+  for(j in 1:h) { # 1:10
+    for (k in 3:(colnames(test_data_3) %>% length)) { # 1:10
+      skip <- FALSE
+      
+      test_rwf_df_3[(i-1)*h + j, k] = rwf(test_data_3 %>% 
+                                            filter(Code == unique(test_data_3[,'Code'])[i]) %>% 
+                                            select(c(colnames(test_data_3)[k])) %>%
+                                            ts(start = 2000), 
+                                          na.rm = TRUE,
+                                          lambda='auto',
+                                          h=10,
+                                          level=80,
+                                          drift=T,
+                                          bootstrap=T)$mean[j] %>% 
+        tryCatch(error = function(e){ skip <- TRUE })
+      if(skip) {
+        test_rwf_df_3[(i-1)*h + j, k] = rwf(test_data_3 %>% 
+                                            filter(Code == unique(test_data_3[,'Code'])[i]) %>% 
+                                            select(c(colnames(test_data_3)[k])) %>%
+                                            ts(start = 2000), 
+                                          na.rm = TRUE,
+                                          lambda='auto',
+                                          h=10,
+                                          level=80,
+                                          drift=F,
+                                          bootstrap=T)$mean[j]
+      }
+
+    }
+    test_rwf_df_3[(i-1)*h + j, 1] = unique(test_data_3[,'Code'])[i]
+    test_rwf_df_3[(i-1)*h + j, 2] = 2019 + j
+  }
+}
+
+
+colnames(test_rwf_df_3) <- data_1 %>% colnames
+
+test_data_3 %>% dim
+
+save(test_rwf_df_3, file = "test_rwf_df_3")
+```
+
+
+```{r}
+load("test_rwf_df_3_test")
+test_rwf_df_3
+```
+
+```{r}
+test_data_y <- data %>% 
+  filter(Code == 10609) %>% 
+  ts(start = 2000)
+rwf(test_data_y, h = 20, drift = T)
+```
+
+# FORECAST FUNCTION
+
+```{r}
+h = 10 # param
+test_data_4 <- data_1 %>% 
+  filter(Code < 5002)
+
+test_rwf_df_4 <- data.frame(matrix(ncol = ncol(data_1),
+                            nrow = 0))
+
+
+
+
+colnames(test_rwf_df_4) <- data_1 %>% colnames
+
+test_data_4 %>% dim
+```
