@@ -1,0 +1,62 @@
+> load(file = 'models/stacking/data_test_later_CL_classif_40')
+> data_test_40 %>% dim
+[1] 2692   13
+
+Confusion Matrix and Statistics
+
+          Reference
+Prediction    0    1
+         0 1269  169
+         1  146 1803
+                                          
+               Accuracy : 0.907           
+                 95% CI : (0.8967, 0.9166)
+    No Information Rate : 0.5822          
+    P-Value [Acc > NIR] : <2e-16          
+                                          
+                  Kappa : 0.8093          
+                                          
+ Mcnemar's Test P-Value : 0.2151          
+                                          
+            Sensitivity : 0.9143          
+            Specificity : 0.8968          
+         Pos Pred Value : 0.9251          
+         Neg Pred Value : 0.8825          
+             Prevalence : 0.5822          
+         Detection Rate : 0.5323          
+   Detection Prevalence : 0.5754          
+      Balanced Accuracy : 0.9056          
+                                          
+       'Positive' Class : 1          
+
+> Index_temp %>% length()
+[1] 42785
+
+
+
+Confusion Matrix and Statistics
+
+          Reference
+Prediction    0    1
+         0 1140  136
+         1  122 1255
+                                          
+               Accuracy : 0.9028          
+                 95% CI : (0.8908, 0.9138)
+    No Information Rate : 0.5243          
+    P-Value [Acc > NIR] : <2e-16          
+                                          
+                  Kappa : 0.8051          
+                                          
+ Mcnemar's Test P-Value : 0.4183          
+                                          
+            Sensitivity : 0.9022          
+            Specificity : 0.9033          
+         Pos Pred Value : 0.9114          
+         Neg Pred Value : 0.8934          
+             Prevalence : 0.5243          
+         Detection Rate : 0.4730          
+   Detection Prevalence : 0.5190          
+      Balanced Accuracy : 0.9028          
+                                          
+       'Positive' Class : 1     
