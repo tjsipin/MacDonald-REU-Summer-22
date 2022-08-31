@@ -1,13 +1,12 @@
 ---
-title: "stacked_later_CL_classif_ROCAUC"
+title: "stacked_early_CL_classif_ROCAUC"
 author: "TJ Sipin"
 date: "`r Sys.Date()`"
 output: html_document
 ---
 
-
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = T, cache = T, eval = T, results = 'show')
+knitr::opts_chunk$set(echo = T, cache = T, eval = F, results = 'show')
 ```
 
 This report gives five different stacked models to predict cutaneous leishmaniasis using data from 2000 to 2013, with each model differing by threshold determining what constitutes low levels and high levels of cutaneous leishmaniasis.
@@ -19,8 +18,7 @@ set.seed(123)
 library(tidyverse)
 library(tidymodels)
 library(stacks)
-aad <- read_csv('models/data/aad.csv')
-load('./data/imp')
+load(file = '../../data/imp')
 ```
 
 
@@ -34,13 +32,13 @@ However, for the purpose of simplicity, our predictive models are built on the a
 
 ## 30th percentile
 
-First, we clean our data by removing all NA values and 0s of cutaneous leishmaniasis found in our imputed data set. This is because municipalities without cutaneous leishmaniasis are not in our target population. Then we focus separately on early data before 2014 and later data 2014 and later. This is because there was a change in how the socioeconomic level of each observation is measured. The two variables `StableLights` and `AvgRad` are complimentary to each other in whether they were reported. `StableLights` was reported only in years before 2014 and `AvgRad` was reported only in years 2014 and up. All early data was handled and predicted on by TJ Sipin, the author of this report, while all later data was handled and predicted on by Lyndsey Umsted.
+First, we clean our data by removing all NA values and 0s of cutaneous leishmaniasis found in our imputed data set. This is because municipalities without cutaneous leishmaniasis are not in our target population. Then we focus only on early data, i.e. observations before 2014. This is because there was a change in how the socioeconomic level of each observation is measured. The two variables `StableLights` and `AvgRad` are complimentary to each other in whether they were reported. `StableLights` was reported only in years before 2014 and `AvgRad` was reported only in years 2014 and up. All early data was handled and predicted on by TJ Sipin, the author of this report, while all later data was handled and predicted on by Lyndsey Umsted.
 
 We both chose our predictors to be `LST_Day`, `NDVI`, `EVI`, `Precip`, `SWOccurrence`, `pland_forest`, `te_forest`, `enn_mn_forest`, `Population`, and the socioeconomic variable. Since all target variables are reported on the continuous scale and we are not using a regression model, we categorize each observation as low levels (0) and high levels (1), splitting at the 30th quantile of the subset of cutaneous leishmaniasis with NAs and zeros removed. The other models are split at the 40th, 50th, 60th, and 70th quantiles, respectively.
 
 
-```{r}
-# load and split the later data using imputed data
+```{r, eval=T}
+# load and split the early data using imputed data
 
 quantile_data <- data %>% 
   filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
@@ -51,12 +49,12 @@ quantile <- (quantile_data$Cutaneous.Leishmaniasis %>%
   quantile(0.3))[[1]] # PARAMETER
 
 data <- data %>%
-  filter(Year > 2013) %>%
+  filter(Year < 2014) %>%
   filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
   filter(Cutaneous.Leishmaniasis > 0) %>%
   dplyr::select(c('Cutaneous.Leishmaniasis', 'LST_Day', # include LST_Night?
                   'NDVI', 'EVI', 'Precip', 
-                  'AvgRad', 'SWOccurrence', 'pland_forest',
+                  'StableLights', 'SWOccurrence', 'pland_forest',
                   'te_forest', 'enn_mn_forest','Population'))
 
 
@@ -69,29 +67,13 @@ data$Cutaneous.Leishmaniasis <- as.factor(ifelse(data$Cutaneous.Leishmaniasis < 
 
 The next step is to split data set into the training and testing subsets and set up a 5-fold cross-validation for when we train our base models.
 
-```{r}
+```{r, eval=T}
 set.seed(123) # for reproducibility
-aad <- aad %>% 
-  filter(Year > 2013) %>%
-  filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
-  filter(Cutaneous.Leishmaniasis > 0) 
 
 split <- initial_split(data)
 
 data_train <- training(split)
-data_test_30_temp <- testing(split)
-Index_temp <- as.numeric(rownames(data_test_30_temp))
-data_test_30 <-  (aad %>% 
-                    dplyr::select(c(colnames(data_test_30_temp))))[Index_temp,] %>% 
-  subset(!is.na(LST_Day)) %>% 
-  subset(!is.na(SWOccurrence))
-
-
-data_test_30$pland_forest <- ifelse(is.na(data_test_30$pland_forest), 0, data_test_30$pland_forest)
-data_test_30$te_forest <- ifelse(is.na(data_test_30$te_forest), 0, data_test_30$te_forest)
-data_test_30$enn_mn_forest <- ifelse(is.na(data_test_30$enn_mn_forest), 0, data_test_30$enn_mn_forest)
-
-data_test_30$Cutaneous.Leishmaniasis <- as.factor(ifelse(data_test_30$Cutaneous.Leishmaniasis < quantile, 0, 1))
+data_test_30 <- testing(split)
 
 # use a 5-fold cross-validation
 folds <- rsample::vfold_cv(data_train, 
@@ -99,28 +81,14 @@ folds <- rsample::vfold_cv(data_train,
                            strata = Cutaneous.Leishmaniasis)
 ```
 
-
-```{r}
-data_test_30_2 <- aad[as.numeric(rownames(data_test_30)),]
-library(finalfit)
-missing_plot(data_test_30_2)
-explanatory = c('LST_Day', # include LST_Night?
-                  'NDVI', 'EVI', 'Precip', 
-                  'AvgRad', 'SWOccurrence', 'pland_forest',
-                  'te_forest', 'enn_mn_forest','Population')
-dependent = 'Cutaneous.Leishmaniasis'
-data_test_30_2 %>% 
-  missing_pairs(dependent, explanatory)
-
-# remove NA for SWO and LST_Day
-```
-
 Here, we set up the recipe and workflow using Tidyverse functions.
 
 ```{r}
 # set up a basic recipe
 data_rec <-
-  recipe(Cutaneous.Leishmaniasis ~ LST_Day + NDVI + EVI + Precip + AvgRad + SWOccurrence + pland_forest + te_forest + enn_mn_forest + Population, data = data_train) %>%
+  recipe(Cutaneous.Leishmaniasis ~ LST_Day + NDVI + 
+           EVI + Precip + StableLights + SWOccurrence + pland_forest + 
+           te_forest + enn_mn_forest + Population, data = data_train) %>%
   step_dummy(all_nominal() - all_outcomes()) %>% 
   step_zv(all_predictors()) %>% 
   step_normalize(all_numeric())
@@ -186,7 +154,7 @@ svm_res <-
     control = ctrl_grid
   )
 
-save(svm_res, file = 'models/stacking/svm_res_later_CL_classif_30')
+save(svm_res, file = 'saved_models/svm_res_early_CL_classif_30')
 
 # define xgboost model using parsnip
 
@@ -217,7 +185,7 @@ xgb_res <-
     control = ctrl_grid
   )
 
-save(xgb_res, file = 'models/stacking/xgb_res_later_CL_classif_30')
+save(xgb_res, file = 'base_models/xgb_res_early_CL_classif_30')
 
 
 # define rf model using parsnip
@@ -247,10 +215,10 @@ rf_res <-
   )
 
 
-save(rf_res, file = 'models/stacking/rf_res_later_CL_classif_30')
+save(rf_res, file = 'base_models/rf_res_early_CL_classif_30')
 # 
 
-install.packages('naivebayes')
+
 library(discrim) # for engine = 'naivebayes' or 'klaR'
 library(agua) # for engine = 'h2o'
 
@@ -279,16 +247,16 @@ nb_res <-
     control = ctrl_grid
   )
 
-save(nb_res, file = 'models/stacking/nb_res_later_CL_classif_30')
+save(nb_res, file = 'base_models/nb_res_early_CL_classif_30')
 ```
 
 Finally, we build our stacked model based on the best performing base model candidates.
 
 ```{r}
-load(file = 'models/stacking/svm_res_later_CL_classif_30')
-load(file = 'models/stacking/xgb_res_later_CL_classif_30')
-load(file = 'models/stacking/rf_res_later_CL_classif_30')
-load(file = 'models/stacking/nb_res_later_CL_classif_30')
+load(file = 'base_models/svm_res_early_CL_classif_30')
+load(file = 'base_models/xgb_res_early_CL_classif_30')
+load(file = 'base_models/rf_res_early_CL_classif_30')
+load(file = 'base_models/nb_res_early_CL_classif_30')
 
 
 data_st_30 <- 
@@ -299,11 +267,11 @@ data_st_30 <-
   add_candidates(nb_res)
 
 
-save(data_st_30, file = 'models/stacking/data_st_later_CL_classif_30')
+save(data_st_30, file = 'data_stacks/data_st_early_CL_classif_30')
 
 # creating a model stack
 ## ready to evaluate how it is that we need to combine predictions from
-## each candidate ensemble member
+## each candidate ensembe member
 
 model_st_30 <-
   data_st_30 %>% 
@@ -313,24 +281,24 @@ model_st_30 <-
   model_st_30 %>% 
   fit_members()
 
-save(model_st_30, file = 'models/stacking/model_st_later_CL_classif_30')
+save(model_st_30, file = 'model_stacks/model_st_early_CL_classif_30')
 
-# set.seed(123)
-# data_test_30 <- testing(split)
- 
+set.seed(123)
+data_test_30 <- testing(split)
+
 data_test_30 <-
   data_test_30 %>%
   bind_cols(predict(model_st_30, .))
 
-save(data_test_30, file = 'models/stacking/data_test_later_CL_classif_30')
+save(data_test_30, file = 'data_tests/data_test_early_CL_classif_30')
 
 
 # confusion matrix for stacks
-conf_mat_later_CL_classif_30 <- caret::confusionMatrix(data = data_test_30$.pred_class, reference = data_test_30$Cutaneous.Leishmaniasis, positive = '1')
+conf_mat_early_CL_classif_30 <- caret::confusionMatrix(data = data_test_30$.pred_class, 
+                                                       reference = data_test_30$Cutaneous.Leishmaniasis,
+                                                       positive = '1')
 
-conf_mat_later_CL_classif_30 
-
-save(conf_mat_later_CL_classif_30, file = 'models/stacking/conf_mat_later_CL_classif_30')
+save(conf_mat_early_CL_classif_30, file = 'conf_mats/conf_mat_early_CL_classif_30')
 
 # confusion matrix for base models
 
@@ -344,28 +312,19 @@ member_preds <-
       members = TRUE
     )
   )
-
-colnames(member_preds) %>% 
-  map_dfr(
-    .f = sensitivity,
-    truth = as.factor(Cutaneous.Leishmaniasis),
-    data = member_preds
-  ) %>% 
-  mutate(member = colnames(member_preds))
 ```
 
 The rest of the models are built similarly, with only the quantile threshold as a parameter.
 
-```{r 40th percentile, , echo=F}
+```{r 40th percentile, eval=T, echo=F}
 # helper packages
 library(tidyverse)
 library(tidymodels)
 library(stacks)
 
-set.seed(123)
-# load and split the later data using imputed data
-load('./data/imp')
-aad <- read_csv('models/data/aad.csv')
+
+# load and split the early data using imputed data
+load(file = '../../data/imp')
 
 
 quantile_data <- data %>% 
@@ -377,12 +336,12 @@ quantile <- (quantile_data$Cutaneous.Leishmaniasis %>%
   quantile(0.4))[[1]] # PARAMETER
 
 data <- data %>%
-  filter(Year > 2013) %>%
+  filter(Year < 2014) %>%
   filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
   filter(Cutaneous.Leishmaniasis > 0) %>%
   dplyr::select(c('Cutaneous.Leishmaniasis', 'LST_Day', # include LST_Night?
                   'NDVI', 'EVI', 'Precip', 
-                  'AvgRad', 'SWOccurrence', 'pland_forest',
+                  'StableLights', 'SWOccurrence', 'pland_forest',
                   'te_forest', 'enn_mn_forest','Population'))
 
 
@@ -393,27 +352,11 @@ data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
 data$Cutaneous.Leishmaniasis <- as.factor(ifelse(data$Cutaneous.Leishmaniasis < quantile, 0, 1))
 
 set.seed(123) # for reproducibility
-aad <- aad %>% 
-  filter(Year > 2013) %>%
-  filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
-  filter(Cutaneous.Leishmaniasis > 0) 
 
 split <- initial_split(data)
 
 data_train <- training(split)
-data_test_40_temp <- testing(split)
-
-data_test_40 <-  (aad %>% 
-                    dplyr::select(c(colnames(data_test_40_temp))))[Index_temp,] %>% 
-  subset(!is.na(LST_Day)) %>% 
-  subset(!is.na(SWOccurrence))
-
-
-data_test_40$pland_forest <- ifelse(is.na(data_test_40$pland_forest), 0, data_test_40$pland_forest)
-data_test_40$te_forest <- ifelse(is.na(data_test_40$te_forest), 0, data_test_40$te_forest)
-data_test_40$enn_mn_forest <- ifelse(is.na(data_test_40$enn_mn_forest), 0, data_test_40$enn_mn_forest)
-
-data_test_40$Cutaneous.Leishmaniasis <- as.factor(ifelse(data_test_40$Cutaneous.Leishmaniasis < quantile, 0, 1))
+data_test_40 <- testing(split)
 
 # use a 5-fold cross-validation
 folds <- rsample::vfold_cv(data_train, 
@@ -423,7 +366,7 @@ folds <- rsample::vfold_cv(data_train,
 # set up a basic recipe
 data_rec <-
   recipe(Cutaneous.Leishmaniasis ~ LST_Day + NDVI + 
-           EVI + Precip + AvgRad + SWOccurrence + pland_forest + 
+           EVI + Precip + StableLights + SWOccurrence + pland_forest + 
            te_forest + enn_mn_forest + Population, data = data_train) %>%
   step_dummy(all_nominal() - all_outcomes()) %>% 
   step_zv(all_predictors()) %>% 
@@ -486,7 +429,7 @@ svm_res <-
     control = ctrl_grid
   )
 
-save(svm_res, file = 'models/stacking/svm_res_later_CL_classif_40')
+save(svm_res, file = 'base_models/svm_res_early_CL_classif_40_noyear')
 
 # define xgboost model using parsnip
 
@@ -517,7 +460,7 @@ xgb_res <-
     control = ctrl_grid
   )
 
-save(xgb_res, file = 'models/stacking/xgb_res_later_CL_classif_40')
+save(xgb_res, file = 'base_models/xgb_res_early_CL_classif_40_noyear')
 # 
 
 # define rf model using parsnip
@@ -547,7 +490,7 @@ rf_res <-
   )
 
 
-save(rf_res, file = 'models/stacking/rf_res_later_CL_classif_40')
+save(rf_res, file = 'base_models/rf_res_early_CL_classif_40_noyear')
 # 
 
 
@@ -579,12 +522,12 @@ nb_res <-
     control = ctrl_grid
   )
 
-save(nb_res, file = 'models/stacking/nb_res_later_CL_classif_40')
+save(nb_res, file = 'base_models/nb_res_early_CL_classif_40_noyear')
 
-load(file = 'models/stacking/svm_res_later_CL_classif_40')
-load(file = 'models/stacking/xgb_res_later_CL_classif_40')
-load(file = 'models/stacking/rf_res_later_CL_classif_40')
-load(file = 'models/stacking/nb_res_later_CL_classif_40')
+load(file = 'base_models/svm_res_early_CL_classif_40_noyear')
+load(file = 'base_models/xgb_res_early_CL_classif_40_noyear')
+load(file = 'base_models/rf_res_early_CL_classif_40_noyear')
+load(file = 'base_models/nb_res_early_CL_classif_40_noyear')
 
 
 data_st_40 <- 
@@ -595,8 +538,7 @@ data_st_40 <-
   add_candidates(nb_res)
 
 
-save(data_st_40, file = 'models/stacking/data_st_later_CL_classif_40')
-load('models/stacking/data_st_later_CL_classif_40')
+save(data_st_40, file = 'data_stacks/data_st_early_CL_classif_40_noyear')
 
 # creating a model stack
 ## ready to evaluate how it is that we need to combine predictions from
@@ -610,23 +552,24 @@ model_st_40 <-
   model_st_40 %>% 
   fit_members()
 
-save(model_st_40, file = 'models/stacking/model_st_later_CL_classif_40')
+save(model_st_40, file = 'model_stacks/model_st_early_CL_classif_40_noyear')
 
-load('models/stacking/model_st_later_CL_classif_40')
+set.seed(123)
+data_test_40 <- testing(split)
 
 data_test_40 <-
   data_test_40 %>%
   bind_cols(predict(model_st_40, .))
 
-save(data_test_40, file = 'models/stacking/data_test_later_CL_classif_40')
+save(data_test_40, file = 'data_tests/data_test_early_CL_classif_40_noyear')
 
-load(file = 'models/stacking/data_test_later_CL_classif_40')
+
 # confusion matrix for stacks
-conf_mat_later_CL_classif_40 <- caret::confusionMatrix(data = data_test_40$.pred_class, reference = data_test_40$Cutaneous.Leishmaniasis,positive = '1')
+conf_mat_early_CL_classif_40 <- caret::confusionMatrix(data = data_test_40$.pred_class, 
+                                                       reference = data_test_40$Cutaneous.Leishmaniasis,
+                                                       positive = '1')
 
-conf_mat_later_CL_classif_40
-
-save(conf_mat_later_CL_classif_40, file = 'models/stacking/conf_mat_later_CL_classif_40')
+save(conf_mat_early_CL_classif_40, file = 'conf_mats/conf_mat_early_CL_classif_40_noyear')
 
 # confusion matrix for base models
 
@@ -641,19 +584,22 @@ member_preds <-
     )
   )
 
+
+
+
 ```
 
 
 
-```{r 50th percentile, , echo=F}
+```{r 50th percentile, eval=T, echo=F}
 # helper packages
 library(tidyverse)
 library(tidymodels)
 library(stacks)
 
 
-# load and split the later data using imputed data
-load('./data/imp')
+# load and split the early data using imputed data
+load(file = '../../data/imp')
 
 
 quantile_data <- data %>% 
@@ -665,12 +611,12 @@ quantile <- (quantile_data$Cutaneous.Leishmaniasis %>%
   quantile(0.5))[[1]] # PARAMETER
 
 data <- data %>%
-  filter(Year > 2013) %>%
+  filter(Year < 2014) %>%
   filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
   filter(Cutaneous.Leishmaniasis > 0) %>%
   dplyr::select(c('Cutaneous.Leishmaniasis', 'LST_Day', # include LST_Night?
                   'NDVI', 'EVI', 'Precip', 
-                  'AvgRad', 'SWOccurrence', 'pland_forest',
+                  'StableLights', 'SWOccurrence', 'pland_forest',
                   'te_forest', 'enn_mn_forest','Population'))
 
 
@@ -681,27 +627,11 @@ data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
 data$Cutaneous.Leishmaniasis <- as.factor(ifelse(data$Cutaneous.Leishmaniasis < quantile, 0, 1))
 
 set.seed(123) # for reproducibility
-aad <- aad %>% 
-  filter(Year > 2013) %>%
-  filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
-  filter(Cutaneous.Leishmaniasis > 0) 
 
 split <- initial_split(data)
 
 data_train <- training(split)
-data_test_50_temp <- testing(split)
-
-data_test_50 <-  (aad %>% 
-                    dplyr::select(c(colnames(data_test_50_temp))))[Index_temp,] %>% 
-  subset(!is.na(LST_Day)) %>% 
-  subset(!is.na(SWOccurrence))
-
-
-data_test_50$pland_forest <- ifelse(is.na(data_test_50$pland_forest), 0, data_test_50$pland_forest)
-data_test_50$te_forest <- ifelse(is.na(data_test_50$te_forest), 0, data_test_50$te_forest)
-data_test_50$enn_mn_forest <- ifelse(is.na(data_test_50$enn_mn_forest), 0, data_test_50$enn_mn_forest)
-
-data_test_50$Cutaneous.Leishmaniasis <- as.factor(ifelse(data_test_50$Cutaneous.Leishmaniasis < quantile, 0, 1))
+data_test_50 <- testing(split)
 
 # use a 5-fold cross-validation
 folds <- rsample::vfold_cv(data_train, 
@@ -711,7 +641,7 @@ folds <- rsample::vfold_cv(data_train,
 # set up a basic recipe
 data_rec <-
   recipe(Cutaneous.Leishmaniasis ~ LST_Day + NDVI + 
-           EVI + Precip + AvgRad + SWOccurrence + pland_forest + 
+           EVI + Precip + StableLights + SWOccurrence + pland_forest + 
            te_forest + enn_mn_forest + Population, data = data_train) %>%
   step_dummy(all_nominal() - all_outcomes()) %>% 
   step_zv(all_predictors()) %>% 
@@ -774,7 +704,7 @@ svm_res <-
     control = ctrl_grid
   )
 
-save(svm_res, file = 'models/stacking/svm_res_later_CL_classif_50')
+save(svm_res, file = 'base_models/svm_res_early_CL_classif_50')
 
 # define xgboost model using parsnip
 
@@ -805,7 +735,7 @@ xgb_res <-
     control = ctrl_grid
   )
 
-save(xgb_res, file = 'models/stacking/xgb_res_later_CL_classif_50')
+save(xgb_res, file = 'base_models/xgb_res_early_CL_classif_50')
 # 
 
 # define rf model using parsnip
@@ -835,7 +765,7 @@ rf_res <-
   )
 
 
-save(rf_res, file = 'models/stacking/rf_res_later_CL_classif_50')
+save(rf_res, file = 'base_models/rf_res_early_CL_classif_50')
 # 
 
 
@@ -867,12 +797,12 @@ nb_res <-
     control = ctrl_grid
   )
 
-save(nb_res, file = 'models/stacking/nb_res_later_CL_classif_50')
+save(nb_res, file = 'base_models/nb_res_early_CL_classif_50')
 
-load(file = 'models/stacking/svm_res_later_CL_classif_50')
-load(file = 'models/stacking/xgb_res_later_CL_classif_50')
-load(file = 'models/stacking/rf_res_later_CL_classif_50')
-load(file = 'models/stacking/nb_res_later_CL_classif_50')
+load(file = 'base_models/svm_res_early_CL_classif_50')
+load(file = 'base_models/xgb_res_early_CL_classif_50')
+load(file = 'base_models/rf_res_early_CL_classif_50')
+load(file = 'base_models/nb_res_early_CL_classif_50')
 
 
 data_st_50 <- 
@@ -883,7 +813,7 @@ data_st_50 <-
   add_candidates(nb_res)
 
 
-save(data_st_50, file = 'models/stacking/data_st_later_CL_classif_50')
+save(data_st_50, file = 'data_stacks/data_st_early_CL_classif_50')
 
 # creating a model stack
 ## ready to evaluate how it is that we need to combine predictions from
@@ -897,23 +827,24 @@ model_st_50 <-
   model_st_50 %>% 
   fit_members()
 
-save(model_st_50, file = 'models/stacking/model_st_later_CL_classif_50')
+save(model_st_50, file = 'model_stacks/model_st_early_CL_classif_50')
 
+set.seed(123)
+data_test_50 <- testing(split)
 
 data_test_50 <-
   data_test_50 %>%
   bind_cols(predict(model_st_50, .))
 
-save(data_test_50, file = 'models/stacking/data_test_later_CL_classif_50')
+save(data_test_50, file = 'data_tests/data_test_early_CL_classif_50')
 
 
 # confusion matrix for stacks
-conf_mat_later_CL_classif_50 <- caret::confusionMatrix(data = data_test_50$.pred_class, 
+conf_mat_early_CL_classif_50 <- caret::confusionMatrix(data = data_test_50$.pred_class, 
                                                        reference = data_test_50$Cutaneous.Leishmaniasis,
                                                        positive = '1')
-conf_mat_later_CL_classif_50
 
-save(conf_mat_later_CL_classif_50, file = 'models/stacking/conf_mat_later_CL_classif_50')
+save(conf_mat_early_CL_classif_50, file = 'conf_mats/conf_mat_early_CL_classif_50')
 
 # confusion matrix for base models
 
@@ -932,16 +863,15 @@ member_preds <-
 ```
 
 
-```{r 60th percentile, , echo=F}
+```{r 60th percentile, eval=T, echo=F}
 # helper packages
 library(tidyverse)
 library(tidymodels)
 library(stacks)
 
 
-# load and split the later data using imputed data
-aad <- read_csv('models/data/aad.csv')
-load('./data/imp')
+# load and split the early data using imputed data
+load(file = '../../data/imp')
 
 
 quantile_data <- data %>% 
@@ -953,12 +883,12 @@ quantile <- (quantile_data$Cutaneous.Leishmaniasis %>%
   quantile(0.6))[[1]] # PARAMETER
 
 data <- data %>%
-  filter(Year > 2013) %>%
+  filter(Year < 2014) %>%
   filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
   filter(Cutaneous.Leishmaniasis > 0) %>%
   dplyr::select(c('Cutaneous.Leishmaniasis', 'LST_Day', # include LST_Night?
                   'NDVI', 'EVI', 'Precip', 
-                  'AvgRad', 'SWOccurrence', 'pland_forest',
+                  'StableLights', 'SWOccurrence', 'pland_forest',
                   'te_forest', 'enn_mn_forest','Population'))
 
 
@@ -969,27 +899,11 @@ data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
 data$Cutaneous.Leishmaniasis <- as.factor(ifelse(data$Cutaneous.Leishmaniasis < quantile, 0, 1))
 
 set.seed(123) # for reproducibility
-aad <- aad %>% 
-  filter(Year > 2013) %>%
-  filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
-  filter(Cutaneous.Leishmaniasis > 0) 
 
 split <- initial_split(data)
 
 data_train <- training(split)
-data_test_60_temp <- testing(split)
-
-data_test_60 <-  (aad %>% 
-                    dplyr::select(c(colnames(data_test_60_temp))))[Index_temp,] %>% 
-  subset(!is.na(LST_Day)) %>% 
-  subset(!is.na(SWOccurrence))
-
-
-data_test_60$pland_forest <- ifelse(is.na(data_test_60$pland_forest), 0, data_test_60$pland_forest)
-data_test_60$te_forest <- ifelse(is.na(data_test_60$te_forest), 0, data_test_60$te_forest)
-data_test_60$enn_mn_forest <- ifelse(is.na(data_test_60$enn_mn_forest), 0, data_test_60$enn_mn_forest)
-
-data_test_60$Cutaneous.Leishmaniasis <- as.factor(ifelse(data_test_60$Cutaneous.Leishmaniasis < quantile, 0, 1))
+data_test_60 <- testing(split)
 
 # use a 5-fold cross-validation
 folds <- rsample::vfold_cv(data_train, 
@@ -999,7 +913,7 @@ folds <- rsample::vfold_cv(data_train,
 # set up a basic recipe
 data_rec <-
   recipe(Cutaneous.Leishmaniasis ~ LST_Day + NDVI + 
-           EVI + Precip + AvgRad + SWOccurrence + pland_forest + 
+           EVI + Precip + StableLights + SWOccurrence + pland_forest + 
            te_forest + enn_mn_forest + Population, data = data_train) %>%
   step_dummy(all_nominal() - all_outcomes()) %>% 
   step_zv(all_predictors()) %>% 
@@ -1062,7 +976,7 @@ svm_res <-
     control = ctrl_grid
   )
 
-save(svm_res, file = 'models/stacking/svm_res_later_CL_classif_60')
+save(svm_res, file = 'base_models/svm_res_early_CL_classif_60')
 
 # define xgboost model using parsnip
 
@@ -1093,7 +1007,7 @@ xgb_res <-
     control = ctrl_grid
   )
 
-save(xgb_res, file = 'models/stacking/xgb_res_later_CL_classif_60')
+save(xgb_res, file = 'base_models/xgb_res_early_CL_classif_60')
 # 
 
 # define rf model using parsnip
@@ -1123,7 +1037,7 @@ rf_res <-
   )
 
 
-save(rf_res, file = 'models/stacking/rf_res_later_CL_classif_60')
+save(rf_res, file = 'base_models/rf_res_early_CL_classif_60')
 # 
 
 
@@ -1155,12 +1069,12 @@ nb_res <-
     control = ctrl_grid
   )
 
-save(nb_res, file = 'models/stacking/nb_res_later_CL_classif_60')
+save(nb_res, file = 'base_models/nb_res_early_CL_classif_60')
 
-load(file = 'models/stacking/svm_res_later_CL_classif_60')
-load(file = 'models/stacking/xgb_res_later_CL_classif_60')
-load(file = 'models/stacking/rf_res_later_CL_classif_60')
-load(file = 'models/stacking/nb_res_later_CL_classif_60')
+load(file = 'base_models/svm_res_early_CL_classif_60')
+load(file = 'base_models/xgb_res_early_CL_classif_60')
+load(file = 'base_models/rf_res_early_CL_classif_60')
+load(file = 'base_models/nb_res_early_CL_classif_60')
 
 
 data_st_60 <- 
@@ -1171,7 +1085,7 @@ data_st_60 <-
   add_candidates(nb_res)
 
 
-save(data_st_60, file = 'models/stacking/data_st_later_CL_classif_60')
+save(data_st_60, file = 'data_stacks/data_st_early_CL_classif_60')
 
 # creating a model stack
 ## ready to evaluate how it is that we need to combine predictions from
@@ -1185,7 +1099,7 @@ model_st_60 <-
   model_st_60 %>% 
   fit_members()
 
-save(model_st_60, file = 'models/stacking/model_st_later_CL_classif_60')
+save(model_st_60, file = 'model_stacks/model_st_early_CL_classif_60')
 
 set.seed(123)
 data_test_60 <- testing(split)
@@ -1194,17 +1108,15 @@ data_test_60 <-
   data_test_60 %>%
   bind_cols(predict(model_st_60, .))
 
-save(data_test_60, file = 'models/stacking/data_test_later_CL_classif_60')
+save(data_test_60, file = 'data_tests/data_test_early_CL_classif_60')
 
 
 # confusion matrix for stacks
-conf_mat_later_CL_classif_60 <- caret::confusionMatrix(data = data_test_60$.pred_class, 
+conf_mat_early_CL_classif_60 <- caret::confusionMatrix(data = data_test_60$.pred_class, 
                                                        reference = data_test_60$Cutaneous.Leishmaniasis,
                                                        positive = '1')
 
-conf_mat_later_CL_classif_60
-
-save(conf_mat_later_CL_classif_60, file = 'models/stacking/conf_mat_later_CL_classif_60')
+save(conf_mat_early_CL_classif_60, file = 'conf_mats/conf_mat_early_CL_classif_60')
 
 # confusion matrix for base models
 
@@ -1223,16 +1135,15 @@ member_preds <-
 ```
 
 
-```{r 70th percentile, , echo=F}
+```{r 70th percentile, eval=T, echo=F}
 # helper packages
 library(tidyverse)
 library(tidymodels)
 library(stacks)
 
 
-# load and split the later data using imputed data
-aad <- read_csv('models/data/aad.csv')
-load('./data/imp')
+# load and split the early data using imputed data
+load(file = '../../data/imp')
 
 
 quantile_data <- data %>% 
@@ -1244,12 +1155,12 @@ quantile <- (quantile_data$Cutaneous.Leishmaniasis %>%
   quantile(0.7))[[1]] # PARAMETER
 
 data <- data %>%
-  filter(Year > 2013) %>%
+  filter(Year < 2014) %>%
   filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
   filter(Cutaneous.Leishmaniasis > 0) %>%
   dplyr::select(c('Cutaneous.Leishmaniasis', 'LST_Day', # include LST_Night?
                   'NDVI', 'EVI', 'Precip', 
-                  'AvgRad', 'SWOccurrence', 'pland_forest',
+                  'StableLights', 'SWOccurrence', 'pland_forest',
                   'te_forest', 'enn_mn_forest','Population'))
 
 
@@ -1260,27 +1171,11 @@ data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
 data$Cutaneous.Leishmaniasis <- as.factor(ifelse(data$Cutaneous.Leishmaniasis < quantile, 0, 1))
 
 set.seed(123) # for reproducibility
-aad <- aad %>% 
-  filter(Year > 2013) %>%
-  filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
-  filter(Cutaneous.Leishmaniasis > 0) 
 
 split <- initial_split(data)
 
 data_train <- training(split)
-data_test_70_temp <- testing(split)
-
-data_test_70 <-  (aad %>% 
-                    dplyr::select(c(colnames(data_test_70_temp))))[Index_temp,]%>%
-  subset(!is.na(LST_Day)) %>% 
-  subset(!is.na(SWOccurrence))
-
-
-data_test_70$pland_forest <- ifelse(is.na(data_test_70$pland_forest), 0, data_test_70$pland_forest)
-data_test_70$te_forest <- ifelse(is.na(data_test_70$te_forest), 0, data_test_70$te_forest)
-data_test_70$enn_mn_forest <- ifelse(is.na(data_test_70$enn_mn_forest), 0, data_test_70$enn_mn_forest)
-
-data_test_70$Cutaneous.Leishmaniasis <- as.factor(ifelse(data_test_70$Cutaneous.Leishmaniasis < quantile, 0, 1))
+data_test_70 <- testing(split)
 
 # use a 5-fold cross-validation
 folds <- rsample::vfold_cv(data_train, 
@@ -1290,7 +1185,7 @@ folds <- rsample::vfold_cv(data_train,
 # set up a basic recipe
 data_rec <-
   recipe(Cutaneous.Leishmaniasis ~ LST_Day + NDVI + 
-           EVI + Precip + AvgRad + SWOccurrence + pland_forest + 
+           EVI + Precip + StableLights + SWOccurrence + pland_forest + 
            te_forest + enn_mn_forest + Population, data = data_train) %>%
   step_dummy(all_nominal() - all_outcomes()) %>% 
   step_zv(all_predictors()) %>% 
@@ -1353,7 +1248,7 @@ svm_res <-
     control = ctrl_grid
   )
 
-save(svm_res, file = 'models/stacking/svm_res_later_CL_classif_70')
+save(svm_res, file = 'base_models/svm_res_early_CL_classif_70')
 
 # define xgboost model using parsnip
 
@@ -1384,7 +1279,7 @@ xgb_res <-
     control = ctrl_grid
   )
 
-save(xgb_res, file = 'models/stacking/xgb_res_later_CL_classif_70')
+save(xgb_res, file = 'base_models/xgb_res_early_CL_classif_70')
 # 
 
 # define rf model using parsnip
@@ -1414,7 +1309,7 @@ rf_res <-
   )
 
 
-save(rf_res, file = 'models/stacking/rf_res_later_CL_classif_70')
+save(rf_res, file = 'base_models/rf_res_early_CL_classif_70')
 # 
 
 
@@ -1446,12 +1341,12 @@ nb_res <-
     control = ctrl_grid
   )
 
-save(nb_res, file = 'models/stacking/nb_res_later_CL_classif_70')
+save(nb_res, file = 'base_models/nb_res_early_CL_classif_70')
 
-load(file = 'models/stacking/svm_res_later_CL_classif_70')
-load(file = 'models/stacking/xgb_res_later_CL_classif_70')
-load(file = 'models/stacking/rf_res_later_CL_classif_70')
-load(file = 'models/stacking/nb_res_later_CL_classif_70')
+load(file = 'base_models/svm_res_early_CL_classif_70')
+load(file = 'base_models/xgb_res_early_CL_classif_70')
+load(file = 'base_models/rf_res_early_CL_classif_70')
+load(file = 'base_models/nb_res_early_CL_classif_70')
 
 
 data_st_70 <- 
@@ -1462,7 +1357,7 @@ data_st_70 <-
   add_candidates(nb_res)
 
 
-save(data_st_70, file = 'models/stacking/data_st_later_CL_classif_70')
+save(data_st_70, file = 'data_stacks/data_st_early_CL_classif_70')
 
 # creating a model stack
 ## ready to evaluate how it is that we need to combine predictions from
@@ -1476,7 +1371,7 @@ model_st_70 <-
   model_st_70 %>% 
   fit_members()
 
-save(model_st_70, file = 'models/stacking/model_st_later_CL_classif_70')
+save(model_st_70, file = 'model_stacks/model_st_early_CL_classif_70')
 
 set.seed(123)
 data_test_70 <- testing(split)
@@ -1485,17 +1380,15 @@ data_test_70 <-
   data_test_70 %>%
   bind_cols(predict(model_st_70, .))
 
-save(data_test_70, file = 'models/stacking/data_test_later_CL_classif_70')
+save(data_test_70, file = 'data_tests/data_test_early_CL_classif_70')
 
 
 # confusion matrix for stacks
-conf_mat_later_CL_classif_70 <- caret::confusionMatrix(data = data_test_70$.pred_class, 
+conf_mat_early_CL_classif_70 <- caret::confusionMatrix(data = data_test_70$.pred_class, 
                                                        reference = data_test_70$Cutaneous.Leishmaniasis,
                                                        positive = '1')
 
-conf_mat_later_CL_classif_70
-
-save(conf_mat_later_CL_classif_70, file = 'models/stacking/conf_mat_later_CL_classif_70')
+save(conf_mat_early_CL_classif_70, file = 'conf_mats/conf_mat_early_CL_classif_70')
 
 # confusion matrix for base models
 
@@ -1518,36 +1411,36 @@ member_preds <-
 
 
 ```{r confusion matrices, echo=F, eval=T}
-load(file = 'models/stacking/conf_mat_later_CL_classif_30')
-load(file = 'models/stacking/conf_mat_later_CL_classif_40')
-load(file = 'models/stacking/conf_mat_later_CL_classif_50')
-load(file = 'models/stacking/conf_mat_later_CL_classif_60')
-load(file = 'models/stacking/conf_mat_later_CL_classif_70')
+load(file = 'conf_mats/conf_mat_early_CL_classif_30')
+load(file = 'conf_mats/conf_mat_early_CL_classif_40_noyear')
+load(file = 'conf_mats/conf_mat_early_CL_classif_50')
+load(file = 'conf_mats/conf_mat_early_CL_classif_60')
+load(file = 'conf_mats/conf_mat_early_CL_classif_70')
 ```
 
 ### 30th percentile
 ```{r, echo=F, eval=T}
-conf_mat_later_CL_classif_30[1:4]
+conf_mat_early_CL_classif_30[1:4]
 ```
 
 ### 40th percentile
 ```{r, echo=F, eval=T}
-conf_mat_later_CL_classif_40
+conf_mat_early_CL_classif_40[1:4]
 ```
 
 ### 50th percentile
 ```{r, echo=F, eval=T}
-conf_mat_later_CL_classif_50[1:4]
+conf_mat_early_CL_classif_50[1:4]
 ```
 
 ### 60th percentile
 ```{r, echo=F, eval=T}
-conf_mat_later_CL_classif_60[1:4]
+conf_mat_early_CL_classif_60[1:4]
 ```
 
 ### 70th percentile
 ```{r, echo=F, eval=T}
-conf_mat_later_CL_classif_70[1:4]
+conf_mat_early_CL_classif_70[1:4]
 ```
 
 
@@ -1562,15 +1455,15 @@ library(dplyr)
 library(ggplot2)
 library(plotROC)
 
-load(file = 'models/stacking/data_test_later_CL_classif_30')
-load(file = 'models/stacking/data_test_later_CL_classif_40')
-load(file = 'models/stacking/data_test_later_CL_classif_50')
-load(file = 'models/stacking/data_test_later_CL_classif_60')
-load(file = 'models/stacking/data_test_later_CL_classif_70')
+load(file = 'data_tests/data_test_early_CL_classif_30')
+load(file = 'data_tests/data_test_early_CL_classif_40')
+load(file = 'data_tests/data_test_early_CL_classif_50')
+load(file = 'data_tests/data_test_early_CL_classif_60')
+load(file = 'data_tests/data_test_early_CL_classif_70')
 
 roc_30 <- roc(data_test_30$Cutaneous.Leishmaniasis,
     data_test_30$.pred_class %>% as.numeric(),
-    print.auc = T, main = "AUC's of Percentiles in Later Data")
+    print.auc = T)
 roc_40 <- roc(data_test_40$Cutaneous.Leishmaniasis,
     data_test_40$.pred_class %>% as.ordered(),
     print.auc = T)
@@ -1615,7 +1508,7 @@ Now we look at the observations in which our model wrongly classified observatio
 ```{r, eval=T}
 # to get true levels of CL again
 
-data <- read_csv('models/data/aad.csv')
+load(file = '../../data/imp')
 quantile_data <- data %>% 
   filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
   filter(Cutaneous.Leishmaniasis > 0) %>% 
@@ -1625,12 +1518,12 @@ quantile <- (quantile_data$Cutaneous.Leishmaniasis %>%
   quantile(0.4))[[1]] # PARAMETER
 
 data <- data %>%
-  filter(Year > 2013) %>%
+  filter(Year < 2014) %>%
   filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
   filter(Cutaneous.Leishmaniasis > 0) %>%
   dplyr::select(c('Cutaneous.Leishmaniasis', 'LST_Day', # include LST_Night?
                   'NDVI', 'EVI', 'Precip', 
-                  'AvgRad', 'SWOccurrence', 'pland_forest',
+                  'StableLights', 'SWOccurrence', 'pland_forest',
                   'te_forest', 'enn_mn_forest','Population'))
 
 
@@ -1658,7 +1551,7 @@ pairs(mis_40 %>% filter(enn_mn_forest > 0) %>% dplyr::select(-c(Case, .pred_clas
 # correlation heatmap
 library(reshape2)
 
-cormat_mis_40 <- round(cor(mis_40 %>% dplyr::select(-c(Cutaneous.Leishmaniasis,Case,.pred_class))), 2)
+cormat_mis_40 <- round(cor(mis_40 %>% select(-c(Cutaneous.Leishmaniasis,Case,.pred_class))), 2)
 melted_cormat_mis_40 <- melt(cormat_mis_40)
 
 
@@ -1700,7 +1593,7 @@ ggplot(data = melted_cormat_data,
   coord_fixed()
 
 
-cormat_mis_40 <- round(cor(mis_40 %>% dplyr::select(-c(Cutaneous.Leishmaniasis,Case,.pred_class))), 2)
+cormat_mis_40 <- round(cor(mis_40 %>% select(-c(Cutaneous.Leishmaniasis,Case,.pred_class))), 2)
 melted_cormat_mis_40 <- melt(cormat_mis_40)
 ggplot(data = melted_cormat_mis_40,
        aes(x = Var1,
@@ -1717,8 +1610,7 @@ ggplot(data = melted_cormat_mis_40,
 
 
 
-
 # Appendix: All code for this report
 
-```{r ref.label=knitr::all_labels(), echo=TRUE, ALSE}
+```{r ref.label=knitr::all_labels(), echo=TRUE, eval=TALSE}
 ```

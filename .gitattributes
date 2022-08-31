@@ -1,5 +1,13 @@
 .RDataTmp filter=lfs diff=lfs merge=lfs -text
-models/data/aad.csv filter=lfs diff=lfs merge=lfs -text
-data/monthly_df.csv filter=lfs diff=lfs merge=lfs -text
+models/stacking/model_st_early_CL_classif_30 filter=lfs diff=lfs merge=lfs -text
+models/stacking/model_st_early_CL_classif_40 filter=lfs diff=lfs merge=lfs -text
+models/stacking/model_st_early_CL_classif_50 filter=lfs diff=lfs merge=lfs -text
+models/stacking/model_st_early_CL_classif_60 filter=lfs diff=lfs merge=lfs -text
+models/stacking/model_st_early_CL_classif_70 filter=lfs diff=lfs merge=lfs -text
+models/stacking/model_st_early_CL_classif_30_noyear filter=lfs diff=lfs merge=lfs -text
+models/stacking/model_st_early_CL_classif_40_noyear filter=lfs diff=lfs merge=lfs -text
+models/stacking/model_st_early_CL_classif_50_noyear filter=lfs diff=lfs merge=lfs -text
+models/stacking/model_st_early_CL_classif_60_noyear filter=lfs diff=lfs merge=lfs -text
+models/stacking/model_st_early_CL_classif_70_noyear filter=lfs diff=lfs merge=lfs -text
 
 .RData filter=lfs diff=lfs merge=lfs -text
