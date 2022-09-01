@@ -24,9 +24,8 @@ set.seed(123)
 library(tidyverse)
 library(tidymodels)
 library(stacks)
-aad <- read_csv('models/data/aad.csv')
-load('./data/imp')
-aad <- read_csv('models/data/aad.csv')
+aad <- read.csv('../data/aad.csv')
+load('../../data/imp')
 ```
 
 
@@ -87,7 +86,7 @@ split <- initial_split(data)
 data_train <- training(split)
 data_test_30_temp <- testing(split)
 Index_temp <- as.numeric(rownames(data_test_30_temp))
-save(Index_temp, file = 'models/stacking/Index_temp')
+save(Index_temp, file = 'Index/_temp')
 data_test_30 <-  (aad %>% 
                     select(c(colnames(data_test_30_temp))))[Index_temp,] %>% 
   subset(!is.na(LST_Day)) %>% 
@@ -195,7 +194,7 @@ svm_res <-
     control = ctrl_grid
   )
 
-save(svm_res, file = 'models/stacking/svm_res_early_VL_classif_30')
+save(svm_res, file = 'base_models/svm_res_early_VL_classif_30')
 
 # define xgboost model using parsnip
 
@@ -226,7 +225,7 @@ xgb_res <-
     control = ctrl_grid
   )
 
-save(xgb_res, file = 'models/stacking/xgb_res_early_VL_classif_30')
+save(xgb_res, file = 'base_models/xgb_res_early_VL_classif_30')
 
 
 # define rf model using parsnip
@@ -256,7 +255,7 @@ rf_res <-
   )
 
 
-save(rf_res, file = 'models/stacking/rf_res_early_VL_classif_30')
+save(rf_res, file = 'base_models/rf_res_early_VL_classif_30')
 # 
 
 
@@ -288,16 +287,16 @@ nb_res <-
     control = ctrl_grid
   )
 
-save(nb_res, file = 'models/stacking/nb_res_early_VL_classif_30')
+save(nb_res, file = 'base_models/nb_res_early_VL_classif_30')
 ```
 
 Finally, we build our stacked model based on the best performing base model candidates.
 
 ```{r}
-load(file = 'models/stacking/svm_res_early_VL_classif_30')
-load(file = 'models/stacking/xgb_res_early_VL_classif_30')
-load(file = 'models/stacking/rf_res_early_VL_classif_30')
-load(file = 'models/stacking/nb_res_early_VL_classif_30')
+load(file = 'base_models/svm_res_early_VL_classif_30')
+load(file = 'base_models/xgb_res_early_VL_classif_30')
+load(file = 'base_models/rf_res_early_VL_classif_30')
+load(file = 'base_models/nb_res_early_VL_classif_30')
 
 
 data_st_30 <- 
@@ -308,7 +307,7 @@ data_st_30 <-
   add_candidates(nb_res)
 
 
-save(data_st_30, file = 'models/stacking/data_st_early_VL_classif_30')
+save(data_st_30, file = 'data_stacks/data_st_early_VL_classif_30')
 
 # creating a model stack
 ## ready to evaluate how it is that we need to combine predictions from
@@ -322,8 +321,8 @@ model_st_30 <-
   model_st_30 %>% 
   fit_members()
 
-save(model_st_30, file = 'models/stacking/model_st_early_VL_classif_30')
-load('models/stacking/model_st_early_VL_classif_30')
+save(model_st_30, file = 'model_stacks/model_st_early_VL_classif_30')
+load('model_stacks/model_st_early_VL_classif_30')
 
 # set.seed(123)
 # data_test_30 <- testing(split)
@@ -332,7 +331,7 @@ data_test_30 <-
   data_test_30 %>%
   bind_cols(predict(model_st_30, .))
 
-save(data_test_30, file = 'models/stacking/data_test_early_VL_classif_30')
+save(data_test_30, file = 'data_tests/data_test_early_VL_classif_30')
 
 
 # confusion matrix for stacks
@@ -340,7 +339,7 @@ conf_mat_early_VL_classif_30 <- caret::confusionMatrix(data = data_test_30$.pred
                                                        reference = data_test_30$Visceral.Leishmaniasis,
                                                        positive = '1')
 
-save(conf_mat_early_VL_classif_30, file = 'models/stacking/conf_mat_early_VL_classif_30')
+save(conf_mat_early_VL_classif_30, file = 'confusion_matrices/conf_mat_early_VL_classif_30')
 
 # confusion matrix for base models
 
@@ -374,8 +373,8 @@ library(stacks)
 
 
 # load and split the early data using imputed data
-load('./data/imp')
-aad <- read_csv('models/data/aad.csv')
+load('../../data/imp')
+aad <- read.csv('../data/aad.csv')
 
 
 quantile_data <- data %>% 
@@ -496,7 +495,7 @@ svm_res <-
     control = ctrl_grid
   )
 
-save(svm_res, file = 'models/stacking/svm_res_early_VL_classif_40')
+save(svm_res, file = 'base_models/svm_res_early_VL_classif_40')
 
 # define xgboost model using parsnip
 
@@ -527,7 +526,7 @@ xgb_res <-
     control = ctrl_grid
   )
 
-save(xgb_res, file = 'models/stacking/xgb_res_early_VL_classif_40')
+save(xgb_res, file = 'base_models/xgb_res_early_VL_classif_40')
 # 
 
 # define rf model using parsnip
@@ -557,7 +556,7 @@ rf_res <-
   )
 
 
-save(rf_res, file = 'models/stacking/rf_res_early_VL_classif_40')
+save(rf_res, file = 'base_models/rf_res_early_VL_classif_40')
 # 
 
 
@@ -589,12 +588,12 @@ nb_res <-
     control = ctrl_grid
   )
 
-save(nb_res, file = 'models/stacking/nb_res_early_VL_classif_40')
+save(nb_res, file = 'base_models/nb_res_early_VL_classif_40')
 
-load(file = 'models/stacking/svm_res_early_VL_classif_40')
-load(file = 'models/stacking/xgb_res_early_VL_classif_40')
-load(file = 'models/stacking/rf_res_early_VL_classif_40')
-load(file = 'models/stacking/nb_res_early_VL_classif_40')
+load(file = 'base_models/svm_res_early_VL_classif_40')
+load(file = 'base_models/xgb_res_early_VL_classif_40')
+load(file = 'base_models/rf_res_early_VL_classif_40')
+load(file = 'base_models/nb_res_early_VL_classif_40')
 
 
 data_st_40 <- 
@@ -605,8 +604,8 @@ data_st_40 <-
   add_candidates(nb_res)
 
 
-save(data_st_40, file = 'models/stacking/data_st_early_VL_classif_40')
-load('models/stacking/data_st_early_VL_classif_40')
+save(data_st_40, file = 'data_stacks/data_st_early_VL_classif_40')
+load('data_stacks/data_st_early_VL_classif_40')
 
 # creating a model stack
 ## ready to evaluate how it is that we need to combine predictions from
@@ -620,15 +619,15 @@ model_st_40 <-
   model_st_40 %>% 
   fit_members()
 
-save(model_st_40, file = 'models/stacking/model_st_early_VL_classif_40')
+save(model_st_40, file = 'model_stacks/model_st_early_VL_classif_40')
 
-load('models/stacking/model_st_early_VL_classif_40')
+load('model_stacks/model_st_early_VL_classif_40')
 
 data_test_40 <-
   data_test_40 %>%
   bind_cols(predict(model_st_40, .))
 
-save(data_test_40, file = 'models/stacking/data_test_early_VL_classif_40')
+save(data_test_40, file = 'data_tests/data_test_early_VL_classif_40')
 
 
 # confusion matrix for stacks
@@ -636,7 +635,7 @@ conf_mat_early_VL_classif_40 <- caret::confusionMatrix(data = data_test_40$.pred
                                                        reference = data_test_40$Visceral.Leishmaniasis,
                                                        positive = '1')
 
-save(conf_mat_early_VL_classif_40, file = 'models/stacking/conf_mat_early_VL_classif_40')
+save(conf_mat_early_VL_classif_40, file = 'confusion_matrices/conf_mat_early_VL_classif_40')
 
 # confusion matrix for base models
 
@@ -663,8 +662,8 @@ library(stacks)
 
 
 # load and split the early data using imputed data
-load('./data/imp')
-aad <- read_csv('models/data/aad.csv')
+load('../../data/imp')
+aad <- read.csv('../data/aad.csv')
 
 
 quantile_data <- data %>% 
@@ -785,7 +784,7 @@ svm_res <-
     control = ctrl_grid
   )
 
-save(svm_res, file = 'models/stacking/svm_res_early_VL_classif_50')
+save(svm_res, file = 'base_models/svm_res_early_VL_classif_50')
 
 # define xgboost model using parsnip
 
@@ -816,7 +815,7 @@ xgb_res <-
     control = ctrl_grid
   )
 
-save(xgb_res, file = 'models/stacking/xgb_res_early_VL_classif_50')
+save(xgb_res, file = 'base_models/xgb_res_early_VL_classif_50')
 # 
 
 # define rf model using parsnip
@@ -846,7 +845,7 @@ rf_res <-
   )
 
 
-save(rf_res, file = 'models/stacking/rf_res_early_VL_classif_50')
+save(rf_res, file = 'base_models/rf_res_early_VL_classif_50')
 # 
 
 
@@ -878,12 +877,12 @@ nb_res <-
     control = ctrl_grid
   )
 
-save(nb_res, file = 'models/stacking/nb_res_early_VL_classif_50')
+save(nb_res, file = 'base_models/nb_res_early_VL_classif_50')
 
-load(file = 'models/stacking/svm_res_early_VL_classif_50')
-load(file = 'models/stacking/xgb_res_early_VL_classif_50')
-load(file = 'models/stacking/rf_res_early_VL_classif_50')
-load(file = 'models/stacking/nb_res_early_VL_classif_50')
+load(file = 'base_models/svm_res_early_VL_classif_50')
+load(file = 'base_models/xgb_res_early_VL_classif_50')
+load(file = 'base_models/rf_res_early_VL_classif_50')
+load(file = 'base_models/nb_res_early_VL_classif_50')
 
 
 data_st_50 <- 
@@ -894,7 +893,7 @@ data_st_50 <-
   add_candidates(nb_res)
 
 
-save(data_st_50, file = 'models/stacking/data_st_early_VL_classif_50')
+save(data_st_50, file = 'data_stacks/data_st_early_VL_classif_50')
 
 # creating a model stack
 ## ready to evaluate how it is that we need to combine predictions from
@@ -908,8 +907,8 @@ model_st_50 <-
   model_st_50 %>% 
   fit_members()
 
-save(model_st_50, file = 'models/stacking/model_st_early_VL_classif_50')
-load('models/stacking/model_st_early_VL_classif_50')
+save(model_st_50, file = 'model_stacks/model_st_early_VL_classif_50')
+load('model_stacks/model_st_early_VL_classif_50')
 
 set.seed(123)
 
@@ -918,7 +917,7 @@ data_test_50 <-
   data_test_50 %>%
   bind_cols(predict(model_st_50, .))
 
-save(data_test_50, file = 'models/stacking/data_test_early_VL_classif_50')
+save(data_test_50, file = 'data_tests/data_test_early_VL_classif_50')
 
 
 # confusion matrix for stacks
@@ -926,7 +925,7 @@ conf_mat_early_VL_classif_50 <- caret::confusionMatrix(data = data_test_50$.pred
                                                        reference = data_test_50$Visceral.Leishmaniasis,
                                                        positive = '1')
 
-save(conf_mat_early_VL_classif_50, file = 'models/stacking/conf_mat_early_VL_classif_50')
+save(conf_mat_early_VL_classif_50, file = 'confusion_matrices/conf_mat_early_VL_classif_50')
 
 # confusion matrix for base models
 
@@ -953,8 +952,8 @@ library(stacks)
 
 
 # load and split the early data using imputed data
-load('./data/imp')
-aad <- read_csv('models/data/aad.csv')
+load('../../data/imp')
+aad <- read.csv('../data/aad.csv')
 
 
 quantile_data <- data %>% 
@@ -1075,7 +1074,7 @@ svm_res <-
     control = ctrl_grid
   )
 
-save(svm_res, file = 'models/stacking/svm_res_early_VL_classif_60')
+save(svm_res, file = 'base_models/svm_res_early_VL_classif_60')
 
 # define xgboost model using parsnip
 
@@ -1106,7 +1105,7 @@ xgb_res <-
     control = ctrl_grid
   )
 
-save(xgb_res, file = 'models/stacking/xgb_res_early_VL_classif_60')
+save(xgb_res, file = 'base_models/xgb_res_early_VL_classif_60')
 # 
 
 # define rf model using parsnip
@@ -1136,7 +1135,7 @@ rf_res <-
   )
 
 
-save(rf_res, file = 'models/stacking/rf_res_early_VL_classif_60')
+save(rf_res, file = 'base_models/rf_res_early_VL_classif_60')
 # 
 
 
@@ -1168,12 +1167,12 @@ nb_res <-
     control = ctrl_grid
   )
 
-save(nb_res, file = 'models/stacking/nb_res_early_VL_classif_60')
+save(nb_res, file = 'base_models/nb_res_early_VL_classif_60')
 
-load(file = 'models/stacking/svm_res_early_VL_classif_60')
-load(file = 'models/stacking/xgb_res_early_VL_classif_60')
-load(file = 'models/stacking/rf_res_early_VL_classif_60')
-load(file = 'models/stacking/nb_res_early_VL_classif_60')
+load(file = 'base_models/svm_res_early_VL_classif_60')
+load(file = 'base_models/xgb_res_early_VL_classif_60')
+load(file = 'base_models/rf_res_early_VL_classif_60')
+load(file = 'base_models/nb_res_early_VL_classif_60')
 
 
 data_st_60 <- 
@@ -1184,7 +1183,7 @@ data_st_60 <-
   add_candidates(nb_res)
 
 
-save(data_st_60, file = 'models/stacking/data_st_early_VL_classif_60')
+save(data_st_60, file = 'data_stacks/data_st_early_VL_classif_60')
 
 # creating a model stack
 ## ready to evaluate how it is that we need to combine predictions from
@@ -1198,8 +1197,8 @@ model_st_60 <-
   model_st_60 %>% 
   fit_members()
 
-save(model_st_60, file = 'models/stacking/model_st_early_VL_classif_60')
-load('models/stacking/model_st_early_VL_classif_60')
+save(model_st_60, file = 'model_stacks/model_st_early_VL_classif_60')
+load('model_stacks/model_st_early_VL_classif_60')
 
 set.seed(123)
 
@@ -1208,7 +1207,7 @@ data_test_60 <-
   data_test_60 %>%
   bind_cols(predict(model_st_60, .))
 
-save(data_test_60, file = 'models/stacking/data_test_early_VL_classif_60')
+save(data_test_60, file = 'data_tests/data_test_early_VL_classif_60')
 
 
 # confusion matrix for stacks
@@ -1216,7 +1215,7 @@ conf_mat_early_VL_classif_60 <- caret::confusionMatrix(data = data_test_60$.pred
                                                        reference = data_test_60$Visceral.Leishmaniasis,
                                                        positive = '1')
 
-save(conf_mat_early_VL_classif_60, file = 'models/stacking/conf_mat_early_VL_classif_60')
+save(conf_mat_early_VL_classif_60, file = 'confusion_matrices/conf_mat_early_VL_classif_60')
 
 # confusion matrix for base models
 
@@ -1243,8 +1242,8 @@ library(stacks)
 
 
 # load and split the early data using imputed data
-load('./data/imp')
-aad <- read_csv('models/data/aad.csv')
+load('../../data/imp')
+aad <- read.csv('../data/aad.csv')
 
 
 quantile_data <- data %>% 
@@ -1365,7 +1364,7 @@ svm_res <-
     control = ctrl_grid
   )
 
-save(svm_res, file = 'models/stacking/svm_res_early_VL_classif_70')
+save(svm_res, file = 'base_models/svm_res_early_VL_classif_70')
 
 # define xgboost model using parsnip
 
@@ -1396,7 +1395,7 @@ xgb_res <-
     control = ctrl_grid
   )
 
-save(xgb_res, file = 'models/stacking/xgb_res_early_VL_classif_70')
+save(xgb_res, file = 'base_models/xgb_res_early_VL_classif_70')
 # 
 
 # define rf model using parsnip
@@ -1426,7 +1425,7 @@ rf_res <-
   )
 
 
-save(rf_res, file = 'models/stacking/rf_res_early_VL_classif_70')
+save(rf_res, file = 'base_models/rf_res_early_VL_classif_70')
 # 
 
 
@@ -1458,12 +1457,12 @@ nb_res <-
     control = ctrl_grid
   )
 
-save(nb_res, file = 'models/stacking/nb_res_early_VL_classif_70')
+save(nb_res, file = 'base_models/nb_res_early_VL_classif_70')
 
-load(file = 'models/stacking/svm_res_early_VL_classif_70')
-load(file = 'models/stacking/xgb_res_early_VL_classif_70')
-load(file = 'models/stacking/rf_res_early_VL_classif_70')
-load(file = 'models/stacking/nb_res_early_VL_classif_70')
+load(file = 'base_models/svm_res_early_VL_classif_70')
+load(file = 'base_models/xgb_res_early_VL_classif_70')
+load(file = 'base_models/rf_res_early_VL_classif_70')
+load(file = 'base_models/nb_res_early_VL_classif_70')
 
 
 data_st_70 <- 
@@ -1474,7 +1473,7 @@ data_st_70 <-
   add_candidates(nb_res)
 
 
-save(data_st_70, file = 'models/stacking/data_st_early_VL_classif_70')
+save(data_st_70, file = 'data_stacks/data_st_early_VL_classif_70')
 
 # creating a model stack
 ## ready to evaluate how it is that we need to combine predictions from
@@ -1488,8 +1487,8 @@ model_st_70 <-
   model_st_70 %>% 
   fit_members()
 
-save(model_st_70, file = 'models/stacking/model_st_early_VL_classif_70')
-load('models/stacking/model_st_early_VL_classif_70')
+save(model_st_70, file = 'model_stacks/model_st_early_VL_classif_70')
+load('model_stacks/model_st_early_VL_classif_70')
 
 set.seed(123)
 
@@ -1498,7 +1497,7 @@ data_test_70 <-
   data_test_70 %>%
   bind_cols(predict(model_st_70, .))
 
-save(data_test_70, file = 'models/stacking/data_test_early_VL_classif_70')
+save(data_test_70, file = 'data_tests/data_test_early_VL_classif_70')
 
 
 # confusion matrix for stacks
@@ -1506,7 +1505,7 @@ conf_mat_early_VL_classif_70 <- caret::confusionMatrix(data = data_test_70$.pred
                                                        reference = data_test_70$Visceral.Leishmaniasis,
                                                        positive = '1')
 
-save(conf_mat_early_VL_classif_70, file = 'models/stacking/conf_mat_early_VL_classif_70')
+save(conf_mat_early_VL_classif_70, file = 'confusion_matrices/conf_mat_early_VL_classif_70')
 
 # confusion matrix for base models
 
@@ -1529,11 +1528,11 @@ member_preds <-
 
 
 ```{r confusion matrices, echo=F, eval=T}
-load(file = 'models/stacking/conf_mat_early_VL_classif_30')
-load(file = 'models/stacking/conf_mat_early_VL_classif_40')
-load(file = 'models/stacking/conf_mat_early_VL_classif_50')
-load(file = 'models/stacking/conf_mat_early_VL_classif_60')
-load(file = 'models/stacking/conf_mat_early_VL_classif_70')
+load(file = 'confusion_matrices/conf_mat_early_VL_classif_30')
+load(file = 'confusion_matrices/conf_mat_early_VL_classif_40')
+load(file = 'confusion_matrices/conf_mat_early_VL_classif_50')
+load(file = 'confusion_matrices/conf_mat_early_VL_classif_60')
+load(file = 'confusion_matrices/conf_mat_early_VL_classif_70')
 ```
 
 ### 30th percentile
@@ -1573,11 +1572,11 @@ library(dplyr)
 library(ggplot2)
 library(plotROC)
 
-load(file = 'models/stacking/data_test_early_VL_classif_30')
-load(file = 'models/stacking/data_test_early_VL_classif_40')
-load(file = 'models/stacking/data_test_early_VL_classif_50')
-load(file = 'models/stacking/data_test_early_VL_classif_60')
-load(file = 'models/stacking/data_test_early_VL_classif_70')
+load(file = 'data_tests/data_test_early_VL_classif_30')
+load(file = 'data_tests/data_test_early_VL_classif_40')
+load(file = 'data_tests/data_test_early_VL_classif_50')
+load(file = 'data_tests/data_test_early_VL_classif_60')
+load(file = 'data_tests/data_test_early_VL_classif_70')
 
 roc_30 <- roc(data_test_30$Visceral.Leishmaniasis,
     data_test_30$.pred_class %>% as.numeric(),
@@ -1626,9 +1625,9 @@ Now we look at the observations in which our model wrongly classified observatio
 ```{r, eval=T, echo=F}
 # to get true levels of VL again
 
-load('./data/imp')
-load('models/stacking/Index_temp')
-aad <- read_csv('models/data/aad.csv')
+load('../../data/imp')
+load('Index/_temp')
+aad <- read.csv('../data/aad.csv')
 
 
 data <- data %>%
@@ -1684,7 +1683,7 @@ reorder_cormat <- function(cormat){
 
 
 # heat maps for original, misclassified, and correctly classified
-aad <- read_csv('models/data/aad.csv')
+aad <- read.csv('../data/aad.csv')
 aad_clean <- (aad %>% 
           select(c(Visceral.Leishmaniasis, LST_Day, NDVI,
                    EVI, Precip, StableLights,
@@ -1714,7 +1713,7 @@ heatmap_aad <- ggplot(data = melted_cormat_data,
   coord_fixed() +
   ggtitle('Original data')
 
-save(heatmap_aad, file = "models/stacking/heatmap_aad")
+save(heatmap_aad, file = "heatmaps/heatmap_aad")
 
 # misclassified
 
@@ -1735,7 +1734,7 @@ heatmap_mis_40 <- ggplot(data = melted_cormat_mis_40,
   coord_fixed() +
   ggtitle('Incorrectly Classified')
 
-save(heatmap_mis_40, file = "models/stacking/heatmap_mis_40")
+save(heatmap_mis_40, file = "heatmaps/heatmap_mis_40")
 
 # correctly classified
 
@@ -1762,13 +1761,13 @@ heatmap_correct_40 <- ggplot(data = melted_cormat_correct_40,
                                    size = 12, hjust = 1)) +
   coord_fixed() +
   ggtitle('Correctly Classified')
-save(heatmap_correct_40, file = "models/stacking/heatmap_correct_40")
+save(heatmap_correct_40, file = "heatmaps/heatmap_correct_40")
 ```
 
 ```{r heatmaps, eval=T}
-load("models/stacking/heatmap_aad")
-load("models/stacking/heatmap_mis_40")
-load("models/stacking/heatmap_correct_40")
+load("heatmaps/heatmap_aad")
+load("heatmaps/heatmap_mis_40")
+load("heatmaps/heatmap_correct_40")
 
 
 heatmap_aad
