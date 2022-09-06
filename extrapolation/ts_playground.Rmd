@@ -1,0 +1,226 @@
+```{r}
+library(dplyr)
+library(forecast)
+library(ggplot2)
+library(seasonal)
+library(urca)
+library(tidyverse)
+
+monthly <- read_csv('../data/monthly_df.csv')
+```
+
+# Set up `monthly_short`
+
+```{r}
+monthly_short <- monthly %>% 
+  filter(Year > 2013) %>% 
+  filter(!is.na(LST_Day)) %>% 
+  filter(!is.na(AvgRad)) %>% 
+  filter(!is.na(EVI)) %>% 
+  filter(!is.na(NDVI)) %>% 
+  filter(!is.na(Precip)) %>% 
+  filter(!is.na(SWOccurrence)) %>% 
+  mutate(Month = (Year - 2014)*12 + Month) %>% 
+  select(c(Name, Code, Year, Month,
+           Population, LST_Day,
+           NDVI, EVI, Precip,
+           AvgRad, SWOccurrence,
+           pland_forest, area_mn_forest,
+           te_forest)) %>% 
+  mutate(pland_forest = ifelse(is.na(pland_forest), 0,
+                               pland_forest)) %>% 
+  mutate(area_mn_forest = ifelse(is.na(area_mn_forest), 0,
+                                 area_mn_forest)) %>% 
+  mutate(te_forest = ifelse(is.na(te_forest), 0,
+                            te_forest)) %>% 
+  mutate(Code = sub("^0+", "", Code) %>% as.integer())
+
+monthly_short %>% summary
+
+
+```
+
+```{r}
+monthly_short_ts <- monthly_short %>% ts(start = 1)
+
+# forecast
+monthly_short %>% 
+  filter(monthly_short$Code == 10101) %>% 
+  select(LST_Day) %>% 
+  ts(start = 1) %>% 
+  window(start = 1) %>% 
+  rwf(h = 60,
+      drift = T)
+
+# autoplot
+monthly_short %>% 
+  filter(monthly_short$Code == 10101) %>% 
+  select(LST_Day) %>% 
+  ts(start = 1) -> monthly_short_10101_LST
+
+# autoplot 2
+
+autoplot(monthly_short_10101_LST, series="Data") + 
+  autolayer(ma(monthly_short_10101_LST, 6), series="6-MA") +
+  scale_color_manual(values=c("Data"="grey", "6-MA"="red"),
+                     breaks=c("Data","6-MA"))
+
+monthly_short_10101_LST %>% ur.kpss() %>% summary()
+```
+
+```{r}
+monthly_adj <- monthly_short %>% 
+  select(c(Month, LST_Day)) %>% 
+  stl(s.window = 'periodic') %>% 
+  seasadj()
+
+```
+
+
+
+
+```{r}
+aad <- read_csv('../models/data/aad.csv')
+```
+
+```{r}
+aad_short <- aad %>% 
+  filter(Year > 2013) %>% 
+  filter(!is.na(LST_Day)) %>% 
+  filter(!is.na(AvgRad)) %>% 
+  filter(!is.na(EVI)) %>% 
+  filter(!is.na(NDVI)) %>% 
+  filter(!is.na(Precip)) %>% 
+  filter(!is.na(SWOccurrence)) %>% 
+  select(c(Name, Code, Year,
+           Population, LST_Day,
+           NDVI, EVI, Precip,
+           AvgRad, SWOccurrence,
+           pland_forest, area_mn_forest,
+           te_forest)) %>% 
+  mutate(pland_forest = ifelse(is.na(pland_forest), 0,
+                               pland_forest)) %>% 
+  mutate(area_mn_forest = ifelse(is.na(area_mn_forest), 0,
+                                 area_mn_forest)) %>% 
+  mutate(te_forest = ifelse(is.na(te_forest), 0,
+                            te_forest))
+
+```
+
+
+```{r}
+h = 24 # param
+
+
+test_rwf_df_4 <- data.frame(matrix(ncol = ncol(monthly_short),
+                            nrow = 0))
+
+for (i in 1:(unique(monthly_short[,'Code']) %>% nrow)){ # 1:8266
+  for(j in 1:h) { # 1:10
+    for (k in 5:(colnames(monthly_short) %>% length)) { # 3:14
+      skip <- FALSE
+      
+      test_rwf_df_4[(i-1)*h + j, k] = rwf(monthly_short %>% 
+                                            filter(Code == unique(monthly_short[,'Code'])[i,1]) %>% 
+                                            select(c(colnames(monthly_short)[k])) %>%
+                                            ts(start = 1), 
+                                          na.rm = TRUE,
+                                          lambda='auto',
+                                          h=h,
+                                          level=80,
+                                          drift=T,
+                                          bootstrap=T)$mean[j] %>% 
+        tryCatch(error = function(e){ skip <- TRUE })
+      if(skip) {
+        test_rwf_df_4[(i-1)*h + j, k] = rwf(monthly_short %>% 
+                                            filter(Code == unique(monthly_short[,'Code'])[i,1]) %>% 
+                                            select(c(colnames(monthly_short)[k])) %>%
+                                            ts(start = 1), 
+                                          na.rm = TRUE,
+                                          lambda='auto',
+                                          h=h,
+                                          level=80,
+                                          drift=F,
+                                          bootstrap=T)$mean[j]
+      }
+
+    }
+    test_rwf_df_4[(i-1)*h + j, 1] = unique(monthly_short[,'Name'])[1,i]
+    test_rwf_df_4[(i-1)*h + j, 2] = unique(monthly_short[,'Code'])[1,i]
+    test_rwf_df_4[(i-1)*h + j, 3] = 2020 + floor(j/12)
+    test_rwf_df_4[(i-1)*h + j, 4] = j %% 12
+    
+    
+  }
+}
+
+
+```
+
+```{r}
+
+fit <- auto.arima((aad_short %>% filter(Code == sample(aad_short$Code %>% unique(), 1)))[,'Precip'], seasonal=T)
+fit %>% forecast(h=60) %>% autoplot(include=80)
+
+```
+
+
+```{r}
+# Toy
+fit <- auto.arima((monthly_short %>% filter(Code == sample(monthly_short$Code %>% unique(), 1)))[,'LST_Day'], seasonal=F)
+fit %>% forecast(h=120) %>% autoplot(include=80)
+```
+
+```{r}
+h = 60 # param
+
+
+test_rwf_df_5 <- data.frame(matrix(ncol = ncol(monthly_short),
+                            nrow = 0))
+
+for (i in 1:(unique(monthly_short[,'Code']) %>% nrow)){ # 1:8266
+  for(j in 1:h) { # 1:10
+    for (k in 5:(colnames(monthly_short) %>% length)) { # 5:14
+      
+      test_rwf_df_5[(i-1)*h + j, k] = (auto.arima(monthly_short %>% 
+                                            filter(Code == (unique(monthly_short[,'Code'])[i,] %>% as.integer())) %>% 
+                                            select(c(colnames(monthly_short)[k])), 
+                                          seasonal = T) %>% 
+        forecast(h = h))$mean[j]
+    }
+    test_rwf_df_5[(i-1)*h + j, 1] = unique(monthly_short[,'Name'])[i,]
+    test_rwf_df_5[(i-1)*h + j, 2] = unique(monthly_short[,'Code'])[i,]
+    test_rwf_df_5[(i-1)*h + j, 3] = 2020 + floor(j/12)
+    test_rwf_df_5[(i-1)*h + j, 4] = j %% 12
+  }
+}
+
+colnames(test_rwf_df_5) <- monthly_short %>% colnames
+```
+
+```{r}
+save(test_rwf_df_5, file = 'test_rwf_df_5')
+write.csv(test_rwf_df_5, file = 'test_rwf_df_5.csv')
+read.csv('test_rwf_df_5.csv')
+```
+
+
+```{r}
+monthly_short %>% filter(Code == unique(monthly_short[,'Code'])[i,] %>% as.integer())
+
+unique(monthly_short[,'Code'])[1,]
+unique(monthly_short[,'Name'])[1,]
+
+auto.arima(monthly_short %>% 
+             filter(Code == (unique(monthly_short[,'Code'])[i,] %>% as.integer())) %>% 
+             select(c(colnames(monthly_short)[k])), 
+           seasonal = T)
+
+auto.arima(monthly_short %>% 
+                                            filter(Code == (unique(monthly_short[,'Code'])[i,] %>% as.integer())) %>% 
+                                            select(c(colnames(monthly_short)[k])), 
+                                          seasonal = T) %>% 
+        forecast(h = h)
+```
+
+

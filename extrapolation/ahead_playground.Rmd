@@ -1,0 +1,341 @@
+---
+title: "Ahead_playground"
+author: "TJ Sipin"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(ahead)
+library(fpp)
+library(randomForest)
+library(e1071)
+library(tidyverse)
+library(svMisc)
+library(xgboost)
+library(useful)
+
+sessionInfo() 
+
+
+monthly <- read_csv('../data/monthly_df.csv')
+```
+
+## Set up Monthly Data Frame
+
+```{r}
+monthly_short <- monthly %>% 
+  filter(Year > 2013) %>% 
+  filter(!is.na(LST_Day)) %>% 
+  filter(!is.na(AvgRad)) %>% 
+  filter(!is.na(EVI)) %>% 
+  filter(!is.na(NDVI)) %>% 
+  filter(!is.na(Precip)) %>% 
+  filter(!is.na(SWOccurrence)) %>% 
+  mutate(Month = (Year - 2014)*12 + Month) %>% 
+  select(c(Name, Code, Year, Month,
+           Population, LST_Day,
+           NDVI, EVI, Precip,
+           AvgRad, SWOccurrence,
+           pland_forest, area_mn_forest,
+           te_forest)) %>% 
+  mutate(pland_forest = ifelse(is.na(pland_forest), 0,
+                               pland_forest)) %>% 
+  mutate(area_mn_forest = ifelse(is.na(area_mn_forest), 0,
+                                 area_mn_forest)) %>% 
+  mutate(te_forest = ifelse(is.na(te_forest), 0,
+                            te_forest)) %>% 
+  mutate(Code = sub("^0+", "", Code))
+```
+
+
+```{r}
+train <- monthly_short %>% 
+  filter(Year < 2018)
+test <- monthly_short %>% 
+  filter(Year >= 2018)
+```
+
+
+```{r multivariate ts}
+
+set.seed(123)
+fit_dynrmf_1 <- dynrmf(monthly_short %>% 
+                           filter(Code == sample(monthly_short$Code %>% 
+                                                   unique(), 1)) %>% 
+                           select(Precip), 
+                       h = 2, level = 95)
+
+fit_dynrmf <- dynrmf(monthly_short %>% 
+                           filter(Code == 10101) %>% 
+                           select(LST_Day), 
+                         fit_func = randomForest,
+                         fit_params = list(ntree = 5),
+                         predict_func = predict,
+                     h = 10, level = 95)
+
+
+fit_dynrmf_2 <- dynrmf(monthly_short %>% 
+                           filter(Code == sample(monthly_short$Code %>% 
+                                                   unique(), 1)) %>% 
+                           select(Precip), 
+                         fit_func = svm,
+                         fit_params = list(kernel = 'radial'),
+                         predict_func = predict,
+                         h = 10, level = 95)
+
+                         
+
+fit_dynrmf$mean
+
+dynrmf(monthly_short %>% 
+         filter(Code == 10101) %>% 
+         select(SWOccurrence), 
+       fit_func = svm,
+       fit_params = list(kernel = 'linear'),
+       predict_func = predict,
+       h = 2, level = 95)
+
+fit_dynrmf$mean
+
+```
+
+```{r}
+par(mfrow = c(3,3))
+
+set.seed(216)
+
+fit_dynrmf_test <- dynrmf(test %>% 
+                            filter(Code == sample(monthly_short$Code %>% 
+                                                    unique(), 1)) %>% 
+                            select(Precip),
+                          fit_func = randomForest,
+                          fit_params = list(ntree = 50),
+                          predict_func = predict,
+                          h = 10, level = 95)
+fit_dynrmf_train <- dynrmf(train %>% 
+                             filter(Code == sample(monthly_short$Code %>% 
+                                                     unique(), 1)) %>% 
+                             select(Precip),
+                           fit_func = randomForest,
+                           fit_params = list(ntree = 50),
+                           predict_func = predict,
+                           h = (fit_dynrmf_test$fitted %>% length), level = 95)
+
+
+
+len <- fit_dynrmf_train$mean %>% length() 
+
+# plots 
+
+fit_dynrmf_test %>% plot(main = 'rf test')
+fit_dynrmf_train %>% plot(main = 'rf train')
+
+plot(x = 1:len, 
+     y = fit_dynrmf_test$fitted[1:len] - fit_dynrmf_train$mean[1:len],
+     type = 'l')
+abline(h = 0,
+       col = 'red')
+
+
+
+
+code <- sample(monthly_short$Code %>% 
+                 unique(), 1)
+
+
+fit_dynrmf_test <- dynrmf(test %>% 
+                            filter(Code == code) %>% 
+                            select(Precip),
+                          fit_func = svm,
+                          fit_params = list(kernel = 'radial'),
+                          predict_func = predict,
+                          h = 12, level = 95)
+
+
+fit_dynrmf_train <- dynrmf(train %>% 
+                             filter(Code == code) %>% 
+                             select(Precip),
+                           fit_func = svm,
+                           fit_params = list(kernel = 'radial'),
+                           predict_func = predict,
+                           h = (fit_dynrmf_test$fitted %>% length), level = 95)
+
+
+
+len <- fit_dynrmf_train$mean %>% length() 
+
+# plots
+
+fit_dynrmf_test %>% plot(main = 'radial test')
+fit_dynrmf_train %>% plot(main = 'radial train')
+
+plot(x = 1:len, 
+     y = fit_dynrmf_test$fitted[1:len] - fit_dynrmf_train$mean[1:len],
+     type = 'l')
+abline(h = 0,
+       col = 'red')
+
+
+
+code <- sample(monthly_short$Code %>% 
+                 unique(), 1)
+
+
+
+fit_dynrmf_test <- dynrmf(test %>% 
+                            filter(Code == code) %>% 
+                            select(Precip),
+                          fit_func = svm,
+                          fit_params = list(kernel = 'linear'),
+                          predict_func = predict,
+                          h = 12, level = 95)
+
+
+fit_dynrmf_train <- dynrmf(train %>% 
+                             filter(Code == code) %>% 
+                             select(Precip),
+                           fit_func = svm,
+                           fit_params = list(kernel = 'linear'),
+                           predict_func = predict,
+                           h = (fit_dynrmf_test$fitted %>% length), level = 95)
+
+
+
+len <- fit_dynrmf_train$mean %>% length() 
+
+# plots
+
+fit_dynrmf_test %>% plot(main = 'linear test')
+fit_dynrmf_train %>% plot(main = 'linear train')
+
+plot(x = 1:len, 
+     y = fit_dynrmf_test$fitted[1:len] - fit_dynrmf_train$mean[1:len],
+     type = 'l')
+abline(h = 0,
+       col = 'red')
+
+
+```
+
+
+```{r}
+par(mfrow = c(1,1))
+
+set.seed(13)
+
+code <- sample(monthly_short$Code %>% 
+                 unique(), 1)
+
+
+fit_dynrmf_test <- dynrmf(test %>% 
+                            filter(Code == code) %>% 
+                            select(Precip),
+                          fit_func = svm,
+                          fit_params = list(kernel = 'radial'),
+                          predict_func = predict,
+                          h = 12, level = 95)
+
+
+fit_dynrmf_train <- dynrmf(train %>% 
+                             filter(Code == code) %>% 
+                             select(Precip),
+                           fit_func = svm,
+                           fit_params = list(kernel = 'radial'),
+                           predict_func = predict,
+                           h = (fit_dynrmf_test$fitted %>% length), level = 95)
+
+
+
+len <- fit_dynrmf_train$mean %>% length() 
+
+fit_dynrmf_test %>% plot()
+fit_dynrmf_train %>% plot()
+
+ggplot() + 
+  geom_line(aes(x = 1:len,
+                y = fit_dynrmf_test$x[1:len] - fit_dynrmf_train$mean[1:len]))
+
+
+
+```
+
+```{r}
+set.seed(123)
+par(mfrow = c(3,2))
+plot(ahead::dynrmf(train %>% 
+                             filter(Code == sample(monthly_short$Code %>% 
+                                                     unique(), 1)) %>% 
+                             select(Precip),
+                   h = len,
+                   level = 95))
+```
+
+
+```{r pressure, echo=FALSE}
+h = 3
+# param
+
+forecasted_dynrmf <- data.frame(matrix(ncol = ncol(monthly_short),
+                            nrow = 0))
+
+for (i in 1:(unique(monthly_short[,'Code']) %>% nrow)){ # 1:8554
+  for(j in 1:h) { # 1:10
+    for (k in 5:(colnames(monthly_short) %>% length)) { # 5:14
+      skip <- FALSE
+      
+      forecasted_dynrmf[(i-1)*h + j, k] = dynrmf(monthly_short %>% 
+                                                   filter(Code == unique(monthly_short[,'Code'])[i,] %>% as.integer()) %>%
+                                                   select(colnames(monthly_short)[k]),  
+                                                 fit_func = randomForest,
+                                                 fit_params = list(ntree = 50),
+                                                 predict_func = predict,
+                                                 h = h, level = 95)$mean[j] %>% 
+        tryCatch(error = function(e){ skip <- TRUE })
+      if(skip) {
+        forecasted_dynrmf[(i-1)*h + j, k] = mean(monthly_short %>% 
+                                                   filter(Code == unique(monthly_short[,'Code'])[i,] %>% as.integer()) %>%
+                                                   select(colnames(monthly_short)[k]))
+      }
+
+    }
+    forecasted_dynrmf[(i-1)*h + j, 1] = unique(monthly_short[,'Name'])[i,]
+    forecasted_dynrmf[(i-1)*h + j, 2] = unique(monthly_short[,'Code'])[i,]
+    forecasted_dynrmf[(i-1)*h + j, 3] = 2020 + j%/%12
+    forecasted_dynrmf[(i-1)*h + j, 3] = j
+  }
+}
+
+
+colnames(forecasted_dynrmf) <- monthly_short %>% colnames
+
+save(forecasted_dynrmf, file = 'forecasted_dynrmf')
+```
+
+
+```{r}
+for (i in 1:(unique(monthly_short[,'Code']) %>% nrow)){ # 1:8554
+  for(j in 1:h) { # 1:10
+    forecasted_dynrmf[(i-1)*h + j, 1] = unique(monthly_short[,'Name'])[i,]
+    forecasted_dynrmf[(i-1)*h + j, 2] = unique(monthly_short[,'Code'])[i,]
+    forecasted_dynrmf[(i-1)*h + j, 3] = 2020 + j%/%12
+    forecasted_dynrmf[(i-1)*h + j, 3] = j
+  }
+}
+```
+
+```{r}
+monthly_short %>% 
+  filter(Code == unique(monthly_short[,'Code'])[1,] %>% as.integer()) %>% 
+  select(colnames(monthly_short)[6])
+
+monthly_short %>% 
+  filter(Code == unique(monthly_short[,'Code'])[1,] %>% as.integer()) %>% 
+  select(colnames(monthly_short)[k])
+
+```
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
