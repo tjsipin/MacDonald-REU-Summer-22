@@ -1,8 +1,17 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 89ae9bc... rebasing?
 version https://git-lfs.github.com/spec/v1
 oid sha256:73361789a1875464b7e31488bf59786329a90406656b81191bd5c9c5756bf89b
 size 272
 =======
+<<<<<<< HEAD
+=======
+>>>>>>> 417cdca... TEMP later CL
+=======
+>>>>>>> 89ae9bc... rebasing?
 tidyverse
 ggplot2
 tibble
@@ -38,4 +47,16 @@ glmnet
 pROC
 plotROC
 reshape2
+<<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> f67c5041999f3ec8d3af9c7d50d7b7e26973b4fb
+=======
+=======
+version https://git-lfs.github.com/spec/v1
+oid sha256:3bf3d90fb069dd6b934fe163ededafa68e3de84c110d3dcf0fedd4d50d68e3e0
+size 470
+>>>>>>> 34135cd2519e61304fc23d30e01907ab7ee9ae9f
+>>>>>>> 417cdca... TEMP later CL
+=======
+>>>>>>> f67c5041999f3ec8d3af9c7d50d7b7e26973b4fb
+>>>>>>> 89ae9bc... rebasing?

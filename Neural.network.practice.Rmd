@@ -18,25 +18,12 @@ suppressMessages(library(keras))
 suppressMessages(library(DT))
 ```
 
-<style type = "text/css">
-h1 {
-    color: #1a2451;
-}
-h2 {
-    color: #ffbd4a;
-}
-h3 {
-    color: #1a2451;
-}
-</style>
-
-
 ## Introduction
 Introducing a densely connected deep neural network with two hidden layers and an output layer
 
 ## Data
 ```{r}
-aad <- read.csv("Annual_Amazon_Data.csv")
+aad <- read.csv("models/data/aad.csv")
 view(aad)
 
 cutaneous <- aad$Cutaneous.Leishmaniasis
@@ -155,4 +142,5 @@ title("Residuals vs Fitted")
 qqnorm(residuals(model), ylab = "residuals", main = "QQ Plot of Residuals")
 qqline(residuals(model))
 plot(model, 4)
+
 ```
