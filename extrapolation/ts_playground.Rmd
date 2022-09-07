@@ -196,6 +196,19 @@ for (i in 1:(unique(monthly_short[,'Code']) %>% nrow)){ # 1:8266
 }
 
 colnames(test_rwf_df_5) <- monthly_short %>% colnames
+
+test_rwf_df_8 <- test_rwf_df_5
+
+for (i in 1:(unique(monthly_short[,'Code']) %>% nrow)){
+  for (j in 1:h){
+    for (k in 15:16){
+      test_rwf_df_8[(i-1)*h + j, k] = (auto.arima(monthly_short %>% 
+                                                    filter(Code == (unique(monthly_short[,'Code'])[i,] %>% as.integer())) %>% 
+                                                    select(c())))
+    }
+  }
+}
+
 ```
 
 ```{r}
