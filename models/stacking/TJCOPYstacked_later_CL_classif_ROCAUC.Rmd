@@ -62,7 +62,8 @@ data <- data %>%
   dplyr::select(c('Cutaneous.Leishmaniasis', 'LST_Day', 'Year', # include LST_Night?
                   'NDVI', 'EVI', 'Precip', 
                   'AvgRad', 'SWOccurrence', 'pland_forest',
-                  'te_forest', 'enn_mn_forest','Population'))
+                  'te_forest', 'enn_mn_forest', 'area_mn_forest',
+                  'Population'))
 
 
 data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
@@ -113,7 +114,7 @@ missing_plot(data_test_30_2)
 explanatory = c('LST_Day', 'Year', # include LST_Night?
                   'NDVI', 'EVI', 'Precip', 
                   'AvgRad', 'SWOccurrence', 'pland_forest',
-                  'te_forest', 'enn_mn_forest','Population')
+                  'te_forest', 'enn_mn_forest', 'area_mn_forest', 'Population')
 dependent = 'Cutaneous.Leishmaniasis'
 data_test_30_2 %>% 
   missing_pairs(dependent, explanatory)
@@ -393,7 +394,7 @@ data <- data %>%
   dplyr::select(c('Cutaneous.Leishmaniasis', 'LST_Day', 'Year', # include LST_Night?
                   'NDVI', 'EVI', 'Precip', 
                   'AvgRad', 'SWOccurrence', 'pland_forest',
-                  'te_forest', 'enn_mn_forest','Population'))
+                  'te_forest', 'enn_mn_forest', 'area_mn_forest', 'Population'))
 
 
 data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
@@ -691,7 +692,7 @@ data <- data %>%
   dplyr::select(c('Cutaneous.Leishmaniasis', 'LST_Day', 'Year', # include LST_Night?
                   'NDVI', 'EVI', 'Precip', 
                   'AvgRad', 'SWOccurrence', 'pland_forest',
-                  'te_forest', 'enn_mn_forest','Population'))
+                  'te_forest', 'enn_mn_forest', 'area_mn_forest', 'Population'))
 
 
 data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
@@ -981,7 +982,7 @@ data <- data %>%
   dplyr::select(c('Cutaneous.Leishmaniasis', 'LST_Day', 'Year', # include LST_Night?
                   'NDVI', 'EVI', 'Precip', 
                   'AvgRad', 'SWOccurrence', 'pland_forest',
-                  'te_forest', 'enn_mn_forest','Population'))
+                  'te_forest', 'enn_mn_forest', 'area_mn_forest', 'Population'))
 
 
 data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
@@ -1271,7 +1272,7 @@ data <- data %>%
   dplyr::select(c('Cutaneous.Leishmaniasis', 'LST_Day', 'Year', # include LST_Night?
                   'NDVI', 'EVI', 'Precip', 
                   'AvgRad', 'SWOccurrence', 'pland_forest',
-                  'te_forest', 'enn_mn_forest','Population'))
+                  'te_forest', 'enn_mn_forest', 'area_mn_forest', 'Population'))
 
 
 data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
@@ -1657,7 +1658,7 @@ data <- data %>%
   dplyr::select(c('Cutaneous.Leishmaniasis', 'LST_Day', 'Year', # include LST_Night?
                   'NDVI', 'EVI', 'Precip', 
                   'AvgRad', 'SWOccurrence', 'pland_forest',
-                  'te_forest', 'enn_mn_forest','Population'))
+                  'te_forest', 'enn_mn_forest', 'area_mn_forest', 'Population'))
 
 
 data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)

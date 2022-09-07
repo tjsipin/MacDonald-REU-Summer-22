@@ -1,8 +1,17 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 89ae9bc... rebasing?
 version https://git-lfs.github.com/spec/v1
 oid sha256:e6def7cf9771b04842a5d82c9f1a200eb905f84b00cab4c02fd814af635f74c4
 size 193
 =======
+<<<<<<< HEAD
+=======
+>>>>>>> 417cdca... TEMP later CL
+=======
+>>>>>>> 89ae9bc... rebasing?
 tidyverse
 ggplot2
 tibble
@@ -28,4 +37,16 @@ yardstick
 stacks
 pROC
 plotROC
+<<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> f67c5041999f3ec8d3af9c7d50d7b7e26973b4fb
+=======
+=======
+version https://git-lfs.github.com/spec/v1
+oid sha256:a64377441051cf0ec5124ae5983e62a0e7c343e5cdd67c8639039eec5fcaaa6e
+size 391
+>>>>>>> 34135cd2519e61304fc23d30e01907ab7ee9ae9f
+>>>>>>> 417cdca... TEMP later CL
+=======
+>>>>>>> f67c5041999f3ec8d3af9c7d50d7b7e26973b4fb
+>>>>>>> 89ae9bc... rebasing?

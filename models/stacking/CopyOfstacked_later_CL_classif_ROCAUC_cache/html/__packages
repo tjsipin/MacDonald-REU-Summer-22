@@ -1,8 +1,23 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+=======
+<<<<<<< HEAD
+>>>>>>> 417cdca... TEMP later CL
+=======
+>>>>>>> 89ae9bc... rebasing?
 version https://git-lfs.github.com/spec/v1
 oid sha256:8949a350b60390369657c5735a1556fd1e79cf54ca0875abc2d0d8c8d7c379a3
 size 189
 =======
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 34135cd2519e61304fc23d30e01907ab7ee9ae9f
+>>>>>>> 417cdca... TEMP later CL
+=======
+>>>>>>> 89ae9bc... rebasing?
 tidyverse
 ggplot2
 tibble
@@ -27,4 +42,15 @@ workflowsets
 yardstick
 stacks
 finalfit
+<<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> f67c5041999f3ec8d3af9c7d50d7b7e26973b4fb
+=======
+<<<<<<< HEAD
+=======
+>>>>>>> f67c5041999f3ec8d3af9c7d50d7b7e26973b4fb
+>>>>>>> 34135cd2519e61304fc23d30e01907ab7ee9ae9f
+>>>>>>> 417cdca... TEMP later CL
+=======
+>>>>>>> f67c5041999f3ec8d3af9c7d50d7b7e26973b4fb
+>>>>>>> 89ae9bc... rebasing?

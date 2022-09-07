@@ -196,12 +196,38 @@ for (i in 1:(unique(monthly_short[,'Code']) %>% nrow)){ # 1:8266
 }
 
 colnames(test_rwf_df_5) <- monthly_short %>% colnames
+
+test_rwf_df_8 <- test_rwf_df_5
+
+for (i in 1:(unique(monthly_short[,'Code']) %>% nrow)){
+  for (j in 1:h){
+    for (k in 15:16){
+      test_rwf_df_8[(i-1)*h + j, k] = (auto.arima(monthly_short %>% 
+                                                    filter(Code == (unique(monthly_short[,'Code'])[i,] %>% as.integer())) %>% 
+                                                    select(c())))
+    }
+  }
+}
+
 ```
 
 ```{r}
 save(test_rwf_df_5, file = 'test_rwf_df_5')
+load('test_rwf_df_5')
 write.csv(test_rwf_df_5, file = 'test_rwf_df_5.csv')
 read.csv('test_rwf_df_5.csv')
+```
+
+```{r}
+test_rwf_df_6 <- test_rwf_df_5 %>% 
+  mutate(Month = Month + 1) %>% 
+  mutate(Total_Month = (Year - 2020)*12 + Month - 1)
+
+
+test_rwf_df_7 <- test_rwf_df_6 %>% 
+  filter(Total_Month == 60)
+save(test_rwf_df_7, file = 'projected_input')
+write.csv(test_rwf_df_7, file = 'projected_input.csv')
 ```
 
 
