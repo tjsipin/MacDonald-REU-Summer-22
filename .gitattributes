@@ -24,12 +24,11 @@ models/stacking/model_stacks/model_st_early_CL_classif_40_nonimp filter=lfs diff
 models/stacking/model_stacks/model_st_early_CL_classif_50 filter=lfs diff=lfs merge=lfs -text
 models/stacking/model_stacks/model_st_early_CL_classif_60 filter=lfs diff=lfs merge=lfs -text
 models/stacking/model_stacks/model_st_early_CL_classif_70 filter=lfs diff=lfs merge=lfs -text
-<<<<<<< HEAD
+
 
 models/stacking/model_stacks/noNA_model_st_early_CL_classif_40 filter=lfs diff=lfs merge=lfs -text
 models/stacking/model_stacks/noNA_model_st_early_CL_classif_40_nonimp filter=lfs diff=lfs merge=lfs -text
 models/stacking/model_stacks/noNA_model_st_early_CL_classif_50 filter=lfs diff=lfs merge=lfs -text
 models/stacking/model_stacks/noNA_model_st_early_CL_classif_60 filter=lfs diff=lfs merge=lfs -text
 models/stacking/model_stacks/noNA_model_st_early_CL_classif_70 filter=lfs diff=lfs merge=lfs -text
-=======
->>>>>>> c21c61d2db2fb2a496853cebd90b86deacf084fb
+
