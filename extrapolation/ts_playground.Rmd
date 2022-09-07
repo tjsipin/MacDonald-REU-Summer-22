@@ -5,6 +5,7 @@ library(ggplot2)
 library(seasonal)
 library(urca)
 library(tidyverse)
+library(progress)
 
 monthly <- read_csv('../data/monthly_df.csv')
 ```
@@ -26,7 +27,7 @@ monthly_short <- monthly %>%
            NDVI, EVI, Precip,
            AvgRad, SWOccurrence,
            pland_forest, area_mn_forest,
-           te_forest)) %>% 
+           enn_mn_forest, te_forest)) %>% 
   mutate(pland_forest = ifelse(is.na(pland_forest), 0,
                                pland_forest)) %>% 
   mutate(area_mn_forest = ifelse(is.na(area_mn_forest), 0,
@@ -36,8 +37,6 @@ monthly_short <- monthly %>%
   mutate(Code = sub("^0+", "", Code) %>% as.integer())
 
 monthly_short %>% summary
-
-
 ```
 
 ```{r}
@@ -75,8 +74,6 @@ monthly_adj <- monthly_short %>%
   seasadj()
 
 ```
-
-
 
 
 ```{r}
@@ -186,7 +183,7 @@ for (i in 1:(unique(monthly_short[,'Code']) %>% nrow)){ # 1:8266
                                             filter(Code == (unique(monthly_short[,'Code'])[i,] %>% as.integer())) %>% 
                                             select(c(colnames(monthly_short)[k])), 
                                           seasonal = T) %>% 
-        forecast(h = h))$mean[j]
+                                         forecast(h = h))$mean[j]
     }
     test_rwf_df_5[(i-1)*h + j, 1] = unique(monthly_short[,'Name'])[i,]
     test_rwf_df_5[(i-1)*h + j, 2] = unique(monthly_short[,'Code'])[i,]
@@ -197,18 +194,93 @@ for (i in 1:(unique(monthly_short[,'Code']) %>% nrow)){ # 1:8266
 
 colnames(test_rwf_df_5) <- monthly_short %>% colnames
 
+
+
+pb <- progress_bar$new(format = '(:spin) [:bar] :percent [Elapsed time: :elapsedfull || Estimated time remaining: :eta]',
+                       total = unique(monthly_short_2[,'Code']) %>% nrow,
+                       complete = '=',
+                       incomplete = '-',
+                       current = '>',
+                       clear = F,
+                       width = 100)
+
+
+
+
+for (i in 1:(unique(monthly_short_2[,'Code']) %>% nrow)){
+  pb$tick()
+  for (j in 1:h){
+      test_rwf_df_8[(i-1)*h + j, 3] = (auto.arima(monthly_short_2 %>% 
+                                                    filter(Code == (unique(monthly_short_2[,'Code'])[i,] %>% as.integer())) %>% 
+                                                    select(c(colnames(monthly_short_2)[3])),
+                                                  seasonal = T) %>% 
+                                         forecast(h = h))$mean[j]
+  }
+}
+```
+
+```{r}
+library(doParallel)
+library(foreach)
+no_cores <- detectCores() - 1
+registerDoParallel(cores = no_cores)
+cl <- makeCluster(no_cores, type = "FORK")
+
+# Forgot to add enn_mn_forest
+
+monthly_short_2 <- monthly %>% 
+  filter(Year > 2013) %>% 
+  filter(!is.na(LST_Day)) %>% 
+  filter(!is.na(AvgRad)) %>% 
+  filter(!is.na(EVI)) %>% 
+  filter(!is.na(NDVI)) %>% 
+  filter(!is.na(Precip)) %>% 
+  filter(!is.na(SWOccurrence)) %>% 
+  mutate(Month = (Year - 2014)*12 + Month) %>% 
+  select(c(Code, Month, enn_mn_forest)) %>% 
+  mutate(enn_mn_forest = ifelse(is.na(enn_mn_forest), 0,
+                                enn_mn_forest)) %>%  # try a version removing all NAs 
+  mutate(Code = sub("^0+", "", Code) %>% as.integer())
+
+pb <- progress_bar$new(format = '(:spin) [:bar] :percent [Elapsed time: :elapsedfull || Estimated time remaining: :eta]',
+                       total = unique(monthly_short_2[,'Code']) %>% nrow,
+                       complete = '=',
+                       incomplete = '-',
+                       current = '>',
+                       clear = F,
+                       width = 100)
+
+load('test_rwf_df_5')
+h = 60 # param
 test_rwf_df_8 <- test_rwf_df_5
 
-for (i in 1:(unique(monthly_short[,'Code']) %>% nrow)){
-  for (j in 1:h){
-    for (k in 15:16){
-      test_rwf_df_8[(i-1)*h + j, k] = (auto.arima(monthly_short %>% 
-                                                    filter(Code == (unique(monthly_short[,'Code'])[i,] %>% as.integer())) %>% 
-                                                    select(c())))
-    }
+
+foreach(i = 1:(unique(monthly_short_2[,'Code']) %>% nrow())) %dopar% {
+  pb$tick()
+  foreach(j = 1:h) %dopar% {
+    test_rwf_df_8[(i-1)*h + j, 3] = (auto.arima(monthly_short_2 %>% 
+                                                    filter(Code == (unique(monthly_short_2[,'Code'])[i,] %>% as.integer())) %>% 
+                                                    select(c(colnames(monthly_short_2)[3])),
+                                                  seasonal = T) %>% 
+                                         forecast(h = h))$mean[j]
   }
 }
 
+save(test_rwf_df_8, 'test_rwf_df_8')
+```
+
+```{r}
+pb <- progress_bar$new(format = '(:spin) [:bar] :percent [Elapsed time: :elapsedfull || Estimated time remaining: :eta]',
+                       total = 100,
+                       complete = '=',
+                       incomplete = '-',
+                       current = '>',
+                       clear = F,
+                       width = 100)
+for (i in 1:100) {se
+  pb$tick()
+  Sys.sleep(0.1)
+}
 ```
 
 ```{r}
