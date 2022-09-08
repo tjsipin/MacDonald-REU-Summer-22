@@ -5,7 +5,7 @@ library(ggplot2)
 library(seasonal)
 library(urca)
 library(tidyverse)
-library(progress)
+library(progress) 
 
 monthly <- read_csv('../data/monthly_df.csv')
 ```
@@ -220,11 +220,11 @@ for (i in 1:(unique(monthly_short_2[,'Code']) %>% nrow)){
 ```
 
 ```{r}
-library(doParallel)
-library(foreach)
-no_cores <- detectCores() - 1
-registerDoParallel(cores = no_cores)
-cl <- makeCluster(no_cores, type = "FORK")
+# library(doParallel)
+# library(foreach)
+# no_cores <- detectCores() - 1
+# registerDoParallel(cores = no_cores)
+# cl <- makeCluster(no_cores, type = "FORK")
 
 # Forgot to add enn_mn_forest
 
@@ -255,10 +255,21 @@ h = 60 # param
 test_rwf_df_8 <- test_rwf_df_5
 
 
-foreach(i = 1:(unique(monthly_short_2[,'Code']) %>% nrow())) %dopar% {
+# foreach(i = 1:(unique(monthly_short_2[,'Code']) %>% nrow())) %dopar% {
+#   pb$tick()
+#   foreach(j = 1:h) %dopar% {
+#     test_rwf_df_8[(i-1)*h + j, 3] = (auto.arima(monthly_short_2 %>% 
+#                                                     filter(Code == (unique(monthly_short_2[,'Code'])[i,] %>% as.integer())) %>% 
+#                                                     select(c(colnames(monthly_short_2)[3])),
+#                                                   seasonal = T) %>% 
+#                                          forecast(h = h))$mean[j]
+#   }
+# }
+
+for (i in 1:(unique(monthly_short_2[,'Code']) %>% nrow)){
   pb$tick()
-  foreach(j = 1:h) %dopar% {
-    test_rwf_df_8[(i-1)*h + j, 3] = (auto.arima(monthly_short_2 %>% 
+  for (j in 1:h){
+      test_rwf_df_8[(i-1)*h + j, 3] = (auto.arima(monthly_short_2 %>% 
                                                     filter(Code == (unique(monthly_short_2[,'Code'])[i,] %>% as.integer())) %>% 
                                                     select(c(colnames(monthly_short_2)[3])),
                                                   seasonal = T) %>% 
@@ -266,8 +277,21 @@ foreach(i = 1:(unique(monthly_short_2[,'Code']) %>% nrow())) %dopar% {
   }
 }
 
-save(test_rwf_df_8, 'test_rwf_df_8')
+save(test_rwf_df_8, file = 'test_rwf_df_8')
+load(file = 'test_rwf_df_8')
 ```
+
+```{r}
+test_rwf_df_9 <- test_rwf_df_8 %>% 
+  mutate(Year = test_rwf_df_5$Year) %>% 
+  mutate(Month = Month + 1) %>% 
+  mutate(Month = (Year - 2020)*12 + Month - 1) 
+test_rwf_df_10 <- test_rwf_df_9 %>% 
+  filter(Month == 60)
+save(test_rwf_df_10, file = 'projected_input')
+write.csv(test_rwf_df_10, file = 'projected_input.csv')
+```
+
 
 ```{r}
 pb <- progress_bar$new(format = '(:spin) [:bar] :percent [Elapsed time: :elapsedfull || Estimated time remaining: :eta]',
