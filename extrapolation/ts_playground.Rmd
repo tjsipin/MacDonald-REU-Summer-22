@@ -1,3 +1,5 @@
+# THIS IS THE RIGHT ONE
+
 ```{r}
 library(dplyr)
 library(forecast)
@@ -314,17 +316,6 @@ write.csv(test_rwf_df_5, file = 'test_rwf_df_5.csv')
 read.csv('test_rwf_df_5.csv')
 ```
 
-```{r}
-test_rwf_df_6 <- test_rwf_df_5 %>% 
-  mutate(Month = Month + 1) %>% 
-  mutate(Total_Month = (Year - 2020)*12 + Month - 1)
-
-
-test_rwf_df_7 <- test_rwf_df_6 %>% 
-  filter(Total_Month == 60)
-save(test_rwf_df_7, file = 'projected_input')
-write.csv(test_rwf_df_7, file = 'projected_input.csv')
-```
 
 
 ```{r}
