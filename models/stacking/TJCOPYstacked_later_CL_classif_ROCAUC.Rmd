@@ -69,6 +69,7 @@ data <- data %>%
 data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
 data$te_forest <- ifelse(is.na(data$te_forest), 0, data$te_forest)
 data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
+data$area_mn_forest <- ifelse(is.na(data$area_mn_forest), 0, data$area_mn_forest)
 
 data$Cutaneous.Leishmaniasis <- as.factor(ifelse(data$Cutaneous.Leishmaniasis < quantile, 0, 1))
 ```
@@ -97,6 +98,8 @@ data_test_30 <-  (aad %>%
 data_test_30$pland_forest <- ifelse(is.na(data_test_30$pland_forest), 0, data_test_30$pland_forest)
 data_test_30$te_forest <- ifelse(is.na(data_test_30$te_forest), 0, data_test_30$te_forest)
 data_test_30$enn_mn_forest <- ifelse(is.na(data_test_30$enn_mn_forest), 0, data_test_30$enn_mn_forest)
+data_test_30$area_mn_forest <- ifelse(is.na(data_test_30$area_mn_forest), 0, data_test_30$area_mn_forest)
+
 
 data_test_30$Cutaneous.Leishmaniasis <- as.factor(ifelse(data_test_30$Cutaneous.Leishmaniasis < quantile, 0, 1))
 
@@ -129,7 +132,7 @@ Here, we set up the recipe and workflow using Tidyverse functions.
 data_rec <-
   recipe(Cutaneous.Leishmaniasis ~ LST_Day + Year + NDVI + 
            EVI + Precip + AvgRad + SWOccurrence + pland_forest + 
-           te_forest + enn_mn_forest + Population, data = data_train) %>%
+           te_forest + area_mn_forest + enn_mn_forest + Population, data = data_train) %>%
   step_dummy(all_nominal() - all_outcomes()) %>% 
   step_zv(all_predictors()) %>% 
   step_normalize(all_numeric())
@@ -401,6 +404,7 @@ data <- data %>%
 data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
 data$te_forest <- ifelse(is.na(data$te_forest), 0, data$te_forest)
 data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
+data$area_mn_forest <- ifelse(is.na(data$area_mn_forest), 0, data$area_mn_forest)
 
 data$Cutaneous.Leishmaniasis <- as.factor(ifelse(data$Cutaneous.Leishmaniasis < quantile, 0, 1))
 
@@ -424,6 +428,8 @@ data_test_40 <-  (aad %>%
 data_test_40$pland_forest <- ifelse(is.na(data_test_40$pland_forest), 0, data_test_40$pland_forest)
 data_test_40$te_forest <- ifelse(is.na(data_test_40$te_forest), 0, data_test_40$te_forest)
 data_test_40$enn_mn_forest <- ifelse(is.na(data_test_40$enn_mn_forest), 0, data_test_40$enn_mn_forest)
+data_test_40$area_mn_forest <- ifelse(is.na(data_test_40$area_mn_forest), 0, data_test_40$area_mn_forest)
+
 
 data_test_40$Cutaneous.Leishmaniasis <- as.factor(ifelse(data_test_40$Cutaneous.Leishmaniasis < quantile, 0, 1))
 
@@ -436,7 +442,7 @@ folds <- rsample::vfold_cv(data_train,
 data_rec <-
   recipe(Cutaneous.Leishmaniasis ~ LST_Day + Year + NDVI + 
            EVI + Precip + AvgRad + SWOccurrence + pland_forest + 
-           te_forest + enn_mn_forest + Population, data = data_train) %>%
+           te_forest + area_mn_forest + enn_mn_forest + Population, data = data_train) %>%
   step_dummy(all_nominal() - all_outcomes()) %>% 
   step_zv(all_predictors()) %>% 
   step_normalize(all_numeric())
@@ -700,6 +706,7 @@ data <- data %>%
 data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
 data$te_forest <- ifelse(is.na(data$te_forest), 0, data$te_forest)
 data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
+data$area_mn_forest <- ifelse(is.na(data$area_mn_forest), 0, data$area_mn_forest)
 
 data$Cutaneous.Leishmaniasis <- as.factor(ifelse(data$Cutaneous.Leishmaniasis < quantile, 0, 1))
 
@@ -723,6 +730,8 @@ data_test_50 <-  (aad %>%
 data_test_50$pland_forest <- ifelse(is.na(data_test_50$pland_forest), 0, data_test_50$pland_forest)
 data_test_50$te_forest <- ifelse(is.na(data_test_50$te_forest), 0, data_test_50$te_forest)
 data_test_50$enn_mn_forest <- ifelse(is.na(data_test_50$enn_mn_forest), 0, data_test_50$enn_mn_forest)
+data_test_50$area_mn_forest <- ifelse(is.na(data_test_50$area_mn_forest), 0, data_test_50$area_mn_forest)
+
 
 data_test_50$Cutaneous.Leishmaniasis <- as.factor(ifelse(data_test_50$Cutaneous.Leishmaniasis < quantile, 0, 1))
 
@@ -735,7 +744,7 @@ folds <- rsample::vfold_cv(data_train,
 data_rec <-
   recipe(Cutaneous.Leishmaniasis ~ LST_Day + Year + NDVI + 
            EVI + Precip + AvgRad + SWOccurrence + pland_forest + 
-           te_forest + enn_mn_forest + Population, data = data_train) %>%
+           te_forest + area_mn_forest + enn_mn_forest + Population, data = data_train) %>%
   step_dummy(all_nominal() - all_outcomes()) %>% 
   step_zv(all_predictors()) %>% 
   step_normalize(all_numeric())
@@ -991,6 +1000,7 @@ data <- data %>%
 data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
 data$te_forest <- ifelse(is.na(data$te_forest), 0, data$te_forest)
 data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
+data$area_mn_forest <- ifelse(is.na(data$area_mn_forest), 0, data$area_mn_forest)
 
 data$Cutaneous.Leishmaniasis <- as.factor(ifelse(data$Cutaneous.Leishmaniasis < quantile, 0, 1))
 
@@ -1014,6 +1024,8 @@ data_test_60 <-  (aad %>%
 data_test_60$pland_forest <- ifelse(is.na(data_test_60$pland_forest), 0, data_test_60$pland_forest)
 data_test_60$te_forest <- ifelse(is.na(data_test_60$te_forest), 0, data_test_60$te_forest)
 data_test_60$enn_mn_forest <- ifelse(is.na(data_test_60$enn_mn_forest), 0, data_test_60$enn_mn_forest)
+data_test_60$area_mn_forest <- ifelse(is.na(data_test_60$area_mn_forest), 0, data_test_60$area_mn_forest)
+
 
 data_test_60$Cutaneous.Leishmaniasis <- as.factor(ifelse(data_test_60$Cutaneous.Leishmaniasis < quantile, 0, 1))
 
@@ -1026,7 +1038,7 @@ folds <- rsample::vfold_cv(data_train,
 data_rec <-
   recipe(Cutaneous.Leishmaniasis ~ LST_Day + Year + NDVI + 
            EVI + Precip + AvgRad + SWOccurrence + pland_forest + 
-           te_forest + enn_mn_forest + Population, data = data_train) %>%
+           te_forest + area_mn_forest + enn_mn_forest + Population, data = data_train) %>%
   step_dummy(all_nominal() - all_outcomes()) %>% 
   step_zv(all_predictors()) %>% 
   step_normalize(all_numeric())
@@ -1282,6 +1294,7 @@ data <- data %>%
 data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
 data$te_forest <- ifelse(is.na(data$te_forest), 0, data$te_forest)
 data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
+data$area_mn_forest <- ifelse(is.na(data$area_mn_forest), 0, data$area_mn_forest)
 
 data$Cutaneous.Leishmaniasis <- as.factor(ifelse(data$Cutaneous.Leishmaniasis < quantile, 0, 1))
 
@@ -1305,6 +1318,8 @@ data_test_70 <-  (aad %>%
 data_test_70$pland_forest <- ifelse(is.na(data_test_70$pland_forest), 0, data_test_70$pland_forest)
 data_test_70$te_forest <- ifelse(is.na(data_test_70$te_forest), 0, data_test_70$te_forest)
 data_test_70$enn_mn_forest <- ifelse(is.na(data_test_70$enn_mn_forest), 0, data_test_70$enn_mn_forest)
+data_test_70$area_mn_forest <- ifelse(is.na(data_test_70$area_mn_forest), 0, data_test_70$area_mn_forest)
+
 
 data_test_70$Cutaneous.Leishmaniasis <- as.factor(ifelse(data_test_70$Cutaneous.Leishmaniasis < quantile, 0, 1))
 
@@ -1317,7 +1332,7 @@ folds <- rsample::vfold_cv(data_train,
 data_rec <-
   recipe(Cutaneous.Leishmaniasis ~ LST_Day + Year + NDVI + 
            EVI + Precip + AvgRad + SWOccurrence + pland_forest + 
-           te_forest + enn_mn_forest + Population, data = data_train) %>%
+           te_forest + area_mn_forest + enn_mn_forest + Population, data = data_train) %>%
   step_dummy(all_nominal() - all_outcomes()) %>% 
   step_zv(all_predictors()) %>% 
   step_normalize(all_numeric())
@@ -1669,6 +1684,7 @@ data <- data %>%
 data$pland_forest <- ifelse(is.na(data$pland_forest), 0, data$pland_forest)
 data$te_forest <- ifelse(is.na(data$te_forest), 0, data$te_forest)
 data$enn_mn_forest <- ifelse(is.na(data$enn_mn_forest), 0, data$enn_mn_forest)
+data$area_mn_forest <- ifelse(is.na(data$area_mn_forest), 0, data$area_mn_forest)
 
 set.seed(123)
 split_t <- initial_split(data)
