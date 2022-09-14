@@ -9,7 +9,7 @@ library(urca)
 library(tidyverse)
 library(progress) 
 
-monthly <- read_csv('../data/monthly_df.csv')
+monthly <- read_csv('https://drive.google.com/file/d/1o4S9_WvzBMtXz4Y3VXF3bxm1oTryQefX/view?usp=sharing')
 ```
 
 # Set up `monthly_short`
@@ -279,18 +279,58 @@ for (i in 1:(unique(monthly_short_2[,'Code']) %>% nrow)){
   }
 }
 
-save(test_rwf_df_8, file = 'test_rwf_df_8')
+# save(test_rwf_df_8, file = 'test_rwf_df_8')
 load(file = 'test_rwf_df_8')
+
+
+test_rwf_df_8 %>% 
+  select(c(Year, area_mn_forest, te_forest, pland_forest)) %>% 
+  summary()
+
+aad %>% 
+  filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
+  filter(Cutaneous.Leishmaniasis > 0) %>% 
+  select(c(enn_mn_forest, area_mn_forest, te_forest, pland_forest)) %>% 
+  summary()
 ```
 
 ```{r}
+library(reshape)
+graph_df <- monthly_short %>%
+  mutate(Month = (Year - 2014 + 1) + Month) %>% 
+  mutate(enn_mn_forest = monthly_short_2$enn_mn_forest) %>%
+  filter(Code == sample(Code, 1)) %>% 
+  select(c(Month, enn_mn_forest, te_forest, pland_forest, area_mn_forest)) 
+
+graph_df_long <- melt(graph_df,
+                      id = 'Month', 
+                      measure = c('enn_mn_forest',
+                                  'te_forest',
+                                  'pland_forest',
+                                  'area_mn_forest'))
+
+ggplot(graph_df) +
+  geom_point(aes(x = Month,
+                 y = enn_mn_forest))
+```
+
+
+```{r}
 test_rwf_df_9 <- test_rwf_df_8 %>% 
+  mutate(enn_mn_forest = Year) %>% 
   mutate(Year = test_rwf_df_5$Year) %>% 
   mutate(Month = Month + 1) %>% 
-  mutate(Month = (Year - 2020)*12 + Month - 1) 
+  mutate(Month = (Year - 2020)*12 + Month - 1) %>% 
+  mutate(enn_mn_forest = enn_mn_forest - min(enn_mn_forest)) %>% 
+  mutate(area_mn_forest = area_mn_forest - min(area_mn_forest)) %>%
+  mutate(te_forest = te_forest - min(te_forest)) %>%
+  mutate(pland_forest = pland_forest - min(pland_forest))
+
 test_rwf_df_10 <- test_rwf_df_9 %>% 
   filter(Month == 60)
+
 save(test_rwf_df_10, file = 'projected_input')
+
 write.csv(test_rwf_df_10, file = 'projected_input.csv')
 ```
 
