@@ -25,22 +25,173 @@ library(tidyverse)
 library(tidymodels)
 library(stacks)
 library(dplyr)
-load('../../extrapolation/projected_input')
-data <- test_rwf_df_10 %>% 
+
+# load model
+load('model_stacks/FINAL_model_st_later_CL_classif_40')
+load('data_tests/FINAL_data_test_later_CL_classif_40')
+```
+
+```{r}
+load('../../extrapolation/projected_input_1m')
+load('../../extrapolation/projected_input_12m')
+load('../../extrapolation/projected_input_24m')
+load('../../extrapolation/projected_input_36m')
+load('../../extrapolation/projected_input_48m')
+load('../../extrapolation/projected_input_60m')
+
+data <- rbind(test_rwf_df_12, test_rwf_df_24,
+              test_rwf_df_36, test_rwf_df_48,
+              test_rwf_df_60) %>% 
+  mutate(Population = as.integer(Population))
+
+data_res <- data %>% 
+  bind_cols(predict(model_st_40,.)) %>% 
+  rename(Cutaneous.Leishmaniasis = .pred_class) %>% 
+  select(-c(Month))
+
+# Set up aad to check
+aad_new <- aad %>% 
+  filter(Cutaneous.Leishmaniasis > 0) %>% 
+  filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
+  mutate(Cutaneous.Leishmaniasis = ifelse(Cutaneous.Leishmaniasis < quantile(Cutaneous.Leishmaniasis, 0.4), 0, 1)) %>% 
+  select(c(colnames(data_res)))
+
+total_data <- rbind(data_res, aad_new)
+```
+
+
+```{r}
+data <- test_rwf_df_1m %>% 
+  mutate(Population = as.integer(Population))
+
+data_res <- data %>% 
+  bind_cols(predict(model_st_40,.))
+
+aad_new %>% 
+  select(c(Cutaneous.Leishmaniasis, Year)) %>% 
+  group_by(Year) %>% 
+  summarise(mean = mean(Cutaneous.Leishmaniasis))
+
+table(data_res$.pred_class)
+
+
+```
+
+```{r}
+load('../../extrapolation/projected_input_12m')
+data <- test_rwf_df_12 %>% 
   select(c('LST_Day', 'Year', 
            'NDVI', 'EVI', 'Precip', 
            'AvgRad', 'SWOccurrence', 'pland_forest',
            'te_forest', 'enn_mn_forest','Population')) %>% 
   mutate(Population = as.integer(Population))
-```
 
-```{r}
-load('model_stacks/FINAL_model_st_later_CL_classif_40')
 data_res <- data %>% 
   bind_cols(predict(model_st_40,.))
 
-table(data_test_40$Cutaneous.Leishmaniasis)
+table(aad$Cutaneous.Leishmaniasis)
 table(data_res$.pred_class)
+```
+
+
+```{r}
+load('../../extrapolation/projected_input_24m')
+data <- test_rwf_df_24 %>% 
+  select(c('LST_Day', 'Year', 
+           'NDVI', 'EVI', 'Precip', 
+           'AvgRad', 'SWOccurrence', 'pland_forest',
+           'te_forest', 'enn_mn_forest','Population')) %>% 
+  mutate(Population = as.integer(Population))
+
+data_res <- data %>% 
+  bind_cols(predict(model_st_40,.))
+
+table(aad$Cutaneous.Leishmaniasis)
+table(data_res$.pred_class)
+```
+
+```{r}
+load('../../extrapolation/projected_input_36m')
+data <- test_rwf_df_36 %>% 
+  select(c('LST_Day', 'Year', 
+           'NDVI', 'EVI', 'Precip', 
+           'AvgRad', 'SWOccurrence', 'pland_forest',
+           'te_forest', 'enn_mn_forest','Population')) %>% 
+  mutate(Population = as.integer(Population))
+
+data_res <- data %>% 
+  bind_cols(predict(model_st_40,.))
+
+table(aad$Cutaneous.Leishmaniasis)
+table(data_res$.pred_class)
+```
+
+```{r}
+load('../../extrapolation/projected_input_48m')
+data <- test_rwf_df_48 %>% 
+  select(c('LST_Day', 'Year', 
+           'NDVI', 'EVI', 'Precip', 
+           'AvgRad', 'SWOccurrence', 'pland_forest',
+           'te_forest', 'enn_mn_forest','Population')) %>% 
+  mutate(Population = as.integer(Population))
+
+data_res <- data %>% 
+  bind_cols(predict(model_st_40,.))
+
+table(aad$Cutaneous.Leishmaniasis)
+table(data_res$.pred_class)
+```
+
+
+```{r}
+load('../../extrapolation/projected_input_60m')
+data <- test_rwf_df_60 %>% 
+  select(c('LST_Day', 'Year', 
+           'NDVI', 'EVI', 'Precip', 
+           'AvgRad', 'SWOccurrence', 'pland_forest',
+           'te_forest', 'enn_mn_forest','Population')) %>% 
+  mutate(Population = as.integer(Population))
+
+data_res <- data %>% 
+  bind_cols(predict(model_st_40,.))
+
+table(aad$Cutaneous.Leishmaniasis)
+table(data_res$.pred_class)
+```
+
+```{r}
+load('../../extrapolation/test_rwf_df_deploy')
+data <- test_rwf_df_deploy %>% 
+  select(c('LST_Day', 'Year', 
+           'NDVI', 'EVI', 'Precip', 
+           'AvgRad', 'SWOccurrence', 'pland_forest',
+           'te_forest', 'enn_mn_forest','Population')) %>% 
+  mutate(Population = as.integer(Population))
+
+data_res <- data %>% 
+  bind_cols(predict(model_st_40,.)) %>% 
+  bind_cols(Month = test_rwf_df_deploy$Month)
+
+ggplot(data_res) + 
+  geom_point(aes(x = log(Population),
+                 y = Month,
+                 color = .pred_class))
+```
+
+```{r}
+library(reshape2)
+data_res <- data_res %>% 
+  mutate(.pred_class = .pred_class %>% as.numeric()) %>% 
+  mutate(Population = Population %>% as.numeric())
+cormat <- round(cor(data_res), 2)
+melted_cormat <- melt(cormat)
+ggplot(data = melted_cormat, aes(x=Var1, y=Var2, fill=value)) + 
+  geom_tile() +
+  scale_fill_gradient2(low = 'blue',
+                       high = 'red',
+                       mid = 'white') +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5))
+
 ```
 
 

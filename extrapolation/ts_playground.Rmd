@@ -165,8 +165,14 @@ fit %>% forecast(h=60) %>% autoplot(include=80)
 
 
 ```{r}
+set.seed(122123)
 # Toy
-fit <- auto.arima((monthly_short %>% filter(Code == sample(monthly_short$Code %>% unique(), 1)))[,'LST_Day'], seasonal=F)
+fit <- auto.arima((monthly_short %>% filter(Code == sample(monthly_short$Code %>% unique(), 1)))[,'LST_Day'], 
+                  seasonal=T, 
+                  D = 1,
+                  biasadj = T,
+                  allowdrift = T,
+                  lambda = 'auto')
 fit %>% forecast(h=120) %>% autoplot(include=80)
 ```
 
@@ -294,6 +300,8 @@ aad %>%
   summary()
 ```
 
+
+
 ```{r}
 library(reshape)
 graph_df <- monthly_short %>%
@@ -325,13 +333,58 @@ test_rwf_df_9 <- test_rwf_df_8 %>%
   mutate(area_mn_forest = area_mn_forest - min(area_mn_forest)) %>%
   mutate(te_forest = te_forest - min(te_forest)) %>%
   mutate(pland_forest = pland_forest - min(pland_forest))
+```
 
-test_rwf_df_10 <- test_rwf_df_9 %>% 
+```{r}
+test_rwf_df_1m <- test_rwf_df_9 %>% 
+  filter(Month == 1) 
+
+save(test_rwf_df_1m, file = 'projected_input_1m')
+write.csv(test_rwf_df_1m, file = 'projectedd_input_1m.csv')
+
+test_rwf_df_12 <- test_rwf_df_9 %>% 
+  filter(Month == 12) 
+
+save(test_rwf_df_12, file = 'projected_input_12m')
+write.csv(test_rwf_df_12, file = 'projectedd_input_12m.csv')
+
+test_rwf_df_24 <- test_rwf_df_9 %>% 
+  filter(Month == 24) 
+
+save(test_rwf_df_24, file = 'projected_input_24m')
+write.csv(test_rwf_df_24, file = 'projectedd_input_24m.csv')
+
+test_rwf_df_36 <- test_rwf_df_9 %>% 
+  filter(Month == 36)
+
+save(test_rwf_df_36, file = 'projected_input_36m')
+write.csv(test_rwf_df_36, file = 'projectedd_input_36m.csv')
+
+test_rwf_df_48 <- test_rwf_df_9 %>% 
+  filter(Month == 48)
+
+save(test_rwf_df_48, file = 'projected_input_48m')
+write.csv(test_rwf_df_48, file = 'projectedd_input_48m.csv')
+
+test_rwf_df_60 <- test_rwf_df_9 %>% 
   filter(Month == 60)
 
-save(test_rwf_df_10, file = 'projected_input')
+save(test_rwf_df_10, file = 'projected_input_60m')
+write.csv(test_rwf_df_10, file = 'projected_input_60m.csv')
+```
 
-write.csv(test_rwf_df_10, file = 'projected_input.csv')
+```{r}
+test_rwf_df_12
+test_rwf_df_24
+test_rwf_df_36
+test_rwf_df_48
+test_rwf_df_60
+
+test_rwf_df_deploy <- test_rwf_df_9 %>% 
+  filter(Month %in% c(12,24,36,48,60))
+
+save(test_rwf_df_deploy, file = 'test_rwf_df_deploy')
+write.csv(test_rwf_df_deploy, file = 'test_rwf_deploy.csv')
 ```
 
 
