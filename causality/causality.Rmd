@@ -1,0 +1,195 @@
+---
+title: "causality"
+author: "TJ Sipin"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      cache = T)
+library(ggpubr)
+library(readr)
+library(dplyr)
+library(knitr)
+library(kableExtra)
+library(ggplot2)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+data <- read_csv('../models/data/aad.csv') 
+```
+
+## Normality check
+
+
+```{r pressure, echo=FALSE}
+colnames(data)
+
+ggdensity(data$Population %>% log()) # Normal
+ggdensity(data$LST_Day) # Normal
+ggdensity(data$NDVI) # Unknown
+ggdensity(data$EVI) # Unknown
+ggdensity(data$Precip %>% sqrt()) # Normal?
+ggdensity(data$AvgRad %>% log) # Normal
+ggdensity(data$SWOccurrence) # Not
+ggdensity(data$pland_forest %>% sqrt) # Not
+ggdensity(data$area_mn_forest %>% log) # Not
+ggdensity(data$enn_mn_forest %>% log) # Not
+ggdensity(data$te_forest %>% log) # Not
+
+normality_check <- c('Normal', 'Normal',
+                     'Unknown', 'Unknown',
+                     'Normal', 'Normal',
+                     'Not Normal', 'Not Normal',
+                     'Not Normal', 'Not Normal',
+                     'Not Normal')
+
+normality_df <- data.frame(Variable = c('log(Population)', 'LST_Day',
+                                        'NDVI', 'EVI',
+                                        'sqrt(Precip)', 'log(AvgRad)',
+                                        'SWOccurrence', 'sqrt(pland_forest)',
+                                        'log(area_mn_forest)', 'log(enn_mn_forest)',
+                                        'log(te_forest)'),
+                           Normality = normality_check)
+
+knitr::kable(normality_df,
+             format = 'html') %>% 
+  kable_styling(full_width = F, font_size = 12)
+```
+
+## Wilcoxon Signed-Rank Test
+
+```{r}
+# Produce a threshold to split high- and low-risk municipalities, obtained from post-hoc analysis in stacked model
+quantile_data <- data %>% 
+  filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
+  filter(Cutaneous.Leishmaniasis > 0) %>% 
+  dplyr::select(Cutaneous.Leishmaniasis)
+
+quantile <- (quantile_data$Cutaneous.Leishmaniasis %>% 
+  quantile(0.4))[[1]]
+
+
+# Create a new variable risk
+data <- data %>% 
+  group_by(Code) %>% 
+  filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
+  filter(sum(Cutaneous.Leishmaniasis) > 0) %>% # only interested in municipalities who have at least one observaiton of cutaneous leishmaniasis
+  ungroup() %>% 
+  mutate(risk = ifelse(Cutaneous.Leishmaniasis < quantile, 'low', 'high') %>% 
+           as.factor())
+
+
+# Separate data into low and high risk lists to use in wilcox.test()
+low_risk <- data %>% 
+  filter(risk == 'low') %>% 
+  as.list()
+
+high_risk <- data %>% 
+  filter(risk == 'high') %>% 
+  as.list()
+```
+
+### Population
+
+```{r}
+wilcox.test(low_risk$Population, high_risk$Population)
+t.test(low_risk$Population, high_risk$Population)
+```
+
+### Average Radiance
+
+```{r}
+wilcox.test(low_risk$AvgRad, high_risk$AvgRad)
+wilcox.test(low_risk$te_forest, high_risk$te_forest)
+wilcox.test(low_risk$SWOccurrence, high_risk$SWOccurrence)
+wilcox.test(low_risk$Year, high_risk$Year)
+wilcox.test(low_risk$te_riverlakeocean, high_risk$te_riverlakeocean)
+
+numeric_vars <- colnames(data)[5:69]
+
+for(i in numeric_vars) { 
+  print(i)
+  wilcox.test(low_risk[[i]], high_risk[[i]]) %>% print()
+  t.test(low_risk[[i]], high_risk[[i]]) %>% print()
+  }
+```
+
+# Visualizations
+
+```{r}
+# LST_Day vs. Precip
+ggplot(data, aes(x = LST_Day, 
+                 y = Precip, 
+                 color = risk)) + 
+  geom_point(alpha = 0.2) +
+  geom_smooth(aes(group = risk), 
+              method = 'nls', formula = y ~ a * x + b, se = F,
+              method.args = list(start = list(a = 0.1, b = 0.1))) 
+
+# LST_Day vs. forest
+ggplot(data, aes(x = LST_Day, 
+                 y = te_forest, 
+                 color = risk)) + 
+  geom_point(alpha = 0.2) +
+  geom_smooth(aes(group = risk), 
+              method = 'nls', formula = y ~ a * x + b, se = F,
+              method.args = list(start = list(a = 0.1, b = 0.1))) 
+
+# Population vs. forest
+ggplot(data, aes(x = log(Population), 
+                 y = te_forest, 
+                 color = risk)) + 
+  geom_point(alpha = 0.2) +
+  geom_smooth(aes(group = risk), 
+              method = 'nls', formula = y ~ a * x + b, se = F,
+              method.args = list(start = list(a = 0.1, b = 0.1))) 
+
+# Population vs. LST_Day
+ggplot(data, aes(x = log(Population), 
+                 y = LST_Day, 
+                 color = risk)) + 
+  geom_point(alpha = 0.2) +
+  geom_smooth(aes(group = risk), 
+              method = 'nls', formula = y ~ a * x + b, se = F,
+              method.args = list(start = list(a = 0.1, b = 0.1))) 
+
+# Population vs. EVI
+ggplot(data, aes(x = log(Population), 
+                 y = EVI, 
+                 color = risk)) + 
+  geom_point(alpha = 0.2) +
+  geom_smooth(aes(group = risk), 
+              method = 'nls', formula = y ~ a * x + b, se = F,
+              method.args = list(start = list(a = 0.1, b = 0.1))) 
+
+# Population vs. NDVI
+ggplot(data, aes(x = log(Population), 
+                 y = NDVI, 
+                 color = risk)) + 
+  geom_point(alpha = 0.2) +
+  geom_smooth(aes(group = risk), 
+              method = 'nls', formula = y ~ a * x + b, se = F,
+              method.args = list(start = list(a = 0.1, b = 0.1))) 
+
+# Population vs. Precip
+ggplot(data, aes(x = log(Population), 
+                 y = sqrt(Precip), 
+                 color = risk)) + 
+  geom_point(alpha = 0.2) +
+  geom_smooth(aes(group = risk), 
+              method = 'nls', formula = y ~ a * x + b, se = F,
+              method.args = list(start = list(a = 0.1, b = 0.1))) 
+```
+
+
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

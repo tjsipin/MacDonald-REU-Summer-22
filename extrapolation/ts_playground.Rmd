@@ -9,7 +9,7 @@ library(urca)
 library(tidyverse)
 library(progress) 
 
-monthly <- read_csv('https://drive.google.com/file/d/1o4S9_WvzBMtXz4Y3VXF3bxm1oTryQefX/view?usp=sharing')
+monthly <- read_csv('../data/monthly_df.csv')
 ```
 
 # Set up `monthly_short`
@@ -38,7 +38,22 @@ monthly_short <- monthly %>%
                             te_forest)) %>% 
   mutate(Code = sub("^0+", "", Code) %>% as.integer())
 
-monthly_short %>% summary
+monthly_short %>% filter(Year == 2018) %>% select(Code) %>% dim()
+monthly_short %>% filter(Year == 2019) %>% select(Code) %>% dim()
+aad %>% filter(Year == 2018) %>% select(Code) %>% dim()
+aad %>% filter(Year == 2019) %>% select(Code) %>% dim()
+
+monthly_short %>% filter(Year %in% c(2018, 2019))
+
+monthly_short %>% filter(Year == 2019) %>% summary()
+
+ggplot(monthly_short %>% 
+         filter(Year %in% c(2018,2019))) + 
+  geom_boxplot(aes(Code, group = Year))
+
+ggplot(monthly %>%
+         filter(Year %in% c(2018, 2019))) + 
+  geom_boxplot(aes(Code, group = Year))
 ```
 
 ```{r}
@@ -165,16 +180,54 @@ fit %>% forecast(h=60) %>% autoplot(include=80)
 
 
 ```{r}
-set.seed(122123)
 # Toy
-fit <- auto.arima((monthly_short %>% filter(Code == sample(monthly_short$Code %>% unique(), 1)))[,'LST_Day'], 
+fit <- auto.arima((monthly_short %>% filter(Year %in% c(2018, 2019)) %>% filter(Code == (monthly_short$Code %>% unique())[k]))[,'Population'], 
                   seasonal=T, 
-                  D = 1,
+                  biasadj = T,
+                  allowdrift = T,
+                  lambda = 'auto')
+fit %>% forecast(h=120) %>% autoplot(include=80)
+
+fit <- auto.arima((monthly_short %>% filter(Year != 2019) %>% filter(Code == (monthly_short$Code %>% unique())[k]))[,'Population'], 
+                  seasonal=T, 
+                  biasadj = T,
+                  allowdrift = T,
+                  lambda = 'auto')
+fit %>% forecast(h=120) %>% autoplot(include=80)
+
+# Toy
+fit <- auto.arima((monthly_short %>% filter(Year == 2019) %>% filter(Code == (monthly_short$Code %>% unique())[k]))[,'Population'], 
+                  seasonal=T, 
+                  biasadj = T,
+                  allowdrift = T,
+                  lambda = 'auto')
+fit %>% forecast(h=120) %>% autoplot(include=80)
+
+k = k+1
+```
+
+```{r}
+# Toy
+fit <- auto.arima((monthly_short %>% filter(Year != 2019) %>% filter(Code == (monthly_short$Code %>% unique())[20]))[,'Population'], 
+                  seasonal=T, 
+                  biasadj = T,
+                  allowdrift = T,
+                  lambda = 'auto')
+fit %>% forecast(h=120) %>% autoplot(include=80)
+k = k+1
+```
+
+```{r}
+# Toy
+fit <- auto.arima((monthly_short %>% filter(Code == (monthly_short$Code %>% unique())[20]))[,'Population'], 
+                  seasonal=T, 
                   biasadj = T,
                   allowdrift = T,
                   lambda = 'auto')
 fit %>% forecast(h=120) %>% autoplot(include=80)
 ```
+
+
 
 ```{r}
 h = 60 # param
@@ -333,6 +386,8 @@ test_rwf_df_9 <- test_rwf_df_8 %>%
   mutate(area_mn_forest = area_mn_forest - min(area_mn_forest)) %>%
   mutate(te_forest = te_forest - min(te_forest)) %>%
   mutate(pland_forest = pland_forest - min(pland_forest))
+
+save(test_rwf_df_9, file = 'complete_projected')
 ```
 
 ```{r}
@@ -369,8 +424,8 @@ write.csv(test_rwf_df_48, file = 'projectedd_input_48m.csv')
 test_rwf_df_60 <- test_rwf_df_9 %>% 
   filter(Month == 60)
 
-save(test_rwf_df_10, file = 'projected_input_60m')
-write.csv(test_rwf_df_10, file = 'projected_input_60m.csv')
+save(test_rwf_df_60, file = 'projected_input_60m')
+write.csv(test_rwf_df_60, file = 'projected_input_60m.csv')
 ```
 
 ```{r}
