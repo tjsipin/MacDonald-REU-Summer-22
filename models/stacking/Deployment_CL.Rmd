@@ -185,8 +185,9 @@ aad_new %>%
   group_by(Year) %>% 
   summarise(mean = mean(Cutaneous.Leishmaniasis))
 
+table((aad_new %>% filter(Year %in% c(2018, 2019)))$Cutaneous.Leishmaniasis)
+table(aad_new$Cutaneous.Leishmaniasis)
 table(data_res$.pred_class)
-
 ```
 
 ```{r}
@@ -201,7 +202,8 @@ data <- test_rwf_df_12 %>%
 data_res <- data %>% 
   bind_cols(predict(model_st_40,.))
 
-table(aad$Cutaneous.Leishmaniasis)
+table((aad_new %>% filter(Year %in% c(2018, 2019)))$Cutaneous.Leishmaniasis)
+table(aad_new$Cutaneous.Leishmaniasis)
 table(data_res$.pred_class)
 ```
 
@@ -218,7 +220,8 @@ data <- test_rwf_df_24 %>%
 data_res <- data %>% 
   bind_cols(predict(model_st_40,.))
 
-table(aad$Cutaneous.Leishmaniasis)
+table((aad_new %>% filter(Year %in% c(2018, 2019)))$Cutaneous.Leishmaniasis)
+table(aad_new$Cutaneous.Leishmaniasis)
 table(data_res$.pred_class)
 ```
 
@@ -234,7 +237,8 @@ data <- test_rwf_df_36 %>%
 data_res <- data %>% 
   bind_cols(predict(model_st_40,.))
 
-table(aad$Cutaneous.Leishmaniasis)
+table((aad_new %>% filter(Year %in% c(2018, 2019)))$Cutaneous.Leishmaniasis)
+table(aad_new$Cutaneous.Leishmaniasis)
 table(data_res$.pred_class)
 ```
 
@@ -250,7 +254,8 @@ data <- test_rwf_df_48 %>%
 data_res <- data %>% 
   bind_cols(predict(model_st_40,.))
 
-table(aad$Cutaneous.Leishmaniasis)
+table((aad_new %>% filter(Year %in% c(2018, 2019)))$Cutaneous.Leishmaniasis)
+table(aad_new$Cutaneous.Leishmaniasis)
 table(data_res$.pred_class)
 ```
 
@@ -267,7 +272,8 @@ data <- test_rwf_df_60 %>%
 data_res <- data %>% 
   bind_cols(predict(model_st_40,.))
 
-table(aad$Cutaneous.Leishmaniasis)
+table(aad_new$Cutaneous.Leishmaniasis)
+table((aad_new %>% filter(Year %in% c(2018, 2019)))$Cutaneous.Leishmaniasis)
 table(data_res$.pred_class)
 ```
 

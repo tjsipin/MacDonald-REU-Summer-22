@@ -1,0 +1,90 @@
+---
+title: "missing_data"
+author: "TJ Sipin"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(readr)
+library(finalfit)
+library(dplyr)
+library(naniar)
+library(ggplot2)
+
+monthly <- read_csv('data/monthly_df.csv')
+aad <- read_csv('models/data/aad.csv')
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+quantile_data <- monthly_df %>% 
+  filter(!is.na(Cutaneous.Leishmaniasis)) %>% 
+  filter(Cutaneous.Leishmaniasis > 0) %>% 
+  select(Cutaneous.Leishmaniasis)
+
+quantile <- (quantile_data$Cutaneous.Leishmaniasis %>% 
+  quantile(.4))[[1]]
+
+monthly_df <- monthly %>% 
+  rename('Cutaneous.Leishmaniasis' = 'Cutaneous Leishmaniasis') %>% 
+  group_by('Year') %>% 
+  select(c('LST_Day', 'Year', # include LST_Night?
+           'NDVI', 'EVI', 'Precip', 
+           'AvgRad', 'SWOccurrence', 'pland_forest',
+           'te_forest', 'enn_mn_forest', 'area_mn_forest', 'Population',
+           'Cutaneous.Leishmaniasis')) %>% 
+  mutate(Cutaneous.Leishmaniasis.fct = ifelse(Cutaneous.Leishmaniasis < quantile, 'low', 'high') %>% as.factor)
+
+
+# missing_plot(monthly)
+
+
+monthly %>% 
+  group_by(Year) %>% 
+  summary()
+
+```
+
+## Faceted Missing
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+ggplot(monthly_df,
+       aes(x = te_forest,
+           y = Cutaneous.Leishmaniasis)) + 
+  geom_miss_point() + 
+  facet_wrap(~ Year) + 
+  theme_dark()
+```
+
+```{r}
+ggplot(aad,
+       aes(x = te_forest,
+           y = Cutaneous.Leishmaniasis)) + 
+  geom_miss_point(alpha = 0.1) + 
+  facet_wrap(~ Year) + 
+  theme_dark()
+```
+
+
+```{r}
+gg_miss_var(monthly_df,
+            facet = Year,
+            show_pct = T)
+```
+
+
+```{r}
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
