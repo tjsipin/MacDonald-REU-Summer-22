@@ -160,67 +160,67 @@ rf %>% varImpPlot()
 CL_vs_Population_pP <- rf %>% partialPlot(x.var = Population,
                    pred.data = train)
 
-save(CL_vs_Population_pP, file = 'CL_vs_Population_pP')
+save(CL_vs_Population_pP, file = 'plots/CL_vs_Population_pP')
 
 # Standing Water Occurrence
 CL_vs_SWOccurrence_pP <- rf %>% partialPlot(x.var = SWOccurrence,
                                             pred.data = train)
 
-save(CL_vs_SWOccurrence_pP, file = 'CL_vs_SWOccurrence_pP')
+save(CL_vs_SWOccurrence_pP, file = 'plots/CL_vs_SWOccurrence_pP')
 
 # Land Surface Temperature
 CL_vs_LST_Day_pP <- rf %>% partialPlot(x.var = LST_Day,
                                             pred.data = train)
 
-save(CL_vs_LST_Day_pP, file = 'CL_vs_LST_Day_pP')
+save(CL_vs_LST_Day_pP, file = 'plots/CL_vs_LST_Day_pP')
 
 # Precipitation
 CL_vs_Precip_pP <- rf %>% partialPlot(x.var = Precip,
                                             pred.data = train)
 
-save(CL_vs_Precip_pP, file = 'CL_vs_Precip_pP')
+save(CL_vs_Precip_pP, file = 'plots/CL_vs_Precip_pP')
 
 # Average Radiance
 CL_vs_AvgRad_pP <- rf %>% partialPlot(x.var = AvgRad,
                                             pred.data = train)
 
-save(CL_vs_AvgRad_pP, file = 'CL_vs_AvgRad_pP')
+save(CL_vs_AvgRad_pP, file = 'plots/CL_vs_AvgRad_pP')
 
 # EVI
 CL_vs_EVI_pP <- rf %>% partialPlot(x.var = EVI,
                                    pred.data = train)
 
-save(CL_vs_EVI_pP, file = 'CL_vs_EVI_pP')
+save(CL_vs_EVI_pP, file = 'plots/CL_vs_EVI_pP')
 
 # NDVI
 CL_vs_NDVI_pP <- rf %>% partialPlot(x.var = NDVI,
                                    pred.data = train)
 
-save(CL_vs_NDVI_pP, file = 'CL_vs_NDVI_pP')
+save(CL_vs_NDVI_pP, file = 'plots/CL_vs_NDVI_pP')
 
 # pland forest
 CL_vs_pland_forest_pP <- rf %>% partialPlot(x.var = pland_forest,
                                    pred.data = train)
 
-save(CL_vs_pland_forest_pP, file = 'CL_vs_pland_forest_pP')
+save(CL_vs_pland_forest_pP, file = 'plots/CL_vs_pland_forest_pP')
 
 # area_mn_forest
 CL_vs_area_mn_forest_pP <- rf %>% partialPlot(x.var = area_mn_forest,
                                    pred.data = train)
 
-save(CL_vs_area_mn_forest_pP, file = 'CL_vs_area_mn_forest_pP')
+save(CL_vs_area_mn_forest_pP, file = 'plots/CL_vs_area_mn_forest_pP')
 
 # te_forest
 CL_vs_te_forest_pP <- rf %>% partialPlot(x.var = te_forest,
                                    pred.data = train)
 
-save(CL_vs_te_forest_pP, file = 'CL_vs_te_forest_pP')
+save(CL_vs_te_forest_pP, file = 'plots/CL_vs_te_forest_pP')
 
 # enn_mn_forest
 CL_vs_enn_mn_forest_pP <- rf %>% partialPlot(x.var = enn_mn_forest,
                                              pred.data = train)
 
-save(CL_vs_enn_mn_forest_pP, file = 'CL_vs_enn_mn_forest_pP')
+save(CL_vs_enn_mn_forest_pP, file = 'plots/CL_vs_enn_mn_forest_pP')
 # 
 # ggplot() + 
 #   geom_line(aes(x = CV_vs_SWOccurrence_pP$x,
@@ -232,6 +232,24 @@ save(CL_vs_enn_mn_forest_pP, file = 'CL_vs_enn_mn_forest_pP')
 # ggplot(test) + 
 #   geom_point(aes(x = SWOccurrence,
 #                  y = CL))
+```
+
+
+```{r}
+
+ggplot() + 
+  geom_line(aes(x = CL_vs_SWOccurrence_pP[[1]],
+                y = CL_vs_SWOccurrence_pP[[2]])) +
+  xlab('Hi') + 
+  ylab('Hey')
+
+ggplot(train) +
+  geom_point(aes(x = SWOccurrence,
+                 y = CL))
+ggplot(test) +
+  geom_point(aes(x = SWOccurrence,
+                 y = CL))
+
 ```
 
 ## Prediction and Calculate Performance Metrics
@@ -261,15 +279,15 @@ test_df <- test %>%
 alpha = c(0.7, 0, 0.99)
 
 ggplot(test_df) + 
-  geom_line(aes(x = EVI, 
+  geom_line(aes(x = test_df['EVI'], 
                 y = CL,
                 color = 'true'),
             alpha = alpha[1]) + 
-  geom_line(aes(x = EVI,
+  geom_line(aes(x = test_df['EVI'],
                 y = difference,
                 color = 'difference'),
             alpha = alpha[2]) +
-  geom_line(aes(x = EVI,
+  geom_line(aes(x = test_df['EVI'],
                 y = prediction,
                 color = 'prediction'),
             alpha = alpha[3])
