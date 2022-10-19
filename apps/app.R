@@ -24,12 +24,20 @@ train <- training(split) %>% as.data.frame()
 test <- testing(split)
 
 # Load our random forest rf
-load('../causality/monthly_short_rf') # rf
+load('causality/monthly_short_rf') # rf
 
 # Load our partial plots
-load('../causality/plots/CL_vs_Population_pP')
-load('../causality/plots/CL_vs_LST_Day_pP')
-
+load('causality/plots/CL_vs_Population_pP')
+load('causality/plots/CL_vs_LST_Day_pP')
+load('causality/plots/CL_vs_NDVI_pP')
+load('causality/plots/CL_vs_EVI_pP')
+load('causality/plots/CL_vs_Precip_pP')
+load('causality/plots/CL_vs_SWOccurrence_pP')
+load('causality/plots/CL_vs_AvgRad_pP')
+load('causality/plots/CL_vs_area_mn_forest_pP')
+load('causality/plots/CL_vs_enn_mn_forest_pP')
+load('causality/plots/CL_vs_pland_forest_pP')
+load('causality/plots/CL_vs_te_forest_pP')
 
 # Define UI for app ----
 ui <- fluidPage(
@@ -88,7 +96,12 @@ ui <- fluidPage(
         'alpha_3', 
         'Difference:',
         min = 0, max = 1, value = 100
-      )
+      ),
+      
+      # Show Test mse
+      h5(textOutput('mse'))
+      
+      
       ),
   
     # Main panel for displaying outputs
@@ -185,8 +198,18 @@ server <- function(input, output) {
       geom_line(aes(x = eval(parse(text = varName(input$variable))),
                     y = difference,
                     color = 'difference'),
-                alpha = input$alpha_3)
+                alpha = input$alpha_3) + 
+      xlab(clean(input$variable))
   )
+  
+  train_test_mse <- reactive({
+    paste('Train MSE:', rf$mse[500], '\n',
+          'Test MSE:', ModelMetrics::mse(actual = test_df$CL, predicted = test_df$prediction))
+  })
+  
+  output$mse <- renderText({
+    train_test_mse()
+  }) 
 }
 
 

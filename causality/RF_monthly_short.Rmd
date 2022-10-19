@@ -294,25 +294,68 @@ ggplot(test_df) +
   
 ```
 
-
+## Quantile RF
+https://www.r-bloggers.com/2021/04/quantile-regression-forests-for-prediction-intervals/
 
 ```{r}
-fun <- function(){
-  x <- readline("What is the value of x?")  
-  y <- readline("What is the value of y?")
-  t <- readline("What are the T values?")
-  v <- readline("What are the V values?")
+library(tidyverse)
+library(tidymodels)
+rf_recipe <-
+  recipe(
+    CL ~ Year + Month + Population +
+      LST_Day + NDVI + EVI + Precip + AvgRad + SWOccurrence +
+      pland_forest + area_mn_forest + enn_mn_forest + te_forest,
+    data = train
+  )
 
-  x <- as.numeric(unlist(strsplit(x, ",")))
-  y <- as.numeric(unlist(strsplit(y, ",")))
-  t <- as.numeric(unlist(strsplit(t, ",")))
-  v <- as.numeric(unlist(strsplit(v, ",")))
+rf_model <- rand_forest() %>% 
+  set_engine('ranger', importance = 'impurity',
+             seed = 123, quantreg = TRUE) %>% 
+  set_mode('regression')
 
-  out1 <- x + y
-  out2 <- t + v
+set.seed(123)
 
-  return(list(out1, out2))
-
-}
+rf_wf <- workflow() %>% 
+  add_model(rf_model) %>% 
+  add_recipe(rf_recipe) %>% 
+  fit(train)
 ```
+
+```{r}
+preds_bind <- function(data_fit, lower = 0.05, upper = 0.95) {
+  predict(
+    rf_wf$fit$fit$fit,
+    extract_recipe(rf_wf) %>% 
+      bake(data_fit),
+    type = 'quantiles',
+    quantiles = c(lower, upper, 0.05)
+  ) %>% 
+    with(predictions) %>% 
+    as_tibble() %>%
+    set_names(paste('.pred', c('_lower', '_upper', ''))) %>% 
+    mutate(across(contains('.pred'), ~10^.x)) %>% 
+    bind_cols(data_fit) %>% 
+    select(contains('.pred'), CL, Year, Month, Population,
+           LST_Day, NDVI, EVI, Precip, AvgRad, SWOccurrence,
+           pland_forest, area_mn_forest, enn_mn_forest, te_forest)
+}
+
+rf_preds_test <- preds_bind(test)
+```
+
+Sample of prediction intervals
+```{r}
+set.seed(123)
+rf_preds_test %>% 
+  mutate(pred_interval = cut_interval(CL, )) +
+  group_by(pred_interval) +
+  sample_n(2) +
+  ggplot(aes(x = .pred)) +
+  geom_point(aes(y = .pred, color = 'prediction interval')) +
+  geom_errorbar(aes(ymin = .pred_lower, ymax = .pred_upper, color = 'prediction interval')) + 
+  geom_point(aes(y = CL, color = 'actuals')) + 
+  coord_fixed()
+```
+
+
 
