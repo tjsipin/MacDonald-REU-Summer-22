@@ -14,8 +14,8 @@ library(dplyr)
 library(naniar)
 library(ggplot2)
 
-monthly <- read_csv('data/monthly_df.csv')
-aad <- read_csv('models/data/aad.csv')
+monthly <- read_csv('../data/monthly_df.csv')
+aad <- read_csv('../models/data/aad.csv')
 ```
 
 ## R Markdown

@@ -94,6 +94,7 @@ monthly_short <- monthly %>%
   filter(!is.na(SWOccurrence)) %>% 
   mutate(Month = (Year - 2014)*12 + Month) %>% 
   select(c(Name, Code, Year, Month,
+           `Cutaneous Leishmaniasis`,
            Population, LST_Day,
            NDVI, EVI, Precip,
            AvgRad, SWOccurrence,
@@ -108,6 +109,8 @@ monthly_short <- monthly %>%
   mutate(te_forest = ifelse(is.na(te_forest), 0,
                             te_forest)) %>% 
   mutate(Code = sub("^0+", "", Code) %>% as.integer())
+
+write.csv(monthly_short, file = '../../data/monthly_short.csv')
 
 tool_2019 <- monthly_short %>% 
   filter(Year == 2019) %>% 

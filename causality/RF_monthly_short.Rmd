@@ -1,0 +1,300 @@
+---
+title: "RF_monthly_short"
+author: "TJ Sipin"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries and Data
+
+We try our random forest on the monthly data, taking only years 2014 to 2017. 2018 can work but there are some missing values for cutaneous leishmaniasis.
+
+```{r cars}
+library(randomForest)
+library(ggplot2)
+library(finalfit)
+library(dplyr)
+library(naniar)
+library(readr)
+library(tidyverse)
+library(caret)
+library(readr)
+library(dplyr)
+library(mlbench)
+library(rsample)
+
+data <- read_csv('../data/monthly_short.csv')
+```
+
+## Exploratory 
+
+### Elementary summary of data
+```{r pressure, echo=FALSE}
+# remove unnecessary row counter
+# data <- data %>% 
+#   select(-c(...1)) %>% 
+#   filter(Year %in% c(2014, 2015, 2016, 2017)) %>% 
+#   rename(CL = `Cutaneous Leishmaniasis`)
+
+data <- data %>% 
+  select(-c(...1)) %>% 
+  filter(Year %in% c(2014)) %>% 
+  rename(CL = `Cutaneous Leishmaniasis`)
+
+data %>% summary
+```
+
+Notice that there are no missing values included in this data set.
+
+## Random Forest
+
+### Splitting CL into low- and high-risk
+
+The 40th percentile was obtained using a sensitivity test in our stacked model. 
+
+```{r}
+quantile_data <- data %>% 
+  filter(CL > 0) %>% 
+  select(CL)
+
+quantile <- (quantile_data$CL %>% 
+  quantile(.4))[[1]]
+
+data_fac <- data %>% 
+  mutate(CL = case_when(CL < quantile ~ 'low',
+                         CL >= quantile ~ 'high'))
+```
+
+### Data partitioning
+
+```{r}
+set.seed(123)
+
+# data_sample <- sample_n(data, size = nrow(data) * 0.7)
+
+split <- initial_split(data, prop = 0.7)
+train <- training(split) %>% as.data.frame()
+test <- testing(split)
+
+
+x_train <- train[, c(1:4, 6:16)]
+y_train <- train[, 5]
+```
+
+
+Code inspiration from https://machinelearningmastery.com/tune-machine-learning-algorithms-in-r/.
+
+```{r}
+set.seed(123)
+# split <- initial_split(data, strata = CL) # CL used for stratified sampling
+# training <- training(split)
+# testing <- testing(split)
+
+# rf <- randomForest(CL ~ ., data = train, proximity = T)
+
+# Create model with default parameters 
+
+control <- trainControl(method = 'repeatedcv',
+                        number = 10, 
+                        repeats = 3, 
+                        search = 'random')
+
+tunegrid <- expand.grid(.mtry = sqrt(ncol(data %>% select(-c(CL)))))
+rf_random <- train(CL ~ ., data = data, method = 'rf',
+                    metric = 'Sensitivity',
+                    tuneGrid =  tunegrid,
+                    trControl = control)
+```
+
+#### v2 Alogrithm Tools
+
+```{r}
+# Algorithm Tune (tuneRF)
+bestmtry <- tuneRF(x = x_train, y = y_train, stepFactor = 1.5, improve = 0.5)
+
+# save(bestmtry, file = 'rf_bestmtry') # save file
+
+bestmtry; bestmtry %>% plot
+```
+
+#### v3 Random Search
+
+```{r}
+set.seed(123)
+control <- trainControl(method = 'repeatedcv',
+                        number = 10, 
+                        repeats = 3,
+                        search = 'random')
+
+rf_random <- train(CL ~ .,
+                   data = train,
+                   method = 'rf',
+                   metric = 'RMSE',
+                   tuneLength = 15,
+                   trControl = control)
+
+print(rf_random); plot(rf_random)
+```
+
+### The random forest
+
+```{r, eval = F}
+# rf <- randomForest(CL ~ ., data = train,
+#                    mtry = 4, importance = T, localImp = T)
+# 
+# rf; plot(rf)
+# 
+# save(rf, file = 'monthly_short_rf')
+```
+
+```{r}
+load('monthly_short_rf')
+
+rf %>% varImpPlot()
+
+# Population
+CL_vs_Population_pP <- rf %>% partialPlot(x.var = Population,
+                   pred.data = train)
+
+save(CL_vs_Population_pP, file = 'CL_vs_Population_pP')
+
+# Standing Water Occurrence
+CL_vs_SWOccurrence_pP <- rf %>% partialPlot(x.var = SWOccurrence,
+                                            pred.data = train)
+
+save(CL_vs_SWOccurrence_pP, file = 'CL_vs_SWOccurrence_pP')
+
+# Land Surface Temperature
+CL_vs_LST_Day_pP <- rf %>% partialPlot(x.var = LST_Day,
+                                            pred.data = train)
+
+save(CL_vs_LST_Day_pP, file = 'CL_vs_LST_Day_pP')
+
+# Precipitation
+CL_vs_Precip_pP <- rf %>% partialPlot(x.var = Precip,
+                                            pred.data = train)
+
+save(CL_vs_Precip_pP, file = 'CL_vs_Precip_pP')
+
+# Average Radiance
+CL_vs_AvgRad_pP <- rf %>% partialPlot(x.var = AvgRad,
+                                            pred.data = train)
+
+save(CL_vs_AvgRad_pP, file = 'CL_vs_AvgRad_pP')
+
+# EVI
+CL_vs_EVI_pP <- rf %>% partialPlot(x.var = EVI,
+                                   pred.data = train)
+
+save(CL_vs_EVI_pP, file = 'CL_vs_EVI_pP')
+
+# NDVI
+CL_vs_NDVI_pP <- rf %>% partialPlot(x.var = NDVI,
+                                   pred.data = train)
+
+save(CL_vs_NDVI_pP, file = 'CL_vs_NDVI_pP')
+
+# pland forest
+CL_vs_pland_forest_pP <- rf %>% partialPlot(x.var = pland_forest,
+                                   pred.data = train)
+
+save(CL_vs_pland_forest_pP, file = 'CL_vs_pland_forest_pP')
+
+# area_mn_forest
+CL_vs_area_mn_forest_pP <- rf %>% partialPlot(x.var = area_mn_forest,
+                                   pred.data = train)
+
+save(CL_vs_area_mn_forest_pP, file = 'CL_vs_area_mn_forest_pP')
+
+# te_forest
+CL_vs_te_forest_pP <- rf %>% partialPlot(x.var = te_forest,
+                                   pred.data = train)
+
+save(CL_vs_te_forest_pP, file = 'CL_vs_te_forest_pP')
+
+# enn_mn_forest
+CL_vs_enn_mn_forest_pP <- rf %>% partialPlot(x.var = enn_mn_forest,
+                                             pred.data = train)
+
+save(CL_vs_enn_mn_forest_pP, file = 'CL_vs_enn_mn_forest_pP')
+# 
+# ggplot() + 
+#   geom_line(aes(x = CV_vs_SWOccurrence_pP$x,
+#                 y = CV_vs_SWOccurrence_pP$y))
+# 
+# ggplot(train) + 
+#   geom_point(aes(x = SWOccurrence,
+#                  y = CL))
+# ggplot(test) + 
+#   geom_point(aes(x = SWOccurrence,
+#                  y = CL))
+```
+
+## Prediction and Calculate Performance Metrics
+
+```{r}
+# pred1 = predict(rf)
+# library(ROCR)
+# perf = prediction(pred1, train$CL)
+# 
+# # 1. Area under curve
+# auc = performance(perf, 'auc')
+# auc
+# 
+# # 2. True Positive and Negative Rate
+# pred3 = performance(perf, 'tpr', 'fpr')
+# 
+# # 3. Plot the ROC curve
+# plot(pred3, main = 'ROC Curve for RF',
+#      col = 2, lwd = 2)
+# abline(a = 0, b = 1, lwd = 2, lty = 2, col = 'gray')
+
+test_df <- test %>% 
+  mutate(prediction = predict(rf, test)) %>% 
+  mutate(difference = CL - prediction) %>% 
+  mutate(Index = rownames(test))
+
+alpha = c(0.7, 0, 0.99)
+
+ggplot(test_df) + 
+  geom_line(aes(x = EVI, 
+                y = CL,
+                color = 'true'),
+            alpha = alpha[1]) + 
+  geom_line(aes(x = EVI,
+                y = difference,
+                color = 'difference'),
+            alpha = alpha[2]) +
+  geom_line(aes(x = EVI,
+                y = prediction,
+                color = 'prediction'),
+            alpha = alpha[3])
+  
+```
+
+
+
+```{r}
+fun <- function(){
+  x <- readline("What is the value of x?")  
+  y <- readline("What is the value of y?")
+  t <- readline("What are the T values?")
+  v <- readline("What are the V values?")
+
+  x <- as.numeric(unlist(strsplit(x, ",")))
+  y <- as.numeric(unlist(strsplit(y, ",")))
+  t <- as.numeric(unlist(strsplit(t, ",")))
+  v <- as.numeric(unlist(strsplit(v, ",")))
+
+  out1 <- x + y
+  out2 <- t + v
+
+  return(list(out1, out2))
+
+}
+```
+
