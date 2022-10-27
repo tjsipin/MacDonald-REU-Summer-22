@@ -1,0 +1,541 @@
+---
+title: "RF_monthly_short"
+author: "TJ Sipin"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries and Data
+
+We try our random forest on the monthly data, taking only years 2014 to 2017. 2018 can work but there are some missing values for cutaneous leishmaniasis.
+
+```{r packages}
+library(randomForest)
+library(ggplot2)
+library(finalfit)
+library(dplyr)
+library(naniar)
+library(readr)
+library(tidyverse)
+library(caret)
+library(readr)
+library(dplyr)
+library(mlbench)
+library(rsample)
+
+
+diff_data <- read_csv('../data/diff_data.csv')
+
+data <- diff_data %>% 
+  select(-c(...1)) %>% 
+  filter(Year %in% c(2014, 2015, 2016, 2017)) %>% 
+  filter(CL > 0) 
+```
+
+
+# Sanity Check
+
+## To see where to split
+
+```{r}
+## 30
+quantile_data <- data %>% 
+  filter(CL > 0) %>% 
+  select(CL)
+
+quantile <- (quantile_data$CL %>% 
+  quantile(.3))[[1]]
+
+data_cat <- data %>% 
+  mutate(CL = case_when(CL < quantile ~ 'low',
+                         CL >= quantile ~ 'high') %>% 
+           as_factor()) %>% 
+  select(-c(Name, Year, Code, Country, Month, TEMP_pland_forest, TEMP_te_forest, TEMP_enn_mn_forest, TEMP_area_mn_forest))
+
+set.seed(123)
+
+# data_sample <- sample_n(data, size = nrow(data) * 0.7)
+
+split_cat <- initial_split(data_cat, prop = 0.7, strata = CL)
+train_cat <- training(split_cat) %>% as.data.frame()
+test_cat <- testing(split_cat)
+
+
+library(tidyverse)
+library(tidymodels)
+
+rf_recipe <-
+  recipe(
+    CL ~ .,
+    data = train_cat) %>% 
+  prep()
+
+rf_testing <- rf_recipe %>% 
+  bake(test_cat)
+
+rf_training <- juice(rf_recipe)
+
+rf_model <- rand_forest(mtry = 7,
+                        trees = 700) %>% 
+  set_engine('ranger', importance = 'impurity',
+             seed = 123) %>%
+  set_mode('classification') %>% 
+  fit(CL ~ . , data = train_cat)
+
+set.seed(123)
+
+# rf_wf <- workflow() %>% 
+#   add_model(rf_model) %>% 
+#   add_recipe(rf_recipe) %>% 
+#   fit(train_cat)
+
+testing_data_later_30 <- rf_model %>% 
+  predict(rf_testing) %>% 
+  bind_cols(rf_testing) 
+
+confusionMatrix(data = testing_data_later_30$.pred_class, reference = testing_data_later_30$CL)
+
+## 40
+
+quantile_data <- data %>% 
+  filter(CL > 0) %>% 
+  select(CL)
+
+quantile <- (quantile_data$CL %>% 
+  quantile(.4))[[1]]
+
+data_cat <- data %>% 
+  mutate(CL = case_when(CL < quantile ~ 'low',
+                         CL >= quantile ~ 'high') %>% 
+           as_factor()) %>% 
+  select(-c(Name, Year, Code, Country, Month, TEMP_pland_forest, TEMP_te_forest, TEMP_enn_mn_forest, TEMP_area_mn_forest))
+
+set.seed(123)
+
+# data_sample <- sample_n(data, size = nrow(data) * 0.7)
+
+split_cat <- initial_split(data_cat, prop = 0.7, strata = CL)
+train_cat <- training(split_cat) %>% as.data.frame()
+test_cat <- testing(split_cat)
+
+
+
+
+library(tidyverse)
+library(tidymodels)
+
+rf_recipe <-
+  recipe(
+    CL ~ .,
+    data = train_cat) %>% 
+  prep()
+
+rf_testing <- rf_recipe %>% 
+  bake(test_cat)
+
+rf_training <- juice(rf_recipe)
+
+rf_model <- rand_forest(mtry = 7,
+                        trees = 700) %>% 
+  set_engine('ranger', importance = 'impurity',
+             seed = 123, probability = T) %>%
+  set_mode('classification') %>% 
+  fit(CL ~ ., data = train_cat)
+
+set.seed(123)
+
+# rf_wf <- workflow() %>% 
+#   add_model(rf_model) %>% 
+#   add_recipe(rf_recipe) %>% 
+#   fit(train_cat)
+
+testing_data_later_40 <- rf_model %>% 
+  predict(rf_testing) %>% 
+  bind_cols(rf_testing) 
+
+confusionMatrix(data = testing_data_later_40$.pred_class, reference = testing_data_later_40$CL)
+
+## 50
+
+quantile_data <- data %>% 
+  filter(CL > 0) %>% 
+  select(CL)
+
+quantile <- (quantile_data$CL %>% 
+  quantile(.5))[[1]]
+
+data_cat <- data %>% 
+  mutate(CL = case_when(CL < quantile ~ 'low',
+                         CL >= quantile ~ 'high') %>% 
+           as_factor()) %>% 
+  select(-c(Name, Year, Code, Country, Month, TEMP_pland_forest, TEMP_te_forest, TEMP_enn_mn_forest, TEMP_area_mn_forest))
+
+set.seed(123)
+
+# data_sample <- sample_n(data, size = nrow(data) * 0.7)
+
+split_cat <- initial_split(data_cat, prop = 0.7, strata = CL)
+train_cat <- training(split_cat) %>% as.data.frame()
+test_cat <- testing(split_cat)
+
+
+
+
+library(tidyverse)
+library(tidymodels)
+
+rf_recipe <-
+  recipe(
+    CL ~ .,
+    data = train_cat) %>% 
+  prep()
+
+rf_testing <- rf_recipe %>% 
+  bake(test_cat)
+
+rf_training <- juice(rf_recipe)
+
+rf_model <- rand_forest(mtry = 7,
+                        trees = 700) %>% 
+  set_engine('ranger', importance = 'impurity',
+             seed = 123) %>%
+  set_mode('classification') %>% 
+  fit(CL ~ ., data = train_cat)
+
+set.seed(123)
+
+# rf_wf <- workflow() %>% 
+#   add_model(rf_model) %>% 
+#   add_recipe(rf_recipe) %>% 
+#   fit(train_cat)
+
+testing_data_later_50 <- rf_model %>% 
+  predict(rf_testing) %>% 
+  bind_cols(rf_testing) 
+
+confusionMatrix(data = testing_data_later_50$.pred_class, reference = testing_data_later_50$CL)
+
+## 60
+
+quantile_data <- data %>% 
+  filter(CL > 0) %>% 
+  select(CL)
+
+quantile <- (quantile_data$CL %>% 
+  quantile(.6))[[1]]
+
+data_cat <- data %>% 
+  mutate(CL = case_when(CL < quantile ~ 'low',
+                         CL >= quantile ~ 'high') %>% 
+           as_factor()) %>% 
+  select(-c(Name, Year, Code, Country, Month, TEMP_pland_forest, TEMP_te_forest, TEMP_enn_mn_forest, TEMP_area_mn_forest))
+
+set.seed(123)
+
+# data_sample <- sample_n(data, size = nrow(data) * 0.7)
+
+split_cat <- initial_split(data_cat, prop = 0.7, strata = CL)
+train_cat <- training(split_cat) %>% as.data.frame()
+test_cat <- testing(split_cat)
+
+
+
+
+library(tidyverse)
+library(tidymodels)
+
+rf_recipe <-
+  recipe(
+    CL ~ .,
+    data = train_cat) %>% 
+  prep()
+
+rf_testing <- rf_recipe %>% 
+  bake(test_cat)
+
+rf_training <- juice(rf_recipe)
+
+rf_model <- rand_forest(mtry = 7,
+                        trees = 700) %>% 
+  set_engine('ranger', importance = 'impurity',
+             seed = 123) %>%
+  set_mode('classification') %>% 
+  fit(CL ~ ., data = train_cat)
+
+set.seed(123)
+
+# rf_wf <- workflow() %>% 
+#   add_model(rf_model) %>% 
+#   add_recipe(rf_recipe) %>% 
+#   fit(train_cat)
+
+testing_data_later_60 <- rf_model %>% 
+  predict(rf_testing) %>% 
+  bind_cols(rf_testing) 
+
+confusionMatrix(data = testing_data_later_60$.pred_class, reference = testing_data_later_60$CL)
+
+## 70
+quantile_data <- data %>% 
+  filter(CL > 0) %>% 
+  select(CL)
+
+quantile <- (quantile_data$CL %>% 
+  quantile(.7))[[1]]
+
+data_cat <- data %>% 
+  mutate(CL = case_when(CL < quantile ~ 'low',
+                         CL >= quantile ~ 'high') %>% 
+           as_factor()) %>% 
+  select(-c(Name, Year, Code, Country, Month, TEMP_pland_forest, TEMP_te_forest, TEMP_enn_mn_forest, TEMP_area_mn_forest))
+
+set.seed(123)
+
+# data_sample <- sample_n(data, size = nrow(data) * 0.7)
+
+split_cat <- initial_split(data_cat, prop = 0.7, strata = CL)
+train_cat <- training(split_cat) %>% as.data.frame()
+test_cat <- testing(split_cat)
+
+
+
+
+library(tidyverse)
+library(tidymodels)
+
+rf_recipe <-
+  recipe(
+    CL ~ .,
+    data = train_cat) %>% 
+  prep()
+
+rf_testing <- rf_recipe %>% 
+  bake(test_cat)
+
+rf_training <- juice(rf_recipe)
+
+rf_model <- rand_forest(mtry = 7,
+                        trees = 700) %>% 
+  set_engine('ranger', importance = 'impurity',
+             seed = 123) %>%
+  set_mode('classification') %>% 
+  fit(CL ~ ., data = train_cat)
+
+set.seed(123)
+
+# rf_wf <- workflow() %>% 
+#   add_model(rf_model) %>% 
+#   add_recipe(rf_recipe) %>% 
+#   fit(train_cat)
+
+testing_data_later_70 <- rf_model %>% 
+  predict(rf_testing) %>% 
+  bind_cols(rf_testing) 
+
+confusionMatrix(data = testing_data_later_70$.pred_class, reference = testing_data_later_70$CL)
+
+
+save(testing_data_later_30, file = 'data/CL_RF_testing_data_later_30')
+save(testing_data_later_40, file = 'data/CL_RF_testing_data_later_40')
+save(testing_data_later_50, file = 'data/CL_RF_testing_data_later_50')
+save(testing_data_later_60, file = 'data/CL_RF_testing_data_later_60')
+save(testing_data_later_70, file = 'data/CL_RF_testing_data_later_70')
+```
+
+```{r}
+library(tidyverse)
+library(pROC)
+library(dplyr)
+library(ggplot2)
+library(plotROC)
+
+load(file = 'data/CL_RF_testing_data_later_30')
+load(file = 'data/CL_RF_testing_data_later_40')
+load(file = 'data/CL_RF_testing_data_later_50')
+load(file = 'data/CL_RF_testing_data_later_60')
+load(file = 'data/CL_RF_testing_data_later_70')
+
+roc_30 <- roc(testing_data_later_30$CL,
+              testing_data_later_30$.pred_class %>% as.numeric(),
+              print.auc = T)
+
+roc_40 <- roc(testing_data_later_40$CL,
+              testing_data_later_40$.pred_class %>% as.numeric(),
+              print.auc = T)
+
+roc_50 <- roc(testing_data_later_50$CL,
+              testing_data_later_50$.pred_class %>% as.numeric(),
+              print.auc = T)
+
+roc_60 <- roc(testing_data_later_60$CL,
+              testing_data_later_60$.pred_class %>% as.numeric(),
+              print.auc = T)
+
+roc_70 <- roc(testing_data_later_70$CL,
+              testing_data_later_70$.pred_class %>% as.numeric(),
+              print.auc = T)
+
+roc_list <- list('30th percentile' = roc_30,
+           '40th percentile' = roc_40,
+           '50th percentile' = roc_50,
+           '60th percentile' = roc_60,
+           '70th percentile' = roc_70)
+
+# extract AUC
+data.auc <- roc_list %>% 
+  map(~tibble(AUC = .x$auc)) %>% 
+  bind_rows(.id = 'name')
+
+# generate labels
+data.labels <- data.auc %>% 
+  mutate(label_long = paste0(name, ' , AUC = ',
+                             paste(round(AUC,2))),
+         label_AUC = paste0('AUC = ',
+                            paste(round(AUC,2))))
+
+pROC::ggroc(roc_list,
+           legacy.axes = F) +
+  scale_color_discrete(labels = data.labels$label_long)
+```
+
+Confirmed that 40th percentile is a good option.
+
+# DALEX
+
+```{r}
+library(DALEX)
+library(plotly)
+library(gridExtra)
+library(archivist)
+```
+
+```{r}
+## 40
+
+quantile_data <- data %>% 
+  filter(CL > 0) %>% 
+  select(CL)
+
+quantile <- (quantile_data$CL %>% 
+  quantile(.4))[[1]]
+
+data_cat <- data %>% 
+  mutate(CL = case_when(CL < quantile ~ 'low',
+                         CL >= quantile ~ 'high') %>% 
+           as_factor()) %>% 
+  select(-c(Name, Year, Code, Country, TEMP_pland_forest, TEMP_te_forest, TEMP_enn_mn_forest, TEMP_area_mn_forest))
+
+set.seed(123)
+
+# data_sample <- sample_n(data, size = nrow(data) * 0.7)
+
+split_cat <- initial_split(data_cat, prop = 0.7, strata = CL)
+train_cat <- training(split_cat) %>% as.data.frame()
+test_cat <- testing(split_cat)
+
+
+
+
+library(tidyverse)
+library(tidymodels)
+
+rf_recipe <-
+  recipe(
+    CL ~ .,
+    data = train_cat) %>% 
+  prep()
+
+rf_testing <- rf_recipe %>% 
+  bake(test_cat)
+
+rf_training <- juice(rf_recipe)
+
+rf_model <- rand_forest(mtry = 7,
+                        trees = 700) %>% 
+  set_engine('ranger', importance = 'impurity',
+             seed = 123, probability = T) %>%
+  set_mode('classification') %>% 
+  fit(CL ~ ., data = train_cat)
+
+set.seed(123)
+
+# rf_wf <- workflow() %>% 
+#   add_model(rf_model) %>% 
+#   add_recipe(rf_recipe) %>% 
+#   fit(train_cat)
+
+testing_data_later_40 <- rf_model %>% 
+  predict(rf_testing) %>% 
+  bind_cols(predict(rf_model, rf_testing, type = 'prob')) %>% 
+  bind_cols(rf_testing) 
+
+confusionMatrix(data = testing_data_later_40$.pred_class, reference = testing_data_later_40$CL)
+
+
+target_as_int <- as.integer(test_cat$CL)
+explainer_rf <- DALEX::explain(model = rf_model,
+                        data = test_cat %>% 
+                          select(-c(CL)),
+                        y = target_as_int,
+                        label = 'Random Forest')
+
+save(explainer_rf, file = 'explainer_rf_CL_monthly_diff')
+```
+
+```{r}
+dep_diff <- model_profile(explainer = explainer_rf,
+                            variables = c('TEMP_diff_pland_forest',
+                                          'TEMP_diff_te_forest',
+                                          'TEMP_diff_enn_mn_forest',
+                                          'TEMP_diff_area_mn_forest',
+                                          'Muni_TotalArea',
+                                          'te_forest',
+                                          'enn_mn_forest',
+                                          'area_mn_forest',
+                                          'pland_forest',
+                                          'SWOccurrence',
+                                          'AvgRad',
+                                          'Precip',
+                                          'NDVI',
+                                          'LST_Day',
+                                          'Population',
+                                          'Month'
+                                          ),
+                            type = 'conditional',
+                            N = 10)
+plot(dep_diff, geom = 'profiles') %>% ggplotly(height = 1600)
+```
+## Variable Importance
+```{r}
+variable_importance(explainer_rf) %>% plot()
+```
+## Local Interpretation
+
+[uc-r.github.io/dalex]
+
+```{r}
+set.seed(123)
+
+random_row <- sample(1:nrow(test_cat), size = 1) # 2463
+
+# Create a single observation (randomized)
+new_cust <- test_cat[random_row,] %>% as.data.frame()
+
+# Compute breakdown distance
+new_cust_rf <- predict_parts_break_down(explainer_rf, new_observation = new_cust)
+
+# class of predict_parts_break_down output
+class(new_cust_rf)
+
+# see top 10 influential variables for the observation
+new_cust_rf[1:10, 1:5]
+
+# plot
+new_cust_rf %>% plot()
+```
+
+

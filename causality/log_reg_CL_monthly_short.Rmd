@@ -1,0 +1,72 @@
+---
+title: "log_reg_monthly_short"
+author: "TJ Sipin"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries and Data
+
+We try our random forest on the monthly data, taking only years 2014 to 2017. 2018 can work but there are some missing values for cutaneous leishmaniasis.
+
+```{r packages}
+library(randomForest)
+library(ggplot2)
+library(finalfit)
+library(dplyr)
+library(naniar)
+library(readr)
+library(tidyverse)
+library(caret)
+library(readr)
+library(dplyr)
+library(mlbench)
+library(rsample)
+
+rawdata <- read_csv('../data/monthly_df.csv')
+
+data <- rawdata %>% 
+  # select(-c(...1)) %>% 
+  filter(Year %in% c(2013, 2014, 2015, 2016, 2017)) %>% 
+  rename(CL = `Cutaneous Leishmaniasis`) %>% 
+  filter(CL > 0) %>% 
+  mutate(Code = as.integer(Code)) %>% 
+  select(c(Code, Name, Country,
+           Year, Month, Population,
+           CL, LST_Day, LST_Night,
+           NDVI, EVI, Precip, AvgRad,
+           SWOccurrence, Muni_TotalArea,
+           pland_forest, te_forest,
+           enn_mn_forest, area_mn_forest))
+
+key_diff_data <- data %>% 
+  mutate(Year = as.factor(Year)) %>% 
+  group_by(Name, Year) %>% 
+  summarise(TEMP_pland_forest = mean(pland_forest),
+            TEMP_te_forest = mean(te_forest),
+            TEMP_enn_mn_forest = mean(enn_mn_forest),
+            TEMP_area_mn_forest = mean(area_mn_forest)) %>% 
+  mutate(TEMP_diff_pland_forest = c(NA, diff(TEMP_pland_forest)),
+         TEMP_diff_te_forest = c(NA, diff(TEMP_te_forest)),
+         TEMP_diff_enn_mn_forest = c(NA, diff(TEMP_enn_mn_forest)),
+         TEMP_diff_area_mn_forest = c(NA, diff(TEMP_area_mn_forest)))
+
+diff_data <- merge(data, key_diff_data, by = c('Name', 'Year')) %>% 
+  filter(Year != 2013) %>% 
+  drop_na()
+  
+
+diff_data %>% summary()
+
+write.csv(diff_data, file = '../data/diff_data.csv')
+
+```
+
+```{r}
+
+```
+

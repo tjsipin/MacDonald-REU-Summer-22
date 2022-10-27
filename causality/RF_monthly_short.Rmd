@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 We try our random forest on the monthly data, taking only years 2014 to 2017. 2018 can work but there are some missing values for cutaneous leishmaniasis.
 
-```{r cars}
+```{r packages}
 library(randomForest)
 library(ggplot2)
 library(finalfit)
@@ -27,8 +27,10 @@ library(dplyr)
 library(mlbench)
 library(rsample)
 
-data <- read_csv('../data/monthly_short.csv')
+rawdata <- read_csv('../data/monthly_short.csv')
 ```
+
+
 
 ## Exploratory 
 
@@ -40,12 +42,13 @@ data <- read_csv('../data/monthly_short.csv')
 #   filter(Year %in% c(2014, 2015, 2016, 2017)) %>% 
 #   rename(CL = `Cutaneous Leishmaniasis`)
 
-data <- data %>% 
+data <- rawdata %>% 
   select(-c(...1)) %>% 
-  filter(Year %in% c(2014)) %>% 
-  rename(CL = `Cutaneous Leishmaniasis`)
+  filter(Year %in% c(2014, 2015, 2016, 2017)) %>% 
+  rename(CL = `Cutaneous Leishmaniasis`) %>% 
+  filter(CL > 0) 
 
-data %>% summary
+data %>% dim
 ```
 
 Notice that there are no missing values included in this data set.
@@ -76,9 +79,10 @@ set.seed(123)
 
 # data_sample <- sample_n(data, size = nrow(data) * 0.7)
 
-split <- initial_split(data, prop = 0.7)
+split <- initial_split(data, prop = 0.7, strata = CL)
 train <- training(split) %>% as.data.frame()
 test <- testing(split)
+
 
 
 x_train <- train[, c(1:4, 6:16)]
@@ -88,7 +92,7 @@ y_train <- train[, 5]
 
 Code inspiration from https://machinelearningmastery.com/tune-machine-learning-algorithms-in-r/.
 
-```{r}
+```{r, eval = F}
 set.seed(123)
 # split <- initial_split(data, strata = CL) # CL used for stratified sampling
 # training <- training(split)
@@ -105,7 +109,7 @@ control <- trainControl(method = 'repeatedcv',
 
 tunegrid <- expand.grid(.mtry = sqrt(ncol(data %>% select(-c(CL)))))
 rf_random <- train(CL ~ ., data = data, method = 'rf',
-                    metric = 'Sensitivity',
+                    metric = 'MAPE',
                     tuneGrid =  tunegrid,
                     trControl = control)
 ```
@@ -114,11 +118,11 @@ rf_random <- train(CL ~ ., data = data, method = 'rf',
 
 ```{r}
 # Algorithm Tune (tuneRF)
-bestmtry <- tuneRF(x = x_train, y = y_train, stepFactor = 1.5, improve = 0.5)
+bestmtry <- tuneRF(x = x_train, y = y_train, stepFactor = 5, improve = 10, doBest = T)
 
 # save(bestmtry, file = 'rf_bestmtry') # save file
 
-bestmtry; bestmtry %>% plot
+bestmtry %>% plot
 ```
 
 #### v3 Random Search
@@ -126,7 +130,7 @@ bestmtry; bestmtry %>% plot
 ```{r}
 set.seed(123)
 control <- trainControl(method = 'repeatedcv',
-                        number = 10, 
+                        number = 5, 
                         repeats = 3,
                         search = 'random')
 
@@ -134,7 +138,7 @@ rf_random <- train(CL ~ .,
                    data = train,
                    method = 'rf',
                    metric = 'RMSE',
-                   tuneLength = 15,
+                   tuneLength = 3,
                    trControl = control)
 
 print(rf_random); plot(rf_random)
@@ -143,16 +147,16 @@ print(rf_random); plot(rf_random)
 ### The random forest
 
 ```{r, eval = F}
-# rf <- randomForest(CL ~ ., data = train,
-#                    mtry = 4, importance = T, localImp = T)
-# 
-# rf; plot(rf)
-# 
-# save(rf, file = 'monthly_short_rf')
+rf <- randomForest(CL ~ ., data = train,
+                   mtry = 8, importance = T, localImp = T, strata = CL)
+
+rf; plot(rf)
+
+save(rf, file = 'monthly_short_rf_CL')
 ```
 
 ```{r}
-load('monthly_short_rf')
+# load('monthly_short_rf')
 
 rf %>% varImpPlot()
 
@@ -234,6 +238,19 @@ save(CL_vs_enn_mn_forest_pP, file = 'plots/CL_vs_enn_mn_forest_pP')
 #                  y = CL))
 ```
 
+```{r}
+data %>% 
+  mutate(Precip_SWO = Precip - SWOccurrence)
+```
+
+
+
+```{r}
+rf %>% partialPlot(x.var = Precip,
+                   pred.data = train)
+```
+
+
 
 ```{r}
 
@@ -298,44 +315,69 @@ ggplot(test_df) +
 https://www.r-bloggers.com/2021/04/quantile-regression-forests-for-prediction-intervals/
 
 ```{r}
+# LST_Day + NDVI + EVI + Precip + AvgRad + SWOccurrence +  pland_forest + enn_mn_forest + te_forest + area_mn_forest
+set.seed(123)
+
 library(tidyverse)
 library(tidymodels)
 rf_recipe <-
   recipe(
-    CL ~ Year + Month + Population +
-      LST_Day + NDVI + EVI + Precip + AvgRad + SWOccurrence +
-      pland_forest + area_mn_forest + enn_mn_forest + te_forest,
-    data = train
-  )
+    CL ~ Population + LST_Day + NDVI + Precip + AvgRad + SWOccurrence +
+      pland_forest + enn_mn_forest + te_forest + area_mn_forest,
+    data = train) %>% 
+  # step_corr(all_predictors()) %>% 
+  # step_normalize(all_predictors(), -all_outcomes()) %>% 
+  prep()
 
-rf_model <- rand_forest() %>% 
+rf_testing <- rf_recipe %>% 
+  bake(test)
+
+rf_training <- juice(rf_recipe)
+
+rf_model <- rand_forest(mtry = 5,
+                        trees = 200) %>% 
   set_engine('ranger', importance = 'impurity',
              seed = 123, quantreg = TRUE) %>% 
   set_mode('regression')
 
-set.seed(123)
 
-rf_wf <- workflow() %>% 
-  add_model(rf_model) %>% 
-  add_recipe(rf_recipe) %>% 
-  fit(train)
+# rf_model_2 <- rand_forest(mtry = 3,
+#                           trees = 700) %>% 
+#   set_engine('randomForest',
+#              seed = 123, quantreg = TRUE) %>% 
+#   set_mode('regression') %>% 
+#   fit(CL ~ . - Month - Year, data = train)
+
+
+rf_wf <- workflow() %>%
+  add_model(rf_model) %>%
+  add_recipe(rf_recipe) %>%
+  fit(train %>% select(-c(Name, Code, Year, Month, EVI)))
 ```
 
 ```{r}
-preds_bind <- function(data_fit, lower = 0.05, upper = 0.95) {
+rf_model %>% 
+  predict(rf_testing) %>% 
+  bind_cols(rf_testing) %>% 
+  metrics(truth = CL, estimate = .pred)
+```
+
+
+```{r}
+preds_bind <- function(data_fit, lower = 0.1, upper = 0.9) {
   predict(
     rf_wf$fit$fit$fit,
     extract_recipe(rf_wf) %>% 
       bake(data_fit),
     type = 'quantiles',
-    quantiles = c(lower, upper, 0.05)
+    quantiles = c(lower, upper, 0.50)
   ) %>% 
     with(predictions) %>% 
     as_tibble() %>%
-    set_names(paste('.pred', c('_lower', '_upper', ''))) %>% 
-    mutate(across(contains('.pred'), ~10^.x)) %>% 
+    set_names(paste0('.pred', c('_lower', '_upper', ''))) %>% 
+    # mutate(across(contains('.pred'), ~10^.x)) %>%
     bind_cols(data_fit) %>% 
-    select(contains('.pred'), CL, Year, Month, Population,
+    select(contains('.pred'), CL, Population,
            LST_Day, NDVI, EVI, Precip, AvgRad, SWOccurrence,
            pland_forest, area_mn_forest, enn_mn_forest, te_forest)
 }
@@ -347,15 +389,447 @@ Sample of prediction intervals
 ```{r}
 set.seed(123)
 rf_preds_test %>% 
-  mutate(pred_interval = cut_interval(CL, )) +
-  group_by(pred_interval) +
-  sample_n(2) +
+  mutate(pred_interval = cut_number(CL, n = 0.01)) %>% 
+  group_by(pred_interval) %>% 
+  sample_n(1000) %>% 
   ggplot(aes(x = .pred)) +
   geom_point(aes(y = .pred, color = 'prediction interval')) +
   geom_errorbar(aes(ymin = .pred_lower, ymax = .pred_upper, color = 'prediction interval')) + 
-  geom_point(aes(y = CL, color = 'actuals')) + 
-  coord_fixed()
+  geom_point(aes(y = CL, color = 'actuals'),
+             alpha = 0.7) + 
+  scale_x_log10() +
+  scale_y_log10()
 ```
 
+
+## Performance
+
+```{r}
+rf_preds_train <- preds_bind(train)
+
+bind_rows(
+  mape(rf_preds_train, CL, .pred),
+  mape(rf_preds_test, CL, .pred)) %>% 
+  mutate(dataset = c('training', 'holdout')) %>% 
+  gt::gt() %>% 
+  gt::fmt_number('.estimate', decimals = 1)
+```
+
+# Sanity Check
+
+## To see where to split
+
+```{r}
+## 30
+quantile_data <- data %>% 
+  filter(CL > 0) %>% 
+  select(CL)
+
+quantile <- (quantile_data$CL %>% 
+  quantile(.3))[[1]]
+
+data_cat <- data %>% 
+  mutate(CL = case_when(CL < quantile ~ 'low',
+                         CL >= quantile ~ 'high') %>% 
+           as_factor())
+
+set.seed(123)
+
+# data_sample <- sample_n(data, size = nrow(data) * 0.7)
+
+split_cat <- initial_split(data_cat, prop = 0.7, strata = CL)
+train_cat <- training(split_cat) %>% as.data.frame()
+test_cat <- testing(split_cat)
+
+
+library(tidyverse)
+library(tidymodels)
+
+rf_recipe <-
+  recipe(
+    CL ~ Population + LST_Day + NDVI + Precip + AvgRad + SWOccurrence +
+      pland_forest + enn_mn_forest + te_forest + area_mn_forest,
+    data = train_cat) %>% 
+  prep()
+
+rf_testing <- rf_recipe %>% 
+  bake(test_cat)
+
+rf_training <- juice(rf_recipe)
+
+rf_model <- rand_forest(mtry = 3,
+                        trees = 700) %>% 
+  set_engine('ranger', importance = 'impurity',
+             seed = 123) %>%
+  set_mode('classification') %>% 
+  fit(CL ~ ., data = train_cat %>% select(-c(Name, Code, Year, Month, EVI))) 
+
+set.seed(123)
+
+# rf_wf <- workflow() %>% 
+#   add_model(rf_model) %>% 
+#   add_recipe(rf_recipe) %>% 
+#   fit(train_cat)
+
+testing_data_later_30 <- rf_model %>% 
+  predict(rf_testing) %>% 
+  bind_cols(rf_testing) 
+
+confusionMatrix(data = testing_data_later_30$.pred_class, reference = testing_data_later_30$CL)
+
+## 40
+
+quantile_data <- data %>% 
+  filter(CL > 0) %>% 
+  select(CL)
+
+quantile <- (quantile_data$CL %>% 
+  quantile(.4))[[1]]
+
+data_cat <- data %>% 
+  mutate(CL = case_when(CL < quantile ~ 'low',
+                         CL >= quantile ~ 'high') %>% 
+           as_factor())
+
+set.seed(123)
+
+# data_sample <- sample_n(data, size = nrow(data) * 0.7)
+
+split_cat <- initial_split(data_cat, prop = 0.7, strata = CL)
+train_cat <- training(split_cat) %>% as.data.frame()
+test_cat <- testing(split_cat)
+
+
+
+
+library(tidyverse)
+library(tidymodels)
+
+rf_recipe <-
+  recipe(
+    CL ~ Population + LST_Day + NDVI + Precip + AvgRad + SWOccurrence +
+      pland_forest + enn_mn_forest + te_forest + area_mn_forest,
+    data = train_cat) %>% 
+  prep()
+
+rf_testing <- rf_recipe %>% 
+  bake(test_cat)
+
+rf_training <- juice(rf_recipe)
+
+rf_model <- rand_forest(mtry = 3,
+                        trees = 700) %>% 
+  set_engine('ranger', importance = 'impurity',
+             seed = 123) %>%
+  set_mode('classification') %>% 
+  fit(CL ~ ., data = train_cat %>% select(-c(Name, Code, Year, Month, EVI))) 
+
+set.seed(123)
+
+# rf_wf <- workflow() %>% 
+#   add_model(rf_model) %>% 
+#   add_recipe(rf_recipe) %>% 
+#   fit(train_cat)
+
+testing_data_later_40 <- rf_model %>% 
+  predict(rf_testing) %>% 
+  bind_cols(rf_testing) 
+
+confusionMatrix(data = testing_data_later_40$.pred_class, reference = testing_data_later_40$CL)
+
+## 50
+
+quantile_data <- data %>% 
+  filter(CL > 0) %>% 
+  select(CL)
+
+quantile <- (quantile_data$CL %>% 
+  quantile(.5))[[1]]
+
+data_cat <- data %>% 
+  mutate(CL = case_when(CL < quantile ~ 'low',
+                         CL >= quantile ~ 'high') %>% 
+           as_factor())
+
+set.seed(123)
+
+# data_sample <- sample_n(data, size = nrow(data) * 0.7)
+
+split_cat <- initial_split(data_cat, prop = 0.7, strata = CL)
+train_cat <- training(split_cat) %>% as.data.frame()
+test_cat <- testing(split_cat)
+
+
+
+
+library(tidyverse)
+library(tidymodels)
+
+rf_recipe <-
+  recipe(
+    CL ~ Population + LST_Day + NDVI + Precip + AvgRad + SWOccurrence +
+      pland_forest + enn_mn_forest + te_forest + area_mn_forest,
+    data = train_cat) %>% 
+  prep()
+
+rf_testing <- rf_recipe %>% 
+  bake(test_cat)
+
+rf_training <- juice(rf_recipe)
+
+rf_model <- rand_forest(mtry = 3,
+                        trees = 700) %>% 
+  set_engine('ranger', importance = 'impurity',
+             seed = 123) %>%
+  set_mode('classification') %>% 
+  fit(CL ~ ., data = train_cat %>% select(-c(Name, Code, Year, Month, EVI))) 
+
+set.seed(123)
+
+# rf_wf <- workflow() %>% 
+#   add_model(rf_model) %>% 
+#   add_recipe(rf_recipe) %>% 
+#   fit(train_cat)
+
+testing_data_later_50 <- rf_model %>% 
+  predict(rf_testing) %>% 
+  bind_cols(rf_testing) 
+
+confusionMatrix(data = testing_data_later_50$.pred_class, reference = testing_data_later_50$CL)
+
+## 60
+
+quantile_data <- data %>% 
+  filter(CL > 0) %>% 
+  select(CL)
+
+quantile <- (quantile_data$CL %>% 
+  quantile(.6))[[1]]
+
+data_cat <- data %>% 
+  mutate(CL = case_when(CL < quantile ~ 'low',
+                         CL >= quantile ~ 'high') %>% 
+           as_factor())
+
+set.seed(123)
+
+# data_sample <- sample_n(data, size = nrow(data) * 0.7)
+
+split_cat <- initial_split(data_cat, prop = 0.7, strata = CL)
+train_cat <- training(split_cat) %>% as.data.frame()
+test_cat <- testing(split_cat)
+
+
+
+
+library(tidyverse)
+library(tidymodels)
+
+rf_recipe <-
+  recipe(
+    CL ~ Population + LST_Day + NDVI + Precip + AvgRad + SWOccurrence +
+      pland_forest + enn_mn_forest + te_forest + area_mn_forest,
+    data = train_cat) %>% 
+  prep()
+
+rf_testing <- rf_recipe %>% 
+  bake(test_cat)
+
+rf_training <- juice(rf_recipe)
+
+rf_model <- rand_forest(mtry = 3,
+                        trees = 700) %>% 
+  set_engine('ranger', importance = 'impurity',
+             seed = 123) %>%
+  set_mode('classification') %>% 
+  fit(CL ~ ., data = train_cat %>% select(-c(Name, Code, Year, Month, EVI))) 
+
+set.seed(123)
+
+# rf_wf <- workflow() %>% 
+#   add_model(rf_model) %>% 
+#   add_recipe(rf_recipe) %>% 
+#   fit(train_cat)
+
+testing_data_later_60 <- rf_model %>% 
+  predict(rf_testing) %>% 
+  bind_cols(rf_testing) 
+
+confusionMatrix(data = testing_data_later_60$.pred_class, reference = testing_data_later_60$CL)
+
+## 70
+quantile_data <- data %>% 
+  filter(CL > 0) %>% 
+  select(CL)
+
+quantile <- (quantile_data$CL %>% 
+  quantile(.7))[[1]]
+
+data_cat <- data %>% 
+  mutate(CL = case_when(CL < quantile ~ 'low',
+                         CL >= quantile ~ 'high') %>% 
+           as_factor())
+
+set.seed(123)
+
+# data_sample <- sample_n(data, size = nrow(data) * 0.7)
+
+split_cat <- initial_split(data_cat, prop = 0.7, strata = CL)
+train_cat <- training(split_cat) %>% as.data.frame()
+test_cat <- testing(split_cat)
+
+
+
+
+library(tidyverse)
+library(tidymodels)
+
+rf_recipe <-
+  recipe(
+    CL ~ Population + LST_Day + NDVI + Precip + AvgRad + SWOccurrence +
+      pland_forest + enn_mn_forest + te_forest + area_mn_forest,
+    data = train_cat) %>% 
+  prep()
+
+rf_testing <- rf_recipe %>% 
+  bake(test_cat)
+
+rf_training <- juice(rf_recipe)
+
+rf_model <- rand_forest(mtry = 3,
+                        trees = 700) %>% 
+  set_engine('ranger', importance = 'impurity',
+             seed = 123) %>%
+  set_mode('classification') %>% 
+  fit(CL ~ ., data = train_cat %>% select(-c(Name, Code, Year, Month, EVI))) 
+
+set.seed(123)
+
+# rf_wf <- workflow() %>% 
+#   add_model(rf_model) %>% 
+#   add_recipe(rf_recipe) %>% 
+#   fit(train_cat)
+
+testing_data_later_70 <- rf_model %>% 
+  predict(rf_testing) %>% 
+  bind_cols(rf_testing) 
+
+confusionMatrix(data = testing_data_later_70$.pred_class, reference = testing_data_later_70$CL)
+```
+
+```{r}
+library(tidyverse)
+library(pROC)
+library(dplyr)
+library(ggplot2)
+library(plotROC)
+
+roc_30 <- roc(testing_data_later_30$CL,
+              testing_data_later_30$.pred_class %>% as.numeric(),
+              print.auc = T)
+
+roc_40 <- roc(testing_data_later_40$CL,
+              testing_data_later_40$.pred_class %>% as.numeric(),
+              print.auc = T)
+
+roc_50 <- roc(testing_data_later_50$CL,
+              testing_data_later_50$.pred_class %>% as.numeric(),
+              print.auc = T)
+
+roc_60 <- roc(testing_data_later_60$CL,
+              testing_data_later_60$.pred_class %>% as.numeric(),
+              print.auc = T)
+
+roc_70 <- roc(testing_data_later_70$CL,
+              testing_data_later_70$.pred_class %>% as.numeric(),
+              print.auc = T)
+
+roc_list <- list('30th percentile' = roc_30,
+           '40th percentile' = roc_40,
+           '50th percentile' = roc_50,
+           '60th percentile' = roc_60,
+           '70th percentile' = roc_70)
+
+# extract AUC
+data.auc <- roc_list %>% 
+  map(~tibble(AUC = .x$auc)) %>% 
+  bind_rows(.id = 'name')
+
+# generate labels
+data.labels <- data.auc %>% 
+  mutate(label_long = paste0(name, ' , AUC = ',
+                             paste(round(AUC,2))),
+         label_AUC = paste0('AUC = ',
+                            paste(round(AUC,2))))
+
+pROC::ggroc(roc_list,
+           legacy.axes = F) +
+  scale_color_discrete(labels = data.labels$label_long)
+```
+
+Confirmed that 40th percentile is a good option.
+
+## DALEX
+
+```{r}
+library(DALEX)
+library(plotly)
+library(gridExtra)
+library(archivist)
+```
+
+```{r}
+target_as_int <- as.integer(test_cat$CL)
+explainer_rf <- DALEX::explain(model = rf_model,
+                        data = test_cat[,-5],
+                        y = target_as_int,
+                        label = 'Random Forest')
+```
+
+```{r}
+
+plot(
+model_profile(
+  explainer = explainer_rf, 
+  variables = c('te_forest',
+                'enn_mn_forest',
+                'area_mn_forest',
+                'pland_forest',
+                'SWOccurrence',
+                'AvgRad',
+                'Precip',
+                'NDVI',
+                'LST_Day',
+                'Population'),
+  N = 10),
+geom = 'profiles'
+)
+
+```
+
+```{r}
+dep_Precip <- model_profile(explainer = explainer_rf,
+                            variables = c('te_forest',
+                                          'enn_mn_forest',
+                                          'area_mn_forest',
+                                          'pland_forest',
+                                          'SWOccurrence',
+                                          'AvgRad',
+                                          'Precip',
+                                          'NDVI',
+                                          'LST_Day',
+                                          'Population'),
+                            type = 'conditional',
+                            N = 10)
+plot(dep_Precip, geom = 'profiles') %>% ggplotly()
+```
+
+```{r}
+train_cat[c(3207),]
+```
+
+```{r}
+
+```
 
 

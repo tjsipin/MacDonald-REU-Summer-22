@@ -1,5 +1,7 @@
 # Preliminaries ----
 
+
+
 # Libraries
 library(shiny)
 library(dplyr)
@@ -24,20 +26,20 @@ train <- training(split) %>% as.data.frame()
 test <- testing(split)
 
 # Load our random forest rf
-load('causality/monthly_short_rf') # rf
+load('../causality/monthly_short_rf') # rf
 
 # Load our partial plots
-load('causality/plots/CL_vs_Population_pP')
-load('causality/plots/CL_vs_LST_Day_pP')
-load('causality/plots/CL_vs_NDVI_pP')
-load('causality/plots/CL_vs_EVI_pP')
-load('causality/plots/CL_vs_Precip_pP')
-load('causality/plots/CL_vs_SWOccurrence_pP')
-load('causality/plots/CL_vs_AvgRad_pP')
-load('causality/plots/CL_vs_area_mn_forest_pP')
-load('causality/plots/CL_vs_enn_mn_forest_pP')
-load('causality/plots/CL_vs_pland_forest_pP')
-load('causality/plots/CL_vs_te_forest_pP')
+load('../causality/plots/CL_vs_Population_pP')
+load('../causality/plots/CL_vs_LST_Day_pP')
+load('../causality/plots/CL_vs_NDVI_pP')
+load('../causality/plots/CL_vs_EVI_pP')
+load('../causality/plots/CL_vs_Precip_pP')
+load('../causality/plots/CL_vs_SWOccurrence_pP')
+load('../causality/plots/CL_vs_AvgRad_pP')
+load('../causality/plots/CL_vs_area_mn_forest_pP')
+load('../causality/plots/CL_vs_enn_mn_forest_pP')
+load('../causality/plots/CL_vs_pland_forest_pP')
+load('../causality/plots/CL_vs_te_forest_pP')
 
 # Define UI for app ----
 ui <- fluidPage(
