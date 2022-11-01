@@ -21,6 +21,7 @@ library(mlbench)
 library(rsample)
 library(tidyverse)
 library(tidymodels)
+library(recipes)
 ```
 
 ## Libraries and Data
@@ -759,5 +760,757 @@ bind_rows(
   mutate(dataset = c('training', 'holdout')) %>% 
   gt::gt() %>% 
   gt::fmt_number('.estimate', decimals = 1)
+```
+
+[https://www.r-bloggers.com/2020/05/using-xgboost-with-tidymodels/]
+
+```{r}
+library(knitr)
+```
+
+
+```{r}
+## 30
+quantile_data <- data %>% 
+  filter(CL > 0) %>% 
+  select(CL)
+
+quantile <- (quantile_data$CL %>% 
+  quantile(.3))[[1]]
+
+data_cat <- data %>%
+  mutate(CL_cat = case_when(CL < quantile ~ 'low',
+                         CL >= quantile ~ 'high') %>% 
+           as_factor()) %>% 
+  select(-c(TEMP_pland_forest, TEMP_te_forest, TEMP_enn_mn_forest, TEMP_area_mn_forest))
+
+set.seed(123)
+
+# data_sample <- sample_n(data, size = nrow(data) * 0.7)
+
+split_cat <- initial_split(data_cat, prop = 0.7, strata = CL_cat)
+train_cat <- training(split_cat) %>% as.data.frame()
+test_cat <- testing(split_cat)
+
+
+library(tidyverse)
+library(tidymodels)
+
+# preprocessing recipe
+xgb_recipe <-
+  recipe(
+    CL_cat ~ .,
+    data = train_cat) %>% 
+  step_rm(CL, Name, Year, Code, Country) %>% 
+  prep()
+
+# splitting for cross validation
+xgb_cv_folds <- xgb_recipe %>% 
+  bake(train_cat) %>% 
+  vfold_cv(v = 5)
+
+# xgboost model specification
+
+xgb_model <- boost_tree(
+  mode = 'classification',
+  trees = 1000,
+  min_n = tune(),
+  tree_depth = tune(),
+  learn_rate = tune(),
+  loss_reduction = tune()
+  ) %>% 
+  set_engine('xgboost', 
+             objective ='binary:logistic')
+
+set.seed(123)
+
+# grid specification
+
+xgb_params <- parameters(
+  min_n(),
+  tree_depth(),
+  learn_rate(),
+  loss_reduction()
+)
+
+xgb_grid <- grid_max_entropy(
+  xgb_params,
+  size = 60
+)
+
+# define the workflow
+
+xgb_wf <- workflow() %>% 
+  add_model(xgb_model) %>% 
+  add_formula(CL_cat ~ .)
+
+# tune the model
+## hyperparameter tuning
+
+xgb_tuned_30 <- tune_grid(
+  object = xgb_wf,
+  resamples = xgb_cv_folds,
+  grid = xgb_grid,
+  metrics = metric_set(sensitivity, accuracy),
+  control = control_grid(verbose = T)
+)
+
+xgb_tuned_30 %>% 
+  show_best(metric = 'accuracy') 
+
+save(xgb_tuned_30, file = 'data/CL_xgb_tuned_30')
+
+## 40
+quantile_data <- data %>% 
+  filter(CL > 0) %>% 
+  select(CL)
+
+quantile <- (quantile_data$CL %>% 
+  quantile(.4))[[1]]
+
+data_cat <- data %>% 
+  mutate(CL_cat = case_when(CL < quantile ~ 'low',
+                         CL >= quantile ~ 'high') %>% 
+           as_factor()) %>% 
+  select(-c(TEMP_pland_forest, TEMP_te_forest, TEMP_enn_mn_forest, TEMP_area_mn_forest))
+
+set.seed(123)
+
+# data_sample <- sample_n(data, size = nrow(data) * 0.7)
+
+split_cat <- initial_split(data_cat, prop = 0.7, strata = CL_cat)
+train_cat <- training(split_cat) %>% as.data.frame()
+test_cat <- testing(split_cat)
+
+
+library(tidyverse)
+library(tidymodels)
+
+# preprocessing recipe
+xgb_recipe <-
+  recipe(
+    CL_cat ~ .,
+    data = train_cat) %>% 
+  step_rm(CL, Name, Year, Code, Country) %>% 
+  prep()
+
+# splitting for cross validation
+xgb_cv_folds <- xgb_recipe %>% 
+  bake(train_cat) %>% 
+  vfold_cv(v = 5)
+
+# xgboost model specification
+
+xgb_model <- boost_tree(
+  mode = 'classification',
+  trees = 1000,
+  min_n = tune(),
+  tree_depth = tune(),
+  learn_rate = tune(),
+  loss_reduction = tune()
+  ) %>% 
+  set_engine('xgboost', 
+             objective ='binary:logistic')
+
+set.seed(123)
+
+# grid specification
+
+xgb_params <- parameters(
+  min_n(),
+  tree_depth(),
+  learn_rate(),
+  loss_reduction()
+)
+
+xgb_grid <- grid_max_entropy(
+  xgb_params,
+  size = 60
+)
+
+
+# define the workflow
+
+xgb_wf <- workflow() %>% 
+  add_model(xgb_model) %>% 
+  add_formula(CL_cat ~ .)
+
+# tune the model
+## hyperparameter tuning
+
+xgb_tuned_40 <- tune_grid(
+  object = xgb_wf,
+  resamples = xgb_cv_folds,
+  grid = xgb_grid,
+  metrics = metric_set(sensitivity, accuracy),
+  control = control_grid(verbose = T)
+)
+
+save(xgb_tuned_40, file = 'data/CL_xgb_tuned_40')
+
+## 50
+quantile_data <- data %>% 
+  filter(CL > 0) %>% 
+  select(CL)
+
+quantile <- (quantile_data$CL %>% 
+  quantile(.5))[[1]]
+
+data_cat <- data %>% 
+  mutate(CL_cat = case_when(CL < quantile ~ 'low',
+                         CL >= quantile ~ 'high') %>% 
+           as_factor()) %>% 
+  select(-c(TEMP_pland_forest, TEMP_te_forest, TEMP_enn_mn_forest, TEMP_area_mn_forest))
+
+set.seed(123)
+
+# data_sample <- sample_n(data, size = nrow(data) * 0.7)
+
+split_cat <- initial_split(data_cat, prop = 0.7, strata = CL_cat)
+train_cat <- training(split_cat) %>% as.data.frame()
+test_cat <- testing(split_cat)
+
+
+library(tidyverse)
+library(tidymodels)
+
+# preprocessing recipe
+xgb_recipe <-
+  recipe(
+    CL_cat ~ .,
+    data = train_cat) %>% 
+  step_rm(CL, Name, Year, Code, Country) %>% 
+  prep()
+
+# splitting for cross validation
+xgb_cv_folds <- xgb_recipe %>% 
+  bake(train_cat) %>% 
+  vfold_cv(v = 5)
+
+# xgboost model specification
+
+xgb_model <- boost_tree(
+  mode = 'classification',
+  trees = 1000,
+  min_n = tune(),
+  tree_depth = tune(),
+  learn_rate = tune(),
+  loss_reduction = tune()
+  ) %>% 
+  set_engine('xgboost', 
+             objective ='binary:logistic')
+
+set.seed(123)
+
+# grid specification
+
+xgb_params <- parameters(
+  min_n(),
+  tree_depth(),
+  learn_rate(),
+  loss_reduction()
+)
+
+xgb_grid <- grid_max_entropy(
+  xgb_params,
+  size = 60
+)
+
+
+# define the workflow
+
+xgb_wf <- workflow() %>% 
+  add_model(xgb_model) %>% 
+  add_formula(CL_cat ~ .)
+
+# tune the model
+## hyperparameter tuning
+
+xgb_tuned_50 <- tune_grid(
+  object = xgb_wf,
+  resamples = xgb_cv_folds,
+  grid = xgb_grid,
+  metrics = metric_set(sensitivity, accuracy),
+  control = control_grid(verbose = T)
+)
+
+save(xgb_tuned_50, file = 'data/CL_xgb_tuned_50')
+
+## 60
+quantile_data <- data %>% 
+  filter(CL > 0) %>% 
+  select(CL)
+
+quantile <- (quantile_data$CL %>% 
+  quantile(.6))[[1]]
+
+data_cat <- data %>% 
+  mutate(CL_cat = case_when(CL < quantile ~ 'low',
+                         CL >= quantile ~ 'high') %>% 
+           as_factor()) %>% 
+  select(-c(TEMP_pland_forest, TEMP_te_forest, TEMP_enn_mn_forest, TEMP_area_mn_forest))
+
+set.seed(123)
+
+# data_sample <- sample_n(data, size = nrow(data) * 0.7)
+
+split_cat <- initial_split(data_cat, prop = 0.7, strata = CL_cat)
+train_cat <- training(split_cat) %>% as.data.frame()
+test_cat <- testing(split_cat)
+
+
+library(tidyverse)
+library(tidymodels)
+
+# preprocessing recipe
+xgb_recipe <-
+  recipe(
+    CL_cat ~ .,
+    data = train_cat) %>% 
+  step_rm(CL, Name, Year, Code, Country) %>% 
+  prep()
+
+# splitting for cross validation
+xgb_cv_folds <- xgb_recipe %>% 
+  bake(train_cat) %>% 
+  vfold_cv(v = 5)
+
+# xgboost model specification
+
+xgb_model <- boost_tree(
+  mode = 'classification',
+  trees = 1000,
+  min_n = tune(),
+  tree_depth = tune(),
+  learn_rate = tune(),
+  loss_reduction = tune()
+  ) %>% 
+  set_engine('xgboost', 
+             objective ='binary:logistic')
+
+set.seed(123)
+
+# grid specification
+
+xgb_params <- parameters(
+  min_n(),
+  tree_depth(),
+  learn_rate(),
+  loss_reduction()
+)
+
+xgb_grid <- grid_max_entropy(
+  xgb_params,
+  size = 60
+)
+
+
+# define the workflow
+
+xgb_wf <- workflow() %>% 
+  add_model(xgb_model) %>% 
+  add_formula(CL_cat ~ .)
+
+# tune the model
+## hyperparameter tuning
+
+xgb_tuned_60 <- tune_grid(
+  object = xgb_wf,
+  resamples = xgb_cv_folds,
+  grid = xgb_grid,
+  metrics = metric_set(sensitivity, accuracy),
+  control = control_grid(verbose = T)
+)
+
+save(xgb_tuned_60, file = 'data/CL_xgb_tuned_60')
+
+## 70
+quantile_data <- data %>% 
+  filter(CL > 0) %>% 
+  select(CL)
+
+quantile <- (quantile_data$CL %>% 
+  quantile(.7))[[1]]
+
+data_cat <- data %>% 
+  mutate(CL_cat = case_when(CL < quantile ~ 'low',
+                         CL >= quantile ~ 'high') %>% 
+           as_factor()) %>% 
+  select(-c(TEMP_pland_forest, TEMP_te_forest, TEMP_enn_mn_forest, TEMP_area_mn_forest))
+
+set.seed(123)
+
+# data_sample <- sample_n(data, size = nrow(data) * 0.7)
+
+split_cat <- initial_split(data_cat, prop = 0.7, strata = CL_cat)
+train_cat <- training(split_cat) %>% as.data.frame()
+test_cat <- testing(split_cat)
+
+
+library(tidyverse)
+library(tidymodels)
+
+# preprocessing recipe
+xgb_recipe <-
+  recipe(
+    CL_cat ~ .,
+    data = train_cat) %>% 
+  step_rm(CL, Name, Year, Code, Country) %>% 
+  prep()
+
+# splitting for cross validation
+xgb_cv_folds <- xgb_recipe %>% 
+  bake(train_cat) %>% 
+  vfold_cv(v = 5)
+
+# xgboost model specification
+
+xgb_model <- boost_tree(
+  mode = 'classification',
+  trees = 1000,
+  min_n = tune(),
+  tree_depth = tune(),
+  learn_rate = tune(),
+  loss_reduction = tune()
+  ) %>% 
+  set_engine('xgboost', 
+             objective ='binary:logistic')
+
+set.seed(123)
+
+# grid specification
+
+xgb_params <- parameters(
+  min_n(),
+  tree_depth(),
+  learn_rate(),
+  loss_reduction()
+)
+
+xgb_grid <- grid_max_entropy(
+  xgb_params,
+  size = 60
+)
+
+
+# define the workflow
+
+xgb_wf <- workflow() %>% 
+  add_model(xgb_model) %>% 
+  add_formula(CL_cat ~ .)
+
+# tune the model
+## hyperparameter tuning
+
+xgb_tuned_70 <- tune_grid(
+  object = xgb_wf,
+  resamples = xgb_cv_folds,
+  grid = xgb_grid,
+  metrics = metric_set(sensitivity, accuracy),
+  control = control_grid(verbose = T)
+)
+
+save(xgb_tuned_70, file = 'data/CL_xgb_tuned_70')
+```
+
+```{r}
+load('data/CL_xgb_tuned_30')
+load('data/CL_xgb_tuned_40')
+load('data/CL_xgb_tuned_50')
+load('data/CL_xgb_tuned_60')
+load('data/CL_xgb_tuned_70')
+
+xgb_tuned_30 %>% 
+  show_best(metric = 'accuracy')
+
+xgb_tuned_40 %>% 
+  show_best(metric = 'accuracy')
+
+xgb_tuned_50 %>% 
+  show_best(metric = 'accuracy')
+
+xgb_tuned_60 %>% 
+  show_best(metric = 'accuracy')
+
+xgb_tuned_70 %>% 
+  show_best(metric = 'accuracy')
+
+
+xgb_30_best_params <- xgb_tuned_30 %>% 
+  select_best(metric = 'sensitivity')
+
+xgb_40_best_params <- xgb_tuned_40 %>% 
+  select_best(metric = 'sensitivity')
+
+xgb_50_best_params <- xgb_tuned_50 %>% 
+  select_best(metric = 'sensitivity')
+
+xgb_60_best_params <- xgb_tuned_60 %>% 
+  select_best(metric = 'sensitivity')
+
+xgb_70_best_params <- xgb_tuned_70 %>% 
+  select_best(metric = 'sensitivity')
+
+# create final models based on best parameters
+
+xgb_30_model_final <- xgb_model %>% 
+  finalize_model(xgb_30_best_params)
+
+xgb_40_model_final <- xgb_model %>% 
+  finalize_model(xgb_40_best_params)
+
+xgb_50_model_final <- xgb_model %>% 
+  finalize_model(xgb_50_best_params)
+
+xgb_60_model_final <- xgb_model %>% 
+  finalize_model(xgb_60_best_params)
+
+xgb_70_model_final <- xgb_model %>% 
+  finalize_model(xgb_70_best_params)
+```
+
+
+```{r}
+# evaluate on testing data
+
+## 30
+quantile_data <- data %>% 
+  filter(CL > 0) %>% 
+  select(CL)
+
+quantile <- (quantile_data$CL %>% 
+  quantile(.3))[[1]]
+
+data_cat <- data %>%
+  mutate(CL_cat = case_when(CL < quantile ~ 'low',
+                         CL >= quantile ~ 'high') %>% 
+           as_factor()) %>% 
+  select(-c(TEMP_pland_forest, TEMP_te_forest, TEMP_enn_mn_forest, TEMP_area_mn_forest))
+
+set.seed(123)
+
+# data_sample <- sample_n(data, size = nrow(data) * 0.7)
+
+split_cat <- initial_split(data_cat, prop = 0.7, strata = CL_cat)
+train_cat <- training(split_cat) %>% as.data.frame()
+test_cat <- testing(split_cat)
+
+train_processed_30 <- bake(xgb_recipe, train_cat)
+
+train_prediction_30 <- xgb_30_model_final %>% 
+  # fit the model on all training data
+  fit(
+    formula = CL_cat ~ .,
+    data = train_processed_30
+  ) %>% 
+  # predict on the training data
+  predict(new_data = train_processed_30) %>% 
+  bind_cols(train_cat)
+
+xgb_CL_train_30 <- 
+  train_prediction_30 %>% 
+  metrics(CL_cat, .pred_class) %>% 
+  mutate(.estimate = format(round(.estimate, 2), big.mark = ","))
+
+
+# Testing
+
+test_processed_30 <- bake(xgb_recipe, new_data = test_cat)
+test_prediction_30 <- xgb_30_model_final %>% 
+  # fit on the training data
+  fit(
+    formula = CL_cat ~ .,
+    data = train_processed_30
+  ) %>% 
+  # use the training model fit to predict the test data
+  predict(new_data = test_processed_30) %>% 
+  bind_cols(test_cat)
+
+xgb_score_30 <- 
+  test_prediction_30 %>% 
+  metrics(CL_cat, .pred_class) %>% 
+  mutate(.estimate = format(round(.estimate, 2), big.mark = ","))
+
+xgb_score_30
+confusionMatrix(reference = test_prediction_30$CL_cat,
+                data = test_prediction_30$.pred_class)
+```
+
+```{r}
+xgb_func <- function(quantile, seed) {
+  set.seed(seed)
+  
+  quantile_data <- data %>% 
+    filter(CL > 0) %>% 
+    select(CL)
+
+  quantile <- (quantile_data$CL %>% 
+    quantile(quantile))[[1]]
+
+  data_cat <- data %>%
+    mutate(CL_cat = case_when(CL < quantile ~ 'low',
+                           CL >= quantile ~ 'high') %>% 
+             as_factor()) %>% 
+    select(-c(TEMP_pland_forest, 
+              TEMP_te_forest, 
+              TEMP_enn_mn_forest,
+              TEMP_area_mn_forest))
+  
+  # data partitioning
+  split_cat <- initial_split(data_cat, prop = 0.7, strata = CL_cat)
+  train_cat <- training(split_cat) %>% as.data.frame()
+  test_cat <- testing(split_cat)
+  
+  # preprocessing recipe
+  xgb_recipe <-
+    recipe(
+      CL_cat ~ .,
+      data = train_cat) %>% 
+    step_rm(CL, Name, Year, Code, Country) %>% 
+    prep()
+  
+  # splitting for cross validation
+  xgb_cv_folds <- xgb_recipe %>% 
+    bake(train_cat) %>% 
+    vfold_cv(v = 5)
+  
+  # xgboost model specification
+  
+  xgb_model <- boost_tree(
+    mode = 'classification',
+    trees = 1000,
+    min_n = tune(),
+    tree_depth = tune(),
+    learn_rate = tune(),
+    loss_reduction = tune()
+    ) %>% 
+    set_engine('xgboost', 
+               objective ='binary:logistic')
+  
+  set.seed(123)
+  
+  # grid specification
+  
+  xgb_params <- parameters(
+    min_n(),
+    tree_depth(),
+    learn_rate(),
+    loss_reduction()
+  )
+  
+  xgb_grid <- grid_max_entropy(
+    xgb_params,
+    size = 20
+  )
+  
+  
+  # define the workflow
+  
+  xgb_wf <- workflow() %>% 
+    add_model(xgb_model) %>% 
+    add_formula(CL_cat ~ .)
+  
+  # tune the model
+  ## hyperparameter tuning
+  
+  xgb_tuned <- tune_grid(
+    object = xgb_wf,
+    resamples = xgb_cv_folds,
+    grid = xgb_grid,
+    metrics = metric_set(roc_auc, accuracy),
+    control = control_grid(verbose = T)
+  )
+  
+  xgb_best_params <- xgb_tuned %>% 
+    select_best(metric = 'roc_auc')
+  
+  model_final <- xgb_model %>% 
+    finalize_model(xgb_best_params)
+  
+  train_processed <- bake(xgb_recipe, train_cat)
+  
+  train_prediction <- model_final %>% 
+    # fit the model on all training data
+    fit(
+      formula = CL_cat ~ .,
+      data = train_processed
+    ) %>% 
+    # predict on the training data
+    predict(new_data = train_processed) %>% 
+    bind_cols(train_cat)
+  
+  xgb_CL_train <- 
+    train_prediction %>% 
+    metrics(CL_cat, .pred_class) %>% 
+    mutate(.estimate = format(round(.estimate, 2), big.mark = ","))
+  
+  
+  # Testing
+  
+  test_processed <- bake(xgb_recipe, new_data = test_cat)
+  test_prediction <- model_final %>% 
+    # fit on the training data
+    fit(
+      formula = CL_cat ~ .,
+      data = train_processed
+    ) %>% 
+    # use the training model fit to predict the test data
+    predict(new_data = test_processed) %>% 
+    bind_cols(test_cat)
+  
+  xgb_score <- 
+    test_prediction %>% 
+    metrics(CL_cat, .pred_class) %>% 
+    mutate(.estimate = format(round(.estimate, 2), big.mark = ","))
+  
+  xgb_list <- list(data = data_cat, 
+                   recipe = xgb_recipe,
+                   folds = xgb_cv_folds,
+                   tuned = xgb_tuned,
+                   final_model = model_final,
+                   train_score = xgb_CL_train,
+                   test_prediction = test_prediction,
+                   test_score = xgb_score)
+  
+  return(xgb_list)
+}
+```
+
+
+```{r}
+# 30
+xgb_eval_30_test <- xgb_func(quantile = 0.3,
+                             seed = 123) # sens included
+
+save(xgb_eval_30_test, file = 'data/xgb_eval_30_test')
+
+confusionMatrix(xgb_eval_30_test$test_prediction$.pred_class,
+                xgb_eval_30_test$test_prediction$CL_cat)
+
+# 40
+xgb_eval_40_test <- xgb_func(quantile = 0.4,
+                             seed = 123) # sens not included
+
+save(xgb_eval_40_test, file = 'data/xgb_eval_40_test')
+
+confusionMatrix(xgb_eval_40_test$test_prediction$.pred_class,
+                xgb_eval_40_test$test_prediction$CL_cat)
+
+
+xgb_eval_40 <- xgb_eval(model_final = xgb_40_model_final,
+                        quantile = 0.4,
+                        seed = 123)
+
+xgb_eval_50 <- xgb_eval(xgb_50_model_final,
+                        0.5,
+                        123)
+
+xgb_eval_60 <- xgb_eval(xgb_60_model_final,
+                        0.6,
+                        123)
+
+xgb_eval_70 <- xgb_eval(xgb_70_model_final,
+                        0.7,
+                        123)
 ```
 
