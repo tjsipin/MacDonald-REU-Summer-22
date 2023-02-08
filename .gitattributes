@@ -1,2 +1,1 @@
-causality/monthly_short_rf filter=lfs diff=lfs merge=lfs -text
-data/monthly_short.csv filter=lfs diff=lfs merge=lfs -text
+
